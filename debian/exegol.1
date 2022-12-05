@@ -1,0 +1,2601 @@
+.\" Man page generated from reStructuredText.
+.
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.TH "EXEGOL" "1" "Dec 04, 2022" "" "Exegol"
+.SH NAME
+exegol \- Exegol 4.1.0
+.sp
+Exegol is a community\-driven hacking environment, powerful and yet simple enough to be used by anyone in day to day engagements. Exegol is the best solution to deploy powerful hacking environments securely, easily, professionally.
+.sp
+Exegol fits pentesters, CTF players, bug bounty hunters, researchers, beginners and advanced users, defenders, from stylish macOS users and corporate Windows pros to UNIX\-like power users.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This documentation is a work in progress. We are actively writing it, but if there are things you\(aqd like to be documented in priority, feel free to request in on the \fI\%GitHub Repo\fP or in the \fI\%Discord server\fP\&.
+.UNINDENT
+.UNINDENT
+.SH THE EXEGOL PROJECT
+.sp
+Exegol is many things in one. Try it, and you\(aqll stop using your old, unstable and risky environment, no more monolithic system that gets messier, buggier and more at risk with time.
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Python wrapper\fP: makes everyone\(aqs life easier. This entrypoint to the whole Exegol project handles all docker and git operations so you don\(aqt have to. \fBNow\(aqs the time to have a clean environment\fP with one Docker container per engagement without the effort. Exegol handles multiple images and multiple containers. GUI apps, Wi\-Fi, USB accessories, volume mounting and many more features are supported and easier to use than ever.
+.IP \(bu 2
+\fI\%Docker images\fP: a set of pre\-built docker images and dockerfiles that include a neat choice of tools, zsh plugins for power users, pre\-filled history ready to use with environment variables, awesome resources, custom configs and many more. Images can either be built locally or pulled from the official Dockerhub registry.
+.IP \(bu 2
+\fI\%Offline resources\fP: Tired of always having to search github for your favorite privesc enumeration script? Exegol includes a set of resources, shared with all exegol containers and your host, including LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
+.UNINDENT
+.SH GETTING STARTED
+.sp
+Wanna try Exegol and join our great community? You need to \fI\%install requirements\fP first, then proceed to the OS\-specific instructions: \fI\%Linux\fP | \fI\%macOS\fP | \fI\%Windows\fP
+.SH COMMUNITY
+.sp
+Have a bug report or feature request? Either open an issue on the \fI\%Exegol repo\fP or open a ticket on the \fI\%Exegol discord\fP (preferred, easier, more flexible).
+.sp
+Wanna chat? Need help? Join us on the \fI\%Exegol discord\fP!
+.SS Install
+.sp
+Installing Exegol starts with installing the entrypoint to the whole project: the Python wrapper. Once the wrapper is installed, everything else can be managed from it.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is strongly advised to install Exegol on a Linux host, especially when planning on using Exegol for internal penetration tests. This is because Docker Desktop on Windows and macOS lacks a few features, mainly due to how these operating systems run Docker containers within an internal VM that doesn\(aqt share the host\(aqs network interfaces and USB accessories.
+.UNINDENT
+.UNINDENT
+.sp
+Once the wrapper is installed, the second step in setting up Exegol on a device is to install at least one Exegol image, either with \fBexegol start\fP (documentation
+\fI\%here\fP), or with \fBexegol install\fP (documentation
+\fI\%here\fP). Both actions will guide the user in installing an image if needed.
+.SS Contents
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Install\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Requirements\fP
+.IP \(bu 2
+\fI\%Installation\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%1. Installation of exegol\fP
+.IP \(bu 2
+\fI\%2. Adding Exegol to the PATH\fP
+.IP \(bu 2
+\fI\%3. Installation of the first Exegol image\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Requirements
+.sp
+The following elements are required before Exegol can be installed, whatever the host\(aqs operating system is:
+.INDENT 0.0
+.IP \(bu 2
+git (\fI\%Linux\fP | \fI\%macOS\fP | \fI\%Windows\fP)
+.IP \(bu 2
+python3 (\fI\%Linux\fP | \fI\%macOS\fP | \fI\%Windows\fP)
+.IP \(bu 2
+docker (\fI\%Linux\fP | \fI\%macOS\fP | \fI\%Windows\fP)
+.IP \(bu 2
+at least 20GB of free storage
+.UNINDENT
+.sp
+Additional dependencies may be required depending on the host OS.
+Linux
+No additional dependencies for Linux environments.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+From Linux systems, Docker can be installed quickly and easily with the following command\-line:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+curl \-fsSL "https://get.docker.com/" \-o get\-docker.sh
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+To run exegol from the user environment without \fIsudo\fP, the user must have privileged rights equivalent to root.
+To grant yourself these rights, you can use the following command
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo usermod \-aG docker $(id \-u \-n)
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+For more information, official Docker documentation shows \fI\%how to manage docker as a non root user\fP\&.
+.UNINDENT
+.UNINDENT
+macOS
+To support graphical applications (\fI\%display sharing functionality\fP, e.g. Bloodhound, Wireshark, Burp, etc.), additional dependencies and configuration are required:
+.INDENT 0.0
+.IP \(bu 2
+\fI\%XQuartz\fP must be installed
+.IP \(bu 2
+The XQuartz config \fBAllow connections from network clients\fP must be set to true
+.IP \(bu 2
+Docker Desktop must be configured with default File Sharing (see screenshot below)
+.UNINDENT
+.INDENT 0.0
+.INDENT 2.5
+[image: macOS XQuartz configuration requirement]
+[image]
+macOS XQuartz configuration requirement.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.INDENT 2.5
+[image: macOS Docker Desktop resources requirement]
+[image]
+macOS Docker Desktop resources requirement.UNINDENT
+.UNINDENT
+Windows
+To support graphical applications (\fI\%display sharing functionality\fP, e.g. Bloodhound, Wireshark, Burp, etc.), additional dependencies and configuration are required:
+.INDENT 0.0
+.IP \(bu 2
+Windows \fB11\fP is needed
+.IP \(bu 2
+Docker must run on \fBWSL2\fP engine (\fI\%how to\fP)
+.IP \(bu 2
+\fI\%WSLg\fP must be installed
+.IP \(bu 2
+at least one WSL distribution must be \fBinstalled\fP as well (e.g. Debian), with \fBDocker integration\fP enabled
+.UNINDENT
+.SS Installation
+.sp
+The installation of Exegol on Linux, macOS and Windows are very similar. It can either be installed from pip (easiest, most user\-friendly, but with a few missing features) or from sources (easy as well, fully featured).
+.SS 1. Installation of exegol
+Installing with pip
+Exegol\(aqs wrapper can be installed from pip.
+While this is the easiest and most user\-friendly technique, for more advanced users it is advised to install from sources, as it allows to switch from release to dev branches easily and the auto\-update feature is supported.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 \-m pip install exegol
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Installing from sources
+Exegol\(aqs wrapper can also be installed from sources (with Git). The wrapper then knows how to self\-update, and switching from release and development branches is possible and very easy.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+git clone "https://github.com/ThePorgs/Exegol"
+python3 \-m pip install \-\-user \-\-requirement "Exegol/requirements.txt"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS 2. Adding Exegol to the \fBPATH\fP
+Installing with pip
+If your pip installation is correct and functional, you have nothing more to do and you can already use the command \fBexegol\fP\&.
+.sp
+If not, remember that pip installs binaries in a \fBdedicated\fP local folder, which then \fBmust\fP be in the \fBPATH\fP environment variable.
+Try to fix your pip installation: \fI\%Linux\fP | \fI\%MacOS\fP | \fI\%Windows\fP
+Installing from sources
+Linux & MacOS
+Once this is taken care of, the exegol wrapper can then be added to the \fBPATH\fP with a symlink for direct access. This allows to call exegol from wherever, instead of to use the absolute path. Exegol can then be used with \fBexegol <action>\fP instead of \fBpython3 /path/to/Exegol/exegol.py <action>\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo ln \-s "$(pwd)/exegol.py" "/usr/local/bin/exegol"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Windows
+Once this is taken care of, the exegol wrapper can then can be added as a PowerShell command alias and saved for persistence
+in \fB$HOME\ePowershellAliasesExport.txt\fP
+then loaded from \fB$PROFILE\fP script at PowerShell startup. Exegol can then be used with \fBexegol <action>\fP instead of \fBpython3 /path/to/Exegol/exegol.py <action>\fP\&.
+.sp
+To create the alias file correctly, open a powershell and place yourself in the folder where exegol is located (applicable only for \fIfrom source\fP installations) and run the following commands:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$AliasFile = "$HOME\ePowershellAliasesExport.txt"
+Set\-Alias \-Name exegol \-Value "$(pwd)\eexegol.py"
+Get\-Alias \-Name "exegol" | Export\-Alias \-Path $AliasFile
+echo "Import\-Alias \(aq$AliasFile\(aq" >> $PROFILE
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+To automatically load aliases from the \fB\&.ps1\fP file, PowerShell\(aqs \fBGet\-ExecutionPolicy\fP must be set to \fBRemoteSigned\fP\&.
+.sp
+If the configuration is not correct it can be configured as \fBadministrator\fP with the following command:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+Set\-ExecutionPolicy \-ExecutionPolicy RemoteSigned
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you have installed Python3 manually and Windows opens the \fBMicrosoft store\fP on the python page as soon as you type \fBpython3.exe\fP, try this:
+.sp
+It is possible to disable this behavior in the Windows settings: \fBApps > Apps & features > App execution aliases\fP and disable aliases for \fBpython.exe\fP and \fBpython3.exe\fP\&.
+.UNINDENT
+.UNINDENT
+.SS 3. Installation of the first Exegol image
+.sp
+Once the exegol wrapper is installed, you can download your first docker image with the following command:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Updates
+.sp
+The whole Exegol can be updated through its own wrapper with \fBexegol update\fP (documentation
+\fI\%here\fP).
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+Wrappers installed with pip don\(aqt support auto\-update. The wrapper itself can then can be updated as follows.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 \-m pip install \-\-upgrade exegol
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Python Wrapper
+.sp
+The Exegol project regroups many things (docker images, offline resources, custom configurations, aliases, history commands, multi\-architecture support and many others). In order to make all the tech involved easy to use, and provide some unique entrypoint to the whole setup, a Python wrapper was created.
+.sp
+The Python wrapper handles all Docker and Git operations, can manage multiple images and containers at once and give the user the best experience possible, suited for beginners as well as advanced people.
+.sp
+The wrapper knows multiple actions.
+.INDENT 0.0
+.IP \(bu 2
+Install an image : \fBexegol install\fP
+.IP \(bu 2
+Create/start/enter a container : \fBexegol start\fP
+.IP \(bu 2
+Show info on containers and images : \fBexegol info\fP
+.IP \(bu 2
+Stop a container : \fBexegol stop\fP
+.IP \(bu 2
+Remove a container : \fBexegol remove\fP
+.IP \(bu 2
+Uninstall an image : \fBexegol uninstall\fP
+.IP \(bu 2
+Get help and advanced usage : \fBexegol \-\-help\fP
+.IP \(bu 2
+Help and examples can be obtained for each action directly from the wrapper with the following command: \fBexegol <action> \-h\fP (action: \fBinstall\fP/\fBstart\fP/\fBstop\fP/etc.).
+.UNINDENT
+.sp
+All actions are documented in the \fBexegol\-wrapper\fP part of this doc (e.g. \fI\%info\fP, \fI\%start\fP, \fI\%version\fP, ...)
+.sp
+Below is a, non\-exhaustive, list of what the wrapper supports:
+.TS
+center;
+|l|l|.
+_
+T{
+Feature
+T}	T{
+Description
+T}
+_
+T{
+\fI\%Display sharing\fP
+T}	T{
+Sharing of the graphic environment between the container and the host
+T}
+_
+T{
+\fI\%Workspace\fP
+T}	T{
+Persistent and shared workspace with the host
+T}
+_
+T{
+\fI\%Update\-fs\fP
+T}	T{
+Permission sharing between the container and the host
+T}
+_
+T{
+\fI\%OpenVPN connection\fP
+T}	T{
+Opening an isolated VPN tunnel dedicated to the exegol container
+T}
+_
+T{
+\fI\%Shell logging\fP
+T}	T{
+Recording of sessions (input and output) in log files with date and time
+T}
+_
+T{
+\fI\%Shared network\fP
+T}	T{
+Sharing the host\(aqs network interfaces
+T}
+_
+T{
+\fI\%Shared timezones\fP
+T}	T{
+Sharing the host\(aqs timezone configuration
+T}
+_
+T{
+\fI\%Exegol\-resources\fP
+T}	T{
+Easy access to a collection of resources and tools
+T}
+_
+T{
+\fI\%My\-resources\fP
+T}	T{
+User space dedicated to customization
+T}
+_
+T{
+\fI\%Volume sharing\fP
+T}	T{
+Support for specific volume addition
+T}
+_
+T{
+\fI\%Port sharing\fP
+T}	T{
+Support for port publishing
+T}
+_
+T{
+\fI\%Env. variables\fP
+T}	T{
+Support for environment variable configuration
+T}
+_
+T{
+\fI\%Device sharing\fP
+T}	T{
+Support for hardware sharing
+T}
+_
+T{
+\fI\%Capabilities\fP
+T}	T{
+Support for adding specific capabilities
+T}
+_
+T{
+\fI\%Privileged\fP
+T}	T{
+Support of the privileged mode
+T}
+_
+T{
+\fI\%Multi\-architecture\fP
+T}	T{
+Support for AMD64 and ARM64 architectures
+T}
+_
+T{
+\fI\%Local image\fP
+T}	T{
+Customized local image building
+T}
+_
+T{
+\fI\%Remote image\fP
+T}	T{
+Pre\-built image available for download
+T}
+_
+T{
+\fI\%Command execution\fP
+T}	T{
+Execution of specific command
+T}
+_
+T{
+\fI\%Daemon execution\fP
+T}	T{
+Support of the command execution in the background
+T}
+_
+T{
+\fI\%Temporary containers\fP
+T}	T{
+Support for command execution in a dedicated and temporary environment
+T}
+_
+.TE
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Exegol uses Docker images and containers. Understanding the difference is essential to understand Exegol.
+.INDENT 0.0
+.IP \(bu 2
+\fBimage\fP: think of it as an immutable template. They cannot be executed as\-is and serve as input for containers. It\(aqs not possible to open a shell in an image.
+.IP \(bu 2
+\fBcontainer\fP: a container rests upon an image. A container is created for a certain image at a certain time. It\(aqs possible to open a shell in a container. Careful though, once a container is created, updating the image it was created upon won\(aqt have any impact on the container. In order to enjoy the new things, a new container must be created upon that updated image.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Features
+.sp
+The Exegol wrapper has many features to automatically and transparently manage different configurations to facilitate the use and creation of docker containers.
+.SS Display sharing
+.sp
+By default exegol configures the new container and host to allow the execution to the display of graphical window launched from an exegol container.
+.sp
+For example, if bloodhound is launched in an exegol container, the graphical window (GUI) will be displayed in the user\(aqs graphic environment.
+.sp
+This feature can be disabled manually with the option \fB\-\-disable\-X11\fP of the \fI\%start action\fP\&.
+.SS Workspace
+.sp
+Exegol always creates within a container a \fBpersistent\fP workspace (even after deleting the container) and \fBshared\fP with the host.
+.sp
+By default a folder will be created on the host and shared with the container. This folder will be created in \fB~/.exegol/workspaces/\fP with the name of the exegol container.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+The default location of workspace volumes can be changed in the \fI\%configuration of Exegol\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+The user can also create an Exegol container with an \fBexisting custom workspace folder\fP (with already existing data) regardless of its location in the file system.
+.sp
+See the options \fB\-w WORKSPACE_PATH\fP and \fB\-cwd\fP of the \fI\%start action\fP for more details.
+.SS Update\-fs
+.sp
+The root user is used by default in Exegol containers which poses problems of permissions when accessing the project documents from the host.
+To remedy this without compromising, a \fBshared permission system\fP exists allowing the host user to have read and write access to files created from the container.
+.sp
+This system is \fBautomatically activated\fP when a \fBnew\fP default workspace is created.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+When the user uses an existing custom folder as workspace, this system is \fBdisabled\fP by default! This feature can be \fBenabled by default\fP by changing the \fI\%configuration of Exegol\fP\&.
+.sp
+Its activation is possible manually (see the option \fB\-\-update\-fs\fP of the \fI\%start action\fP) but it will lead to the \fBmodification\fP of the folder and its sub\-folders \fBpermissions\fP (as \fBg+s\fP).
+.sp
+If the user does not have the rights to perform such an operation, a \fBsudo command\fP will be proposed to the user that he will have to \fBexecute manually\fP to apply the necessary permissions for the proper functioning of the functionality (as \fBchgrp\fP + \fBg+rws\fP).
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+When the default configuration of this feature is changed and the update will be \fBenabled by default\fP, the option \fB\-\-update\-fs\fP can still be used to manually \fBdisable\fP the feature in specific cases.
+.UNINDENT
+.UNINDENT
+.SS OpenVPN connection
+.sp
+Exegol supports OpenVPN tunnel configuration to \fBautomatically\fP establish a VPN tunnel at container \fBstartup\fP\&.
+.sp
+Exegol supports certificate authentication (all files should preferably be included in a single ovpn file) but also user/password authentication through an authentication file (to allow non\-interactive and transparent authentication).
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+A folder can also be used in the case of a \fBmulti\-file configuration\fP (with \fBrelative\fP paths!) and the configuration file must have the \fB\&.ovpn\fP extension (Only \fBone\fP .ovpn file will be loaded by exegol).
+.UNINDENT
+.UNINDENT
+.sp
+See the options \fB\-\-vpn VPN\fP and \fB\-\-vpn\-auth VPN_AUTH\fP of the \fI\%start action\fP for more details.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+In case of problem, to troubleshoot a VPN connection, the log of OpenVPN can be retrieved within the container in the \fB/var/log/exegol/vpn.log\fP file
+.UNINDENT
+.UNINDENT
+.SS Shell logging
+.sp
+Within the framework of a mission, it is necessary to \fBlog all actions\fP performed during a pentest, red team etc.
+To meet this need, Exegol has a feature to \fBautomatically record everything\fP that is displayed (stdout / stderr) but also all entries (stdin).
+.sp
+See the option \fB\-\-log\fP of the \fI\%start action\fP to enable the feature.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+When the option is enabled upon \fBcreation\fP of a new container, all shells created for this container \fBwill be automatically logged\fP\&.
+.sp
+If the container was created \fBwithout\fP this option, the shells can still be logged \fBindividually\fP by adding the option in the \fBstart\fP command of \fBeach\fP shell.
+.UNINDENT
+.UNINDENT
+.sp
+The date and time of each command is displayed thanks to the PS1 of \fBzsh\fP\&.
+.sp
+The logs are automatically saved in the \fB/workspace/logs\fP folder. Each log file is \fBautomatically compressed\fP with \fBgzip\fP at the end of the session to optimize disk space.
+The automatic compression of log files can be \fBdisabled\fP manually with the \fI\%start action\fP \fB\-\-log\-compress\fP parameter or change the default behavior in the \fI\%Exegol configuration file\fP\&.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+When the default configuration of the log compression is changed from the config file and the feature will be \fBdisabled by default\fP, the option \fB\-\-log\-compress\fP can still be used to manually \fBenable\fP the feature in specific cases.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+The logs should \fBNOT\fP be consulted from the exegol container but \fBfrom the host\fP to avoid loops and duplication of data in the logs.
+.UNINDENT
+.UNINDENT
+.sp
+There are (since exegol images version \fB3.0.0\fP) different methods of shell logging.
+The shell logging method can be selected manually with the \fI\%start action\fP \fB\-\-log\-method\fP parameter or by default in the \fI\%configuration file of Exegol\fP\&.
+asciinema (default)
+The shell logging method \fBasciinema\fP is available from exegol images version \fB3.0.0\fP\&.
+This new mode allows to consult sessions in \fBvideo\fP format taking into account the interactive environment.
+It is also possible to \fBmanually upload\fP and \fBshare\fP recordings, useful for \fBdemonstrations\fP for example
+.sp
+Here is a quick demonstration:
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+Logs in \fB\&.gz\fP format can be replay directly \fBwithout unpacking\fP them with the command: \fBgunzip \-c <filename_shell.asciinema.gz> | asciinema play \-\fP
+.UNINDENT
+.UNINDENT
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+To display the whole session \fBwithout\fP the "video" mode, it is possible to use the command: \fBasciinema cat <filename_shell.asciinema>\fP
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Major disadvantage of this method, to view the logs from your host, you must \fBinstall\fP \fBasciinema\fP on your \fBhost\fP machine to replay or share your records.
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+When you share or play an \fBasciinema\fP video, you can \fBcopy\fP and \fBpaste\fP any command/text it contains.
+.UNINDENT
+.UNINDENT
+script
+This method simply records \fBall\fP incoming (stdin) and outgoing (stdout/stderr) shell actions in a file.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+Logs in \fB\&.gz\fP format can be viewed directly \fBwithout unpacking\fP them with the \fBzcat\fP, \fBzgrep\fP, \fBzdiff\fP or \fBzmore\fP command!
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Shell logging saves \fBEVERYTHING\fP including keyboard shortcuts, display refreshes, etc.
+.sp
+Complex graphical environments (such as tmux) can make it difficult to read the logs.
+.UNINDENT
+.UNINDENT
+.SS Shared network
+.sp
+By default, containers created by Exegol are in \fBhost\fP mode which means that the \fBnetwork interfaces\fP of the host are \fBshared\fP with the container.
+.sp
+This configuration is useful to:
+.INDENT 0.0
+.IP \(bu 2
+dynamically open ports and services
+.IP \(bu 2
+have a low level access on a physical network (some operation might need privileged mode)
+.IP \(bu 2
+share a unique ip address on the target network
+.IP \(bu 2
+share a MAC address on the target network (to be considered as a single physical machine)
+.UNINDENT
+.sp
+This mode can be disabled with the option \fB\-\-disable\-shared\-network\fP of the \fI\%start action\fP to create a dedicated and isolated network instead.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+When host network sharing is disabled, ports can be  to expose services on the host machine\(aqs networks.
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This mode is only available on \fBLinux\fP installations!
+Windows and MacOS installations are subject to the constraints and limitations of \fI\%Docker Desktop\fP .
+.sp
+You can still use the port \fI\%publishing feature\fP instead.
+.UNINDENT
+.UNINDENT
+.SS Shared timezones
+.sp
+For convenience and precision in the date and time of the logs of each command, exegol allows to share the timezone of the host in the container.
+.sp
+This feature is active by default and can be disabled with the option \fB\-\-disable\-shared\-timezones\fP of the \fI\%start action\fP\&.
+.SS Exegol\-resources
+.sp
+To save time and have at hand many tools, scripts and other resources, exegol maintains a repository \fI\%exegol\-resources\fP contains many updated tools that are available to the host and exegol containers.
+.sp
+This module is not mandatory and can be downloaded later.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+If an antivirus is present on your host, be careful to exclude the destination folder of the \fBexegol\-resources\fP module before downloading it.
+.UNINDENT
+.UNINDENT
+.sp
+This feature is active and shared by default and can be disabled with the option \fB\-\-disable\-exegol\-resources\fP of the \fI\%start action\fP\&.
+.SS My\-resources
+.sp
+The my\-resources feature is a space dedicated to the user and shared with all the containers. This space allows to store configurations and to install personal tools.
+.sp
+More details on the functionality of the wrapper \fI\%here\fP and how to take advantage of the customization system \fI\%here\fP\&.
+.SS Volume sharing
+.sp
+For specific needs, the exegol wrapper allows to add additional custom volumes (type bind mounts) when creating an exegol container.
+.sp
+See the option \fB\-\-volume VOLUMES\fP of the \fI\%action start\fP for more details.
+.SS Port sharing
+.sp
+When the host network is not shared, it is still possible to \fBpublish\fP specific ports to expose \fBservices\fP or \fBport\fP ranges.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+This configuration is \fBcompatible\fP even with installations based on Docker Desktop.
+.UNINDENT
+.UNINDENT
+.sp
+This feature allows the user to select:
+.INDENT 0.0
+.IP \(bu 2
+a specific network interface (for example 127.0.0.1) or by default all interfaces (0.0.0.0).
+.IP \(bu 2
+the port to open on the host interface.
+.IP \(bu 2
+the destination port to be linked in the container.
+.IP \(bu 2
+the protocol to use, docker supports \fBTCP\fP, \fBUDP\fP and \fBSCTP\fP protocols (default is TCP).
+.UNINDENT
+.sp
+See the option \fB\-\-port PORTS\fP of the \fI\%start action\fP for more details.
+.SS Env. variables
+.sp
+Exegol can configure custom environment variables defined by the user.
+.sp
+When the environment variables are defined at the first time of the container creation, these variables will be:
+.INDENT 0.0
+.IP \(bu 2
+accessible in the container by all processes
+.IP \(bu 2
+present during the whole lifetime of the container
+.UNINDENT
+.sp
+The environment variables can be defined when opening a shell in an \fBexisting\fP container and will be available \fBonly\fP in the user\(aqs shell until it is closed.
+.sp
+See the option \fB\-\-env ENVS\fP of the \fI\%start action\fP for more details.
+.SS Device sharing
+.sp
+For the needs of some applications running on physical hardware (such as proxmark3), exegol can supply the container with one or more physical devices.
+.sp
+See the option \fB\-\-device DEVICES\fP of the \fI\%start action\fP for more details.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This feature is only available on \fBLinux\fP installations!
+.sp
+Windows and MacOS installations are subject to the constraints and limitations of \fI\%Docker Desktop\fP\&.
+.UNINDENT
+.UNINDENT
+.SS Capabilities
+.sp
+Exegol supports adding \fBLinux capabilities\fP to the Exegol \fBcontainer\fP to perform tasks that require \fBadministrative\fP rights \fBwithout\fP allowing everything.
+.sp
+This feature gives control to the user to configure his container but giving administrator rights remains a dangerous practice and should be used by experienced users only.
+.sp
+For more details on the capabilities supported by docker \fI\%check here\fP\&.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Not all Linux capabilities are allowed by the Exegol wrapper, here is the list of available capabilities:
+.sp
+SYS_RAWIO, SYS_MODULE, NET_BROADCAST, NET_ADMIN, SYS_CHROOT, MKNOD, NET_RAW, SYS_ADMIN, SETFCAP, SYS_PTRACE
+.sp
+For all other needs, consider the \fI\%privileged\fP mode.
+.UNINDENT
+.UNINDENT
+.SS Privileged
+.sp
+For particular needs, it is sometimes necessary to have \fBprivileged rights\fP to perform certain actions.
+If Exegol does \fBnot\fP allow you to have specifically the rights necessary, you can configure your container in privileged mode to get \fBfull administrator rights\fP\&.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This configuration is particularly \fBdangerous\fP because it gives the container \fBfull admin control\fP over the \fBkernel\fP of the \fBhost\fP machine.
+.sp
+Use this option \fBonly\fP if you know \fBexactly\fP what you are doing!!
+.sp
+If the need is specifically identified, consider adding \fI\%capabilities\fP instead!
+.UNINDENT
+.UNINDENT
+.sp
+See the option \fB\-\-privileged\fP of the \fI\%start action\fP for more details.
+.SS Multi\-architecture
+.sp
+Exegol supports \fBARM64\fP architecture (in addition to the classic \fBAMD64\fP) since version \fB4.1.0\fP of the wrapper and \fB3.0.0\fP of the images.
+.sp
+This support allows you to fully use exegol on hardware equipped with an \fBARM\fP processor (such as Mac M1 / M2 but also some Raspberry Pi).
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Exegol only supports \fB64\-bit ARM\fP architecture! If your ARM processor supports 64\-bit, make sure your \fBOS\fP is also installed in \fB64\-bit version\fP to use exegol!
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+For experienced users or developers, it is possible to explicitly modify the architecture used by the Exegol wrapper with the \fI\%general option\fP \fB\-\-arch ARCH\fP\&.
+.sp
+But be \fBcareful\fP, the modification of this parameter can lead to \fBmalfunctions\fP!
+.UNINDENT
+.UNINDENT
+.SS Local image building
+.sp
+The wrapper allows users to locally build their images from the \fBexegol\-images\fP sources.
+.sp
+More information in the \fI\%advanced uses\fP section.
+.SS Remote image pulling
+.sp
+To save time, pre\-built images are available for download from DockerHub.
+These images can be downloaded and installed / updated from the exegol wrapper with the \fI\%install\fP and \fI\%update\fP actions.
+.SS Command execution
+.sp
+The Exegol wrapper does not only allow the opening of interactive shells, it is also possible to execute \fBsingle commands\fP in several ways.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+To see the execution logs of the command, the user must add the parameter \fB\-v\fP\&.
+.UNINDENT
+.UNINDENT
+.sp
+The details of this functionality are detailed in the \fI\%exec\fP action.
+.SS Daemon execution
+.sp
+One of the execution modes can be in the \fBbackground\fP like a daemon service.
+In this way the wrapper executes the \fBuser\(aqs command\fP, for example an application such as bloodhound.
+The wrapper \fBlaunches\fP the task in an exegol container and \fBfinishes immediately\fP without occupying the user\(aqs terminal, leaving the application \fBopen\fP\&.
+.sp
+See the option \fB\-\-background\fP of the \fI\%exec action\fP for more details.
+.SS Temporary containers
+.sp
+Another feature of the \fI\%exec\fP action is the execution in a \fBtemporary\fP container.
+.sp
+In this mode, a \fBtemporary\fP container will be created and \fBdedicated\fP to the execution of the command specified by the user.
+.sp
+This mode can be useful to run a given command with the most \fBup\-to\-date\fP image already installed on the host, for any \fBtest\fP or for special \fBprivacy\fP needs.
+.sp
+See the option \fB\-\-tmp\fP of the \fI\%exec action\fP for more details.
+.SS Docker images
+.sp
+The Docker images are the heart of the Exegol project. A neat choice of tools, configurations, aliases, history commands, and various customizations are prepared in multiple images adapted for multiple uses: web hacking, Active Directory, OSINT (Open Source INTelligence), etc.
+.sp
+All images are available on \fI\%the official Dockerhub registry\fP\&. This allows to offer pre\-built, compressed images, so that users don\(aqt have to build their own image, but users that choose to do so can. Pulling pre\-built images, or building one, can be done with \fBexegol install\fP (documentation
+\fI\%here\fP).
+.TS
+center;
+|l|l|.
+_
+T{
+Image name
+T}	T{
+Description
+T}
+_
+T{
+full
+T}	T{
+Includes all the tools supported by Exegol (warning: this is the heaviest image)
+T}
+_
+T{
+ad
+T}	T{
+Includes tools for Active Directory / internal pentesting only.
+T}
+_
+T{
+web
+T}	T{
+Includes tools for Web pentesting only.
+T}
+_
+T{
+light
+T}	T{
+Includes the lightest and most used tools for various purposes.
+T}
+_
+T{
+osint
+T}	T{
+Includes tools for OSINT.
+T}
+_
+T{
+nightly
+T}	T{
+\fB(for developers and advanced users)\fP contains the latest updates. This image can be \fBunstable\fP!
+T}
+_
+.TE
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Exegol uses Docker images and containers. Understanding the difference is essential to understand Exegol.
+.INDENT 0.0
+.IP \(bu 2
+\fBimage\fP: think of it as an immutable template. They cannot be executed as\-is and serve as input for containers. It\(aqs not possible to open a shell in an image.
+.IP \(bu 2
+\fBcontainer\fP: a container rests upon an image. A container is created for a certain image at a certain time. It\(aqs possible to open a shell in a container. Careful though, once a container is created, updating the image it was created upon won\(aqt have any impact on the container. In order to enjoy the new things, a new container must be created upon that updated image.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Offline resources
+.sp
+Exegol\(aqs "offline resources" are a neat choice of standalone tools and scripts that are often used during penetration tests,
+CTFs and red\-teams, like LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
+Exegol users don\(aqt have to download those resources again every time they\(aqre needed anymore.
+Everything is managed by the wrapper and they are shared with every container (at \fB/opt/resources\fP).
+.SS \fBinstall\fP action
+.sp
+This action can be used to install an Exegol image. At least one Exegol image is required to create and start a container and enjoy Exegol.
+.sp
+When this action is used, the image can either be:
+.INDENT 0.0
+.IP \(bu 2
+\fBdownloaded\fP (i.e. "pulled" in Docker terms) from \fI\%the official Dockerhub registry\fP\&. In this case, a compressed and pre\-built image is downloaded in the form of layers, and then uncompressed.
+.IP \(bu 2
+\fBbuilt\fP locally by following the instructions of a Dockerfile offered on \fI\%the Exegol\-images GitHub repo\fP\&. Here again, no need to download the dockerfile manually, all of them are already at \fB/path/to/Exegol/exegol\-docker\-build/\fP\&.
+.UNINDENT
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The \fBinstall\fP action can be used without any particular argument or option. the wrapper will then enter in an interactive TUI (Text\-based User Interface) mode where the user will be asked to choose what image to install or build.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Options
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBIMAGE\fP
+T}	T{
+Optional positional argument to indicate the image to install (if downloading), or the name of the image to build (if building locally).
+T}
+_
+T{
+\fBBUILD_PROFILE\fP
+T}	T{
+Optional positional argument to indicate the source profile to use if building locally.
+T}
+_
+T{
+\fB\-\-build\-log\fP
+T}	T{
+Write logs to the path specified if building locally.
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+#Install or build interactively an exegol image
+exegol install
+
+#Install or update the full image
+exegol install full
+
+#Build interactively a local image named myimage
+exegol install myimage
+
+#Build the myimage image based on the full profile and log the operation
+exegol install myimage full \-\-build\-log "/tmp/build.log"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBstart\fP action
+.sp
+This action can be used to start a container. At least one Exegol image is required to create and start a container and enjoy Exegol. Installing an image can be done with \fBexegol install\fP (documentation
+\fI\%here\fP).
+.sp
+When this action is used, the following process is applied:
+.INDENT 0.0
+.IP \(bu 2
+if no Exegol image is installed, the user is asked to specify which one to install of build, and the process continues
+.IP \(bu 2
+then, if the container to start doesn\(aqt already exist, it is created based on an Exegol image and a few settings to specify, and the process continues
+.IP \(bu 2
+then, the container is started and a shell is opened
+.UNINDENT
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The \fBstart\fP action can be used without any additional argument or option. the wrapper will then enter in an interactive TUI (Text\-based User Interface) mode where the user will be asked to choose a few settings.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol start
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Options
+.sp
+A single option exist to target an Exegol container.
+If this container exists, it will be started if it is not already the case and a shell will be spawned to offer an interactive console to the user
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP
+T}	T{
+Tag used to target an Exegol container
+T}
+_
+.TE
+.sp
+Many options exist to customize the creation of exegol container.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+The default options of some commands can be changed in the \fI\%exegol configuration file\fP\&.
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBIMAGE\fP
+T}	T{
+Tag of the exegol image to use to create a new exegol container
+T}
+_
+T{
+\fB\-w WORKSPACE_PATH\fP, \fB\-\-workspace WORKSPACE_PATH\fP
+T}	T{
+The specified host folder will be linked to the /workspace folder in the container.
+T}
+_
+T{
+\fB\-cwd\fP, \fB\-\-cwd\-mount\fP
+T}	T{
+This option is a shortcut to set the /workspace folder to the user\(aqs current working directory (pwd).
+T}
+_
+T{
+\fB\-fs\fP, \fB\-\-update\-fs\fP
+T}	T{
+Modifies the permissions of folders and sub\-folders shared in your workspace to access the files created within the container using your host user account. (default: Disabled)
+T}
+_
+T{
+\fB\-V VOLUMES\fP, \fB\-\-volume VOLUMES\fP
+T}	T{
+Share a new volume between host and exegol (format: \-\-volume /path/on/host/:/path/in/container/).
+T}
+_
+T{
+\fB\-p PORTS\fP, \fB\-\-port PORTS\fP
+T}	T{
+Share a network port between host and exegol (format: \-\-port [<host_ipv4>:]<host_port>[:<container_port>][:<protocol>]. This configuration will disable the shared network with the host.
+T}
+_
+T{
+\fB\-\-privileged\fP
+T}	T{
+\fB(dangerous)\fP give extended privileges at the container creation (e.g. needed to mount things, to use wifi or bluetooth)
+T}
+_
+T{
+\fB\-d DEVICES\fP, \fB\-\-device DEVICES\fP
+T}	T{
+Add host device(s) at the container creation (example: \-d /dev/ttyACM0 \-d /dev/bus/usb/).
+T}
+_
+T{
+\fB\-\-disable\-X11\fP
+T}	T{
+Disable display sharing to run GUI\-based applications. (default: Enabled)
+T}
+_
+T{
+\fB\-\-disable\-my\-resources\fP
+T}	T{
+Disable the mount of the shared resources (/opt/my\-resources) from the host (/home/dramelac/.exegol/my\-resources) (default: Enabled)
+T}
+_
+T{
+\fB\-\-disable\-exegol\-resources\fP
+T}	T{
+Disable the mount of the exegol resources (/opt/resources) from the host (/home/dramelac/Documents/tools/Exegol/exegol\-resources) (default: Enabled)
+T}
+_
+T{
+\fB\-\-disable\-shared\-network\fP
+T}	T{
+Disable the sharing of the host\(aqs network interfaces with exegol (default: Enabled)
+T}
+_
+T{
+\fB\-\-disable\-shared\-timezones\fP
+T}	T{
+Disable the sharing of the host\(aqs time and timezone configuration with exegol (default: Enabled)
+T}
+_
+.TE
+.sp
+An additional feature of Exegol is the addition of a VPN tunnel option (OpenVPN).
+Just provide an ovpn configuration to exegol and the container will take care of starting the tunnel at each startup.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fB\-\-vpn VPN\fP
+T}	T{
+Setup an OpenVPN connection at the container creation (example: \-\-vpn /home/user/vpn/conf.ovpn)
+T}
+_
+T{
+\fB\-\-vpn\-auth VPN_AUTH\fP
+T}	T{
+Enter the credentials with a file (first line: username, second line: password) to establish the VPN connection automatically (example: \-\-vpn\-auth /home/user/vpn/auth.txt)
+T}
+_
+.TE
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+All the options seen previously are taken into account \fBonly\fP for the creation of a \fBnew container\fP\&.
+It is \fBnot possible\fP to modify the configuration of an existing container.
+These options will be \fBignored\fP if a container with the same name already exists.
+.UNINDENT
+.UNINDENT
+.sp
+One of the functions of exegol very useful in a professional context is the shell logging.
+This feature allows the user to record \fBeverything\fP that happens in the exegol container (commands typed and responses).
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fB\-l\fP, \fB\-\-log\fP
+T}	T{
+Enable shell logging (commands and outputs) on exegol to /workspace/logs/ (default: Disabled)
+T}
+_
+T{
+\fB\-\-log\-method\fP
+T}	T{
+Select a shell logging method used to record the session (default: \fBasciinema\fP)
+T}
+_
+T{
+\fB\-\-log\-compress\fP
+T}	T{
+Enable or disable the automatic compression of log files at the end of the session (default: Enabled)
+T}
+_
+.TE
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+When the \fB\-l\fP/\fB\-\-log\fP option is enabled during the \fBcreation\fP of a \fBnew\fP container, all future shells will be \fBautomatically logged\fP for this container.
+.UNINDENT
+.UNINDENT
+.sp
+The options specific to the start of the interactive session
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fB\-e ENVS\fP, \fB\-\-env ENVS\fP
+T}	T{
+And an environment variable on Exegol (format: \-\-env KEY=value). The variables configured during the creation of the container will be persistent in all shells. If the container already exists, the variable will be present only in the current shell.
+T}
+_
+T{
+\fB\-s SHELL\fP, \fB\-\-shell SHELL\fP
+T}	T{
+Select a shell environment to launch at startup (default: zsh)
+T}
+_
+.TE
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+The environment variables configured with \fB\-\-env ENVS\fP during the \fBcreation\fP of a \fBnew\fP container will be available to \fBall\fP processes of the container during the \fBentire life cycle\fP of the container.
+.UNINDENT
+.UNINDENT
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Start interactively a container
+exegol start
+
+# Create a demo container using full image
+exegol start demo full
+
+# Spawn a shell from demo container
+exegol start demo
+
+# Create a container test with a custom shared workspace
+exegol start test full \-w "./project/pentest/"
+
+# Create a container test sharing the current working directory
+exegol start test full \-cwd
+
+# Create a container htb with a VPN
+exegol start htb full \-\-vpn "~/vpn/lab_Dramelac.ovpn"
+
+# Create a container app with custom volume
+exegol start app full \-V "/var/app/:/app/"
+
+# Get a shell based on tmux
+exegol start \-\-shell tmux
+
+# Use a Proxmark
+exegol start \-d "/dev/ttyACM0"
+
+# Use an HackRF One
+exegol start \-d "/dev/bus/usb/"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBinfo\fP action
+.sp
+The \fBinfo\fP action aims at displaying all the information specific to the Exegol project on the current system.
+This action can also be used by targeting a specific container to display its configuration in detail.
+.sp
+Depending on the verbosity level specified in the command\-line, the information displayed will be more or less detailed accordingly.
+Standard (default)
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol info
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+List of available Exegol Images
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Name of the image
+.IP \(bu 2
+Size of each image (disk space if the image is installed, otherwise its compressed size to download for installation)
+.IP \(bu 2
+Status of each image
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Not installed (Image available for download from dockerhub)
+.IP \(bu 2
+Up to date (The latest version of the image is installed and ready to be used)
+.IP \(bu 2
+Update available (A new version is available for download on dockerhub)
+.IP \(bu 2
+Outdated (Old version of an image that has been updated since)
+.IP \(bu 2
+Local image (Locally built image)
+.IP \(bu 2
+Discontinued (if your image is no longer available on dockerhub)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+List of Exegol Containers
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Name of each container
+.IP \(bu 2
+Container status (Stopped or running)
+.IP \(bu 2
+Image name (Exegol image used as a base to create the container)
+.IP \(bu 2
+Configurations (Display of non\-default configurations)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+Verbose
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol info \-v
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In the verbose mode, the following additional elements are displayed. Everything from the lower verbosity level is still displayed.
+.INDENT 0.0
+.IP \(bu 2
+Enumerate every user configuration (see details \fI\%here\fP)
+.IP \(bu 2
+In the list of available Exegol Images
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Image ID
+.IP \(bu 2
+Build date
+.IP \(bu 2
+Image architecture (AMD64 / ARM64)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+In the list of Exegol Containers
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Container id
+.IP \(bu 2
+Full configuration
+.IP \(bu 2
+List of non\-technical volumes
+.IP \(bu 2
+List of Devices
+.IP \(bu 2
+List of Ports (Applicable if network sharing with host is not enabled)
+.IP \(bu 2
+List of custom environment variables
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+Advanced
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol info \-vv
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In the advanced mode, the following additional elements are displayed. Everything from the lower verbosity levels is still displayed.
+.INDENT 0.0
+.IP \(bu 2
+Enumerate the settings from the user configuration at \fB~/.exegol/config.yml\fP (see details \fI\%here\fP)
+.IP \(bu 2
+List the different exegol modules
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Modules name
+.IP \(bu 2
+Their update status
+.IP \(bu 2
+Their git branch (if applicable)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+Debug
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol info \-vvv
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In the debug mode, everything from the lower verbosity levels is still displayed, as well as logs from internal methods and functions. Those logs can be useful for maintainers and developers in case of bug, or for making sure everything works properly.
+.SS Options
+.sp
+The info action does not have many parameters, its use is relatively simple. This action can either be used to gather general information (available images, containers, user configs, etc.), or gather information about a specific container and display its configuration.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP
+T}	T{
+Optional positional argument to indicate the container tag of which to display the configuration.
+T}
+_
+.TE
+.sp
+Global options can still be used, like for any action.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fB\-h\fP, \fB\-\-help\fP
+T}	T{
+Show the help message of any action
+T}
+_
+T{
+\fB\-v\fP, \fB\-\-verbose\fP
+T}	T{
+Verbosity level (\-v for verbose, \-vv for advanced, \-vvv for debug)
+T}
+_
+T{
+\fB\-q\fP, \fB\-\-quiet\fP
+T}	T{
+Show no information at all
+T}
+_
+T{
+\fB\-k\fP, \fB\-\-insecure\fP
+T}	T{
+Allow insecure server connections for web requests, e.g. when fetching info from DockerHub (default: Secure)
+T}
+_
+T{
+\fB\-\-offline\fP
+T}	T{
+Run exegol in offline mode, no request will be made on internet (default: Disable)
+T}
+_
+T{
+\fB\-\-arch {arm64,amd64}\fP
+T}	T{
+Overwrite default image architecture (default: host\(aqs arch)
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Print containers and images essentials information:
+exegol info
+
+# Print the detailed configuration of the "demo" container:
+exegol info demo
+
+# Print verbose information:
+exegol info \-v
+
+# Print advanced information:
+exegol info \-vv
+
+# Print debug information:
+exegol info \-vvv
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBexec\fP action
+.sp
+This action allows to run a single command in a single container instead of loading a full interactive shell.
+.sp
+When this action is used it is possible to execute a command either in:
+.INDENT 0.0
+.IP \(bu 2
+a \fBtemporary\fP container created especially to execute the command, and \fBautomatically deleted\fP at the end of the execution: the name of an exegol \fBimage\fP must be provided from which a temporary container will be created
+.IP \(bu 2
+a standard Exegol container (already existing, or not): the name of an exegol \fBcontainer\fP must then be provided. This container will be created in interactive mode if it does not already exist
+.UNINDENT
+.sp
+The executed command can be executed either:
+.INDENT 0.0
+.IP \(bu 2
+in the \fBbackground\fP mode (i.e. like a daemon): exegol \fBterminates immediately\fP after the command is launched and does not wait for its execution to be completed. No process is left hanging (useful when running GUI apps for instance).
+.IP \(bu 2
+in \fBstandard mode\fP: exegol will \fBwait\fP for the end of the process to stop the container (and delete it if
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+In standard execution mode, it is possible to ask exegol to display the command \fBoutput\fP (stdout/stderr) in the terminal by adding \fB\-v\fP parameter.
+.UNINDENT
+.UNINDENT
+.SS Options
+.sp
+Since the exec action can also create containers, it shares the same parameters as the \fI\%start action\fP\&.
+.sp
+There are also additional parameters, unique to the \fBexec\fP action:
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP or \fBIMAGE\fP
+T}	T{
+This option indicates the \fBcontainer\fP name to use to execute the command. If the \fB\-\-tmp\fP parameter is used, this name will be used to target an \fBimage\fP\&.
+T}
+_
+T{
+\fBCOMMAND\fP
+T}	T{
+Single command to execute in the container.
+T}
+_
+T{
+\fB\-b\fP, \fB\-\-background\fP
+T}	T{
+Executes the command in background as a daemon.
+T}
+_
+T{
+\fB\-\-tmp\fP
+T}	T{
+Creates a dedicated and temporary container to execute the command.
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Execute the command bloodhound in the container demo:
+exegol exec demo bloodhound
+
+# Execute the command \(aqnmap \-h\(aq with console output in the container demo:
+exegol exec \-v demo \(aqnmap \-h\(aq
+
+# Execute a command in background within the demo container:
+exegol exec \-b demo bloodhound
+
+# Execute the command bloodhound in a temporary container based on the full image:
+exegol exec \-\-tmp full bloodhound
+
+# Execute a command in background with a temporary container:
+exegol exec \-b \-\-tmp full bloodhound
+
+# Execute Wireshark in background, in a privileged temporary container:
+exegol exec \-\-background \-\-tmp \-\-privileged "nightly" "wireshark"
+
+# Execute the command wireshark with network admin privileged:
+exegol exec \-b \-\-tmp \-\-cap NET_ADMIN full wireshark
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBupdate\fP action
+.SS The update process
+.sp
+The exegol wrapper has an \fBupdate\fP action dedicated to updating the different modules (wrapper, resources, etc.) of the project as well as the (docker) Exegol images.
+.SS Modules updates
+.sp
+This action make sure the local copies of the following repositories are up to date:
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Exegol\fP (wrapper code). If the wrapper has been installed with Pip, it will not be able to self\-update, updating the package through Pip will be required (e.g. \fBpython3 \-m pip install \-\-upgrade exegol\fP).
+.IP \(bu 2
+\fI\%Exegol\-images\fP (docker building files)
+.IP \(bu 2
+\fI\%Exegol\-resources\fP (offline resources, \fI\%exegol\-resources\fP). This module is optional, and users can choose to install/update it at any time.
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+When running \fBexegol update \-v\fP, the user will be able to choose from what branch them module should be synchronized with, allowing to switch easily between release and dev versions.
+.UNINDENT
+.UNINDENT
+.SS Images updates
+.sp
+Once the local code base is updated, the wrapper compares the installed Exegol images with those offered on the Dockerhub registry. If no parameters have been provided at command\-line, an interactive selection will be possible to choose the images to update (if updates are available).
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+Older versions of images will be automatically deleted if they are no longer used by any container and if a newer version of the same image is installed.
+This automatic deletion behavior is a default configuration that can be modified in the \fI\%configuration file\fP if needed, but it\(aqs advised not to change it as disk space is not unlimited and Exegol image can take up to 30GB.
+.UNINDENT
+.UNINDENT
+.SS Options
+.sp
+The options of the \fBupdate\fP action are the following.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+IMAGE
+T}	T{
+This option specifies what image to update.
+T}
+_
+T{
+\fB\-\-skip\-git\fP
+T}	T{
+Skip \fI\%modules updates\fP\&.
+T}
+_
+T{
+\fB\-\-skip\-images\fP
+T}	T{
+Skip \fI\%images updates\fP\&.
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Update interactively an exegol image:
+exegol update
+
+# Update the full image:
+exegol update full
+
+# Update the full image without updating exegol modules:
+exegol update \-\-skip\-git full
+
+# Update exegol modules and have the option to change branch without updating docker image:
+exegol update \-v \-\-skip\-images
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBstop\fP action
+.sp
+The purpose of the \fBstop\fP action is to stop one or more Exegol containers.
+.sp
+If these containers have a VPN configuration, shutting down the container will cause the VPN tunnel to be disconnected.
+.SS Options
+.sp
+The options of the stop action are limited to selecting the container(s) to be stopped.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP
+T}	T{
+Tag used to target one or more Exegol containers
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Stop interactively one or more containers:
+exegol stop
+
+# Stop the "demo" container:
+exegol stop "demo"
+
+# Stop the "demo", "test" and "dev" container:
+exegol stop "demo" "test" "dev"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBremove\fP action
+.sp
+The purpose of the \fBremove\fP action is to remove one or more Exegol container.
+.sp
+If the deleted container was using an outdated image, the wrapper will (by default) try to delete that outdated image automatically (unless this default behavior is changed in the \fI\%exegol configuration file\fP, which is not advised since disk space is not limited and Exegol images can take up to 30GB).
+.sp
+When deleting the container, the wrapper will check if the content of the \fB/workspace\fP volume is empty. If the workspace is \fBempty\fP, exegol will \fBautomatically delete\fP the folder on the host, otherwise it will \fBexplicitly ask the user\fP if the workspace content should be \fBdeleted\fP or not.
+.SS Options
+.sp
+The options of the \fBremove\fP action are limited to selecting the container(s) to be removed and forcing the removal without asking the user for interactive confirmation.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP
+T}	T{
+Tag used to target one or more Exegol containers
+T}
+_
+T{
+\fB\-F\fP, \fB\-\-force\fP
+T}	T{
+Remove container without interactive user confirmation (confirmation will still be required for removing non\-empty workspaces).
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Remove interactively one or more containers:
+exegol remove
+
+# Remove the "demo" container:
+exegol remove "demo"
+
+# Remove the "demo", "test" and "dev" container without asking for user confirmation:
+exegol remove \-F "demo" "test" "dev"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBuninstall\fP action
+.sp
+The purpose of the \fBuninstall\fP action is to remove one or more Exegol images.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+The wrapper will try to delete the selected exegol images but this can only work if the selected images are \fBnot used by any container\fP anymore. A container based on an image that doesn\(aqt exist anymore cannot run.
+.UNINDENT
+.UNINDENT
+.SS Options
+.sp
+The options of the \fBuninstall\fP action are limited to selecting the image(s) to be removed, and forcing the removal without asking the user for interactive confirmation.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBIMAGE\fP
+T}	T{
+Tag used to target one or more Exegol images
+T}
+_
+T{
+\fB\-F\fP, \fB\-\-force\fP
+T}	T{
+Remove image without interactive user confirmation.
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Remove interactively one or more containers:
+exegol uninstall
+
+# Remove the "full" container:
+exegol uninstall "full"
+
+# Remove the "full", "ad" and "web" container without asking for user confirmation:
+exegol uninstall \-F "full" "ad" "web"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBversion\fP action
+.sp
+The \fBversion\fP action is mostly used for debugging purposes, it only displays information about the Exegol setup on the system.
+.sp
+In debug mode (\fB\-vvv\fP), it also displays information about the system and wrapper installation context.
+.SS Options
+.sp
+The options available for the version action are the global options that affect the behavior of all exegol actions.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fB\-h\fP, \fB\-\-help\fP
+T}	T{
+Show the help message of any action
+T}
+_
+T{
+\fB\-v\fP, \fB\-\-verbose\fP
+T}	T{
+Verbosity level (\-v for verbose, \-vv for advanced, \-vvv for debug)
+T}
+_
+T{
+\fB\-q\fP, \fB\-\-quiet\fP
+T}	T{
+Show no information at all
+T}
+_
+T{
+\fB\-k\fP, \fB\-\-insecure\fP
+T}	T{
+Allow insecure server connections for web requests, e.g. when fetching info from DockerHub (default: Secure)
+T}
+_
+T{
+\fB\-\-offline\fP
+T}	T{
+Run exegol in offline mode, no request will be made on internet (default: Disable)
+T}
+_
+T{
+\fB\-\-arch {arm64,amd64}\fP
+T}	T{
+Overwrite default image architecture (default: host\(aqs arch)
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Show version information
+exegol version
+
+# Show version and system information
+exegol version \-vvv
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Advanced uses
+.SS Contents
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Advanced uses\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Exegol home directory\fP
+.IP \(bu 2
+\fI\%Exegol configuration\fP
+.IP \(bu 2
+\fI\%My\-resources\fP
+.IP \(bu 2
+\fI\%Local builds\fP
+.UNINDENT
+.UNINDENT
+.SS Exegol home directory
+.sp
+The \fB~/.exegol\fP folder exists in the user\(aqs home folder to centralize:doc:\fIexegol resources </the\-exegol\-project/offline\-resources>\fP, \fI\%"my\-resources"\fP, volumes and also the configuration file.
+.INDENT 0.0
+.IP \(bu 2
+The \fBconfiguration file\fP (YAML) is located at \fB~/.exegol/config.yml\fP and is generated by the wrapper during the first execution, with the default configurations.
+.IP \(bu 2
+By default, every exegol container has a \fBworkspace volume\fP\&. If the path of this volume is not specified by the user (\fI\%see start parameters\fP), a folder with the name of the container will be created in the "private workspace" folder. By default, this folder is located at \fB~/.exegol/workspaces/\fP\&.
+.UNINDENT
+.SS Exegol configuration
+.sp
+The Exegol wrapper is configured with many default settings. Most of them can be modified with a simple argument.
+For productivity purposes, setting a different default behavior once and not have to add the same options everytime is interesting. For this exact purpose, a configuration file exists that allows users to persistently change the behavior and operations to be performed by default.
+.sp
+The user configuration currently in place can be viewed with the command: \fBexegol info \-v\fP\&. More information on the \fI\%info page\fP\&.
+.sp
+Within the \fB~/.exegol/config.yml\fP file, several settings can be configured to customize the Exegol experience, all distributed in multiple sections below.
+Volumes
+The volume section allows to change the default path for various volumes.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Volume path can be changed at any time but already existing containers will not be affected by the update and will keep the original paths they were created with.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+\fBmy_resources_path\fP: the "my\-resources" volume is a storage space dedicated to the user to customize his environment and tools. This volume is, by default, shared across all exegol containers. See \fI\%details about it\fP\&.
+.IP \(bu 2
+\fBexegol_resources_path\fP: exegol\-resources are data and static tools downloaded in addition to docker images. These tools are complementary and are accessible directly from the host. See \fI\%details\fP\&.
+.IP \(bu 2
+\fBprivate_workspace_path\fP: when containers do not have an explicitly declared workspace at their creation (i.e. with \fB\-\-cwd\-mount\fP, or \fB\-\-workspace\fP), a dedicated folder will be created at this location to share the workspace with the host but also to save the data after deleting the container.
+.UNINDENT
+Config
+The config section allows you to modify the default behavior of the Exegol wrapper.
+.INDENT 0.0
+.IP \(bu 2
+\fBauto_check_update\fP: enables automatic check for wrapper update. (Default: \fBTrue\fP)
+.IP \(bu 2
+\fBauto_remove_image\fP: automatically remove outdated image when they are no longer used. (Default: \fBTrue\fP)
+.IP \(bu 2
+\fBauto_update_workspace_fs\fP: automatically modifies the permissions of folders and sub\-folders in your workspace by default to enable file sharing between the container with your host user. (Default: \fBFalse\fP)
+.IP \(bu 2
+\fBdefault_start_shell\fP: default shell command to start. (Default: \fBzsh\fP)
+.UNINDENT
+Shell logging
+Change the configuration of the shell logging functionality.
+.INDENT 0.0
+.IP \(bu 2
+\fBlogging_method\fP: Choice of the method used to record the sessions, \fBscript\fP or \fBasciinema\fP\&. (Default: \fBasciinema\fP)
+.IP \(bu 2
+\fBenable_log_compression\fP: Enable automatic compression of log files (with gzip). (Default: \fBTrue\fP)
+.UNINDENT
+.SS My\-resources
+.sp
+"My\-resources" is a major feature allowing Exegol users to have a volume, shared with all Exegol containers, that can centralize their own resources and configurations. It allows users to enjoy their own tools that are not available in Exegol but also to customize their Exegol setup. More information on the dedicated documentation page \fI\%My\-Resources\fP\&.
+.sp
+This volume is accessible from the host at \fB~/.exegol/my\-resources/\fP and from the containers (if the feature was left enabled at the container creation) at \fB/opt/my\-resources\fP\&.
+.sp
+To facilitate its use, a read/write access system \fBshared\fP (between the host user and the container root user) has been implemented.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+To allow this permissions sharing, the "my\-resources" folder (and all subdirectories) must have the Set\-GID permission bit set.
+This is done automatically by the wrapper if the current user has sufficient rights.
+Otherwise, the wrapper will display a sudo command to be executed manually to update the relevant permissions.
+.UNINDENT
+.UNINDENT
+.sp
+The host path of this volume can be changed from the configuration file \fB~/.exegol/config.yml\fP\&.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Be careful \fBnot\fP to use a folder with \fBexisting data\fP, in which case their permissions will be automatically modified to enable access sharing.
+.IP \(bu 2
+This change will not be applied to already existing exegol containers.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Local builds
+.sp
+When installing Exegol, while downloading the pre\-built and compressed Docker images from Dockerhub is advised, users can build their own images locally. The wrapper has a \fBlocal build feature\fP to create and manage local exegol images.
+.sp
+The \fBexegol install\fP command can be used for that purpose. The user must specify an image name that does \fBnot\fP match one of the remote images available from dockerhub. The wrapper will suggest to build a local image with this name. If the user chooses to build an image locally, he will then have to choose a \fBbuild profile\fP among those available. The build profile is merely the dockerfile to follow during the build process. An arbitrary dockerfile can be added in \fB/path/to/Exegol/exegol\-docker\-build/name.dockerfile\fP\&.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+the \fB\-v\fP parameter can be added to have more details about the build process.
+.IP \(bu 2
+the detailed logs of the docker build process can also be saved in a file with the \fB\-\-build\-log\fP parameter.
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Credentials
+.sp
+Some tools are pre\-configured with the following credentials
+.TS
+center;
+|l|l|l|.
+_
+T{
+Element
+T}	T{
+User
+T}	T{
+Password
+T}
+_
+T{
+neo4j database
+T}	T{
+neo4j
+T}	T{
+exegol4thewin
+T}
+_
+T{
+bettercap ui
+T}	T{
+bettercap
+T}	T{
+exegol4thewin
+T}
+_
+T{
+trilium
+T}	T{
+trilium
+T}	T{
+exegol4thewin
+T}
+_
+T{
+empire
+T}	T{
+empireadmin
+T}	T{
+exegol4thewin
+T}
+_
+T{
+wso\-webshell (PHP)
+T}	T{
+T}	T{
+exegol4thewin
+T}
+_
+.TE
+.SS My resources
+.sp
+"My\-resources" brings great features allowing users to make Exegol their own and customize it even further. This feature relies on a simple volume shared between the host and all exegol containers, and an advanced integration in the Exegol images directly.
+To learn more about the volume options, details are available \fI\%here\fP\&.
+.sp
+Below are the features offered by "My\-resources", allowing users to extend Exegol beyond what is initially included (\fI\%tools\fP, \fI\%resources\fP).
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Custom tools\fP: users can store add their own custom standalone tools, binaries and scripts in the "my\-resources" volume. This volume is accessible from all containers at \fB/opt/my\-resources\fP\&.
+.IP \(bu 2
+\fI\%Supported setups\fP: users can customize their exegol environments automatically and transparently without having to manually setting things up for each and every new Exegol container they create. In this functionality, a pre\-set list of supported custom configuration is set, and will improve with time. It\(aqs the easier and most user\-friendly approach to customizing a few configurations.
+.IP \(bu 2
+\fI\%User setup\fP: In this functionality, a shell script can be populated with every command a user wishes its containers to run at their creation.
+.UNINDENT
+.SS Contents
+.INDENT 0.0
+.IP \(bu 2
+\fI\%My resources\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Custom tools\fP
+.IP \(bu 2
+\fI\%Supported setups\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%apt (packages, sources, keys)\fP
+.IP \(bu 2
+\fI\%python3 (pip3)\fP
+.IP \(bu 2
+\fI\%zsh (aliases, zshrc, history)\fP
+.IP \(bu 2
+\fI\%vim (vimrc, configs)\fP
+.IP \(bu 2
+\fI\%tmux (conf)\fP
+.UNINDENT
+.IP \(bu 2
+\fI\%User setup\fP
+.IP \(bu 2
+\fI\%Troubleshooting\fP
+.UNINDENT
+.UNINDENT
+.SS Custom tools
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+In the container, the \fB/opt/my\-resources/bin/\fP folder (\fB~/.exegol/my\-resources/bin/\fP on the host) is automatically added to the \fBPATH\fP of the zsh shell. The user can then add tools in that folder in order to use them from the container.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The most simple approach would be to add standalone binaries, but users could also add symbolic links that would point to somewhere else in \fB/opt/my\-resources/\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Example for a standalone binary
+cp /path/to/tool ~/.exegol/my\-resources/bin/
+
+# Example for a symbolic link
+git \-C ~/.exegol/my\-resources/ clone "https://github.com/someauthor/sometool"
+ln \-s ~/.exegol/my\-resources/sometool/script.py ~/.exegol/my\-resources/bin/script.py
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Supported setups
+.sp
+Configuration files stored in the \fB/opt/my\-resources/setup/\fP directory will be deployed on the containers and allow users to customize Exegol even further.
+By default, the number of officially supported configuration files is limited, and it depends on the version of the image itself, not the wrapper.
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+In order to see what configuration files are supported in your version, the \fB/opt/supported_setups.md\fP documentation file can be read from any container.
+.UNINDENT
+.UNINDENT
+.sp
+This documentation will reference in detail all the supported customizations available over time, and the corresponding minimum image version required for each one.
+.sp
+If a user wants to deploy tools and configurations that are not supported, or more advanced, they can opt for the \fI\%User setup solution\fP\&.
+.SS \fBapt\fP (packages, sources, keys)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily install arbitrary APT packages in any new exegol container.
+.INDENT 0.0
+.IP \(bu 2
+Custom APT \fBrepositories\fP can be added in exegol by filling in the \fB/opt/my\-resources/setup/apt/sources.list\fP file
+.IP \(bu 2
+Importing custom repositories usually requires importing \fBGPG keys\fP as well, which can be done by entering trusted GPG keys download URLs in the \fB/opt/my\-resources/setup/apt/keys.list\fP file
+.IP \(bu 2
+To install \fBAPT packages\fP automatically (after updating the repository including the custom ones), just enter a list of package names in the \fB/opt/my\-resources/setup/apt/packages.list\fP file
+.UNINDENT
+.SS \fBpython3\fP (pip3)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily install arbitrary PIP3 packages in any new exegol container.
+.sp
+The \fB/opt/my\-resources/setup/python3/requirements.txt\fP file allows the user to list a set of packages to install with constraints just like a classic \fBrequirements.txt\fP file.
+.SS \fBzsh\fP (aliases, zshrc, history)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+To not change the configuration for the proper functioning of exegol but allow the user to add aliases and custom commands to zshrc,
+additional configuration files will be automatically loaded by zsh to take into account the customization of the user .
+.INDENT 0.0
+.IP \(bu 2
+\fBaliases\fP: any custom alias can be defined in the \fB/opt/my\-resources/setup/zsh/aliases\fP file. This file is automatically loaded by zsh.
+.IP \(bu 2
+\fBzshrc\fP: it is possible to add commands at the end of the zshrc routine in \fB/opt/my\-resources/setup/zsh/zshrc\fP file.
+.IP \(bu 2
+\fBhistory\fP: it is possible to automatically add history commands at the end of \fB~/.zsh_history\fP from the file \fB/opt/my\-resources/setup/zsh/history\fP\&.
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is possible to install \fBplugins\fP with the APT customization system, details \fI\%here\fP\&.
+.UNINDENT
+.UNINDENT
+.SS \fBvim\fP (vimrc, configs)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+Exegol supports overwriting its \fBvim\fP configuration to allow all users to use their personal configuration.
+.INDENT 0.0
+.IP \(bu 2
+To automatically overwrite the \fB~/.vimrc\fP configuration file, simply create the file \fB/opt/my\-resources/setup/vim/vimrc\fP
+.IP \(bu 2
+.INDENT 2.0
+.TP
+.B vim configuration folders are also automatically synchronized:
+.INDENT 7.0
+.IP \(bu 2
+\fB/opt/my\-resources/setup/vim/autoload/*\fP \-\-> \fB~/.vim/autoload/\fP
+.IP \(bu 2
+\fB/opt/my\-resources/setup/vim/backup/*\fP \-\-> \fB~/.vim/backup/\fP
+.IP \(bu 2
+\fB/opt/my\-resources/setup/vim/colors/*\fP \-\-> \fB~/.vim/colors/\fP
+.IP \(bu 2
+\fB/opt/my\-resources/setup/vim/plugged/*\fP \-\-> \fB~/.vim/plugged/\fP
+.IP \(bu 2
+\fB/opt/my\-resources/setup/vim/bundle/*\fP \-\-> \fB~/.vim/bundle/\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is possible to install \fBplugins\fP with \fI\%the APT customization system\fP\&.
+.UNINDENT
+.UNINDENT
+.SS \fBtmux\fP (conf)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+Exegol supports overloading its \fBtmux\fP configuration to allow all users to use their personal configuration.
+.INDENT 0.0
+.IP \(bu 2
+To automatically overwrite the \fB~/.tmux.conf\fP configuration file, simply create the file \fB/opt/my\-resources/setup/tmux/tmux.conf\fP
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is possible to install \fBplugins\fP with the APT customization system, details \fI\%here\fP\&.
+.UNINDENT
+.UNINDENT
+.SS User setup
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.0\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+The \fB/opt/my\-resources/setup/load_user_setup.sh\fP script is executed on the first startup of each new container that has the "my\-resources" feature enabled. Arbitrary code can be added in this file, in order to customize Exegol (dependency installation, configuration file copy, etc).
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is strongly advised \fBnot\fP to overwrite the configuration files provided by exegol (e.g. \fB/root/.zshrc\fP, \fB/opt/.exegol_aliases\fP, ...), official updates will not be applied otherwise.
+.UNINDENT
+.UNINDENT
+.SS Troubleshooting
+.sp
+In case of problem, the customization system logs all actions in the \fB/var/log/exegol/load_setups.log\fP file.
+.sp
+If the whole installation went smoothly the log file will be compressed by gunzip and will have the name \fB/var/log/exegol/load_setups.log.gz\fP
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+Logs in \fB\&.gz\fP format can be viewed directly \fBwithout unpacking\fP them with the \fBzcat\fP, \fBzgrep\fP, \fBzdiff\fP or \fBzmore\fP command!
+.UNINDENT
+.UNINDENT
+.SS Intro
+.sp
+Exegol\(aqs "offline resources" are a neat choice of standalone tools and scripts that are often used during penetration tests,
+CTFs and red\-teams, like LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
+Exegol users don\(aqt have to download those resources again every time they\(aqre needed anymore.
+Everything is managed by the wrapper and they are shared with every container (at \fB/opt/resources\fP).
+.SS Users
+.SS Roadmap
+.sp
+The roadmap is available on the discord server, feel free to visit it and upvote your favorite features
+.SS Discord
+.sp
+An Exegol discord has been created to facilitate exchanges between the community, open tickets, share ideas, vote on future features to prioritize etc..
+[image: Capgemini logo]
+[image]
+.SS Changelogs
+.sp
+WIP
+.SS Contributors
+.SS Opening issues
+.sp
+Create an issue in the correct repository:
+.INDENT 0.0
+.IP \(bu 2
+For any problem concerning \fI\%Exegol WRAPPER\fP (the exegol command).
+.IP \(bu 2
+For any problem concerning \fI\%Exegol IMAGE\fP (the exegol environment).
+.IP \(bu 2
+For any problem concerning \fI\%Exegol RESOURCE\fP (the exegol offline resources).
+.UNINDENT
+.SS Opening pull request
+.sp
+Every PRs are welcome!
+.sp
+Describe your addition / bug fix and configure your PR to the \fBdev\fP branch.
+.SS Dev docs
+.sp
+WIP : Coming \(aqsoon\(aq
+.SS Maintainers
+.sp
+This part of the documentation is meant for Exegol maintainers.
+.SS Exegol Release checklist
+.SS Preparation
+.SS Git updates
+.sp
+The first step is to update the project and sub\-modules, meaning pointing the exegol\-images and exegol\-resources sub\-modules to the latest master version.
+Even if the wrapper is able to auto\-update itself, it is always better to keep the base reference at least up to date.
+With git
+.INDENT 0.0
+.IP \(bu 2
+Update current wrapper repo:
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+git pull
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Update git submodules and checkout to \fBmain\fP branch for release:
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+git \-C exegol\-docker\-build checkout main
+git \-C exegol\-docker\-build pull
+git \-C exegol\-resources checkout main
+git \-C exegol\-resources pull
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+With Exegol
+Update to the latest version of the \fBmain\fP branches (checkout if needed, \fBexcept for the wrapper\fP which remains in branch dev)
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+exegol update \-v
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Configs
+.INDENT 0.0
+.IP \(bu 2
+Review exegol.utils.ConstantConfig variables
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+Change version number ! (remove the alpha or beta tag at the end of the version number)
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+Review documentation
+.IP \(bu 2
+Review README.md
+.UNINDENT
+.SS Tests & build
+.sp
+You can execute this one\-liner to check the project and build it.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+\fBRequire\fP \fI\%build\fP package installed!
+.UNINDENT
+.UNINDENT
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+Exegol can only be published through a \fBsource\fP build distribution because of the source code files for building local images.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 setup.py clean test && \e
+   (rm \-rf Exegol.egg\-info && python3 \-m build \-\-sdist) || \e
+   echo "Some tests failed, check your code and requirements before publishing!"
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Post build
+.INDENT 0.0
+.IP \(bu 2
+Upgrade tests.test_exegol.py version number to the next version build to avoid future mistake
+.IP \(bu 2
+Commit updates
+.IP \(bu 2
+Publish PR
+.IP \(bu 2
+Wait for review and merge
+.UNINDENT
+.SS Upload
+.sp
+After validation of the PR, we can upload the new version package to pypi.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+\fBRequire\fP \fI\%twine\fP package installed and token configured on \fB~/.pypirc\fP!
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Check package upload on the test repository (optional)
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 \-m twine upload \-repository testpypi dist/* \-\-verbose
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.IP \(bu 2
+Upload to the production repository
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 \-m twine upload dist/*
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS Post\-Deploy
+.INDENT 0.0
+.IP \(bu 2
+Create new github release with new version tag
+.IP \(bu 2
+Fast\-forward dev branch to the latest master commit
+.IP \(bu 2
+Change the wrapper version on the dev branch to \fBx.y.zb1\fP
+.UNINDENT
+.SS Sponsors
+[image: Capgemini logo]
+[image]
+.nf
+
+.fi
+.sp
+.sp
+Dramelac and I work at \fBCapgemini\fP and we thank them for allocating some time for us to develop and maintain Exegol! Visit Capgemini website at \fI\%https://www.capgemini.com/\fP\&.
+.nf
+
+.fi
+.sp
+[image: HackTheBox logo]
+[image]
+.nf
+
+.fi
+.sp
+.sp
+We also thank \fBHackTheBox\fP for continuously supporting the community and for helping us financially to acquire the necessary hardware for supporting multiple architectures (AMD64, ARM64). Show some love at \fI\%https://www.hackthebox.com/\fP !
+.SS Credits
+.sp
+Credits and thanks go to every infosec addicts that contribute and share but most specifically to
+.INDENT 0.0
+.IP \(bu 2
+\fI\%dramelac_\fP for his incredible help on the whole Exegol project, especially on the wrapper.
+.IP \(bu 2
+\fI\%LamaBzh\fP for working on \fI\%Exegol\-images\fP
+.IP \(bu 2
+\fI\%th1b4ud\fP for the inspiration \fI\%"Kali Linux in 3 seconds with Docker"\fP\&.
+.IP \(bu 2
+all behind Docker, Debian, Python, the various requirements to the project, all the tools and resources loaded in Exegol, and all Exegol users for their trust and patience!
+.UNINDENT
+.SH AUTHOR
+Shutdown & Dramelac
+.SH COPYRIGHT
+2022, Shutdown & Dramelac
+.\" Generated by docutils manpage writer.
+.
