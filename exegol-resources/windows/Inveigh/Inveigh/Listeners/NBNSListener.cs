@@ -31,8 +31,8 @@ namespace Inveigh
 
             NetBIOSNSChecker helper = new NetBIOSNSChecker
             {
-                IgnoreQueries = Program.argIgnoreQueries,
-                ReplyToQueries = Program.argReplyToQueries,
+                IgnoreHosts = Program.argIgnoreHosts,
+                ReplyToHosts = Program.argReplyToHosts,
                 IgnoreIPs = Program.argIgnoreIPs,
                 ReplyToIPs = Program.argReplyToIPs,
                 IPCaptures = Program.IPCaptureList,

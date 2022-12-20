@@ -1,7 +1,6 @@
 ﻿using Quiddity.ICMPv6;
 using Quiddity.Support;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -13,10 +12,9 @@ namespace Inveigh
     {
         internal void Start()
         {
+            Program.icmpv6Interval *= 1000;
             string responseMessage = " ";
             byte[] spooferIPv6Data = IPAddress.Parse(Program.argSpooferIPv6).GetAddressBytes();
-            Stopwatch stopwatchInterval = new Stopwatch();
-            stopwatchInterval.Start();
 
             while (Program.isRunning && Program.enabledICMPv6)
             {
@@ -93,20 +91,13 @@ namespace Inveigh
 
                 if (Program.icmpv6Interval > 0)
                 {
-
-                    while (Program.isRunning && stopwatchInterval.Elapsed.TotalSeconds <= Program.icmpv6Interval)
-                    {
-                        Thread.Sleep(10);
-                    }
-
-                    stopwatchInterval.Reset();
-                    stopwatchInterval.Start();
+                    Thread.Sleep(Program.icmpv6Interval);
                 }
                 else
                 {
                     break;
                 }
-                
+
             }
 
         }

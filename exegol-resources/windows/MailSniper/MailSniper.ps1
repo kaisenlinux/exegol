@@ -1615,10 +1615,7 @@ function Invoke-SelfSearch{
 
     [Parameter(Position = 13, Mandatory = $False)]
     [string]
-    $AccessToken,
-
-    [Parameter(Position = 14, Mandatory = $False)]
-    [System.Management.Automation.PSCredential]$Credential
+    $AccessToken
 
   )
   #Running the LoadEWSDLL function to load the required Exchange Web Services dll
@@ -1632,11 +1629,7 @@ function Invoke-SelfSearch{
   #If the -Remote flag was passed prompt for the user's domain credentials.
   if ($Remote)
   {
-    if ($Credential) {
-      $remotecred = $Credential
-    } else {
-      $remotecred = Get-Credential
-    }
+    $remotecred = Get-Credential
     $service.UseDefaultCredentials = $false
     $service.Credentials = $remotecred.GetNetworkCredential()
   }

@@ -79,7 +79,7 @@ namespace Inveigh
                     isPromptRefresh = false;
                 }
 
-                if (consoleStatus > 0 && Program.enabledConsoleOutput && stopwatchConsoleStatus.Elapsed.TotalMinutes >= consoleStatus)
+                if (consoleStatus > 0 && Program.enabledConsoleOutput && stopwatchConsoleStatus.Elapsed.Minutes >= consoleStatus)
                 {
                     Shell.GetCleartextUnique("");
                     Shell.GetNTLMv1Unique("");
@@ -90,7 +90,7 @@ namespace Inveigh
                     stopwatchConsoleStatus.Start();
                 }
 
-                if (runTime > 0 && Program.enabledConsoleOutput && stopwatchRunTime.Elapsed.TotalMinutes >= runTime)
+                if (runTime > 0 && Program.enabledConsoleOutput && stopwatchRunTime.Elapsed.Minutes >= runTime)
                 {                   
                     Output.Queue(String.Format("[*] {0} Inveigh is exiting due to reaching run time", Output.Timestamp()));
                     StopInveigh();
@@ -123,13 +123,8 @@ namespace Inveigh
             Output.Queue(String.Format("[+] Inveigh exited at {0}", DateTime.Now.ToString("s")));
             Output.ProcessOutput();
             Output.ProcessFileOutput();
-            Sniffer.isRunning = false;
-            Quiddity.HTTPListener.isRunning = false;
-            Quiddity.LDAPListener.isRunning = false;
-            Quiddity.SMBListener.isRunning = false;
-            Quiddity.DNSListener.isRunning = false;
-            Quiddity.DHCPv6Listener.isRunning = false;
             Program.isRunning = false;
+            Quiddity.HTTPListener.isRunning = false;
 
             while (Program.consoleList.Count > 0)
             {
@@ -250,7 +245,6 @@ namespace Inveigh
 
         public static void StartThreads()
         {
-            Thread llmnrListenerThread = null;
 
             if (Program.enabledSniffer)
             {
@@ -300,7 +294,7 @@ namespace Inveigh
                     if (Program.enabledLLMNR)
                     {
                         LLMNRListener llmnrListener = new LLMNRListener(uint.Parse(Program.argLLMNRTTL));
-                        llmnrListenerThread = new Thread(() => llmnrListener.Start(IPAddress.Parse(Program.argListenerIP), Program.argSpooferIP, Program.argSpooferIPv6));
+                        Thread llmnrListenerThread = new Thread(() => llmnrListener.Start(IPAddress.Parse(Program.argListenerIP), Program.argSpooferIP, Program.argSpooferIPv6));
                         llmnrListenerThread.Start();
                     }
 
@@ -314,7 +308,7 @@ namespace Inveigh
                     if (Program.enabledNBNS)
                     {
                         NBNSListener nbnsListener = new NBNSListener(uint.Parse(Program.argNBNSTTL));
-                        Thread nbnsListenerThread = new Thread(() => nbnsListener.Start(IPAddress.Parse(Program.argListenerIP), Program.argSpooferIP));
+                        Thread nbnsListenerThread = new Thread(() => nbnsListener.Start(IPAddress.Parse(Program.argListenerIP), Program.argSpooferIP, Program.argSpooferIPv6));
                         nbnsListenerThread.Start();
                     }
 
@@ -337,7 +331,7 @@ namespace Inveigh
 
                     }
 
-                }
+                }             
 
                 if (Program.enabledIPv6)
                 {
@@ -391,7 +385,6 @@ namespace Inveigh
                     }
 
                 }
-
 
             }
 

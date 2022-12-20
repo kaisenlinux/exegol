@@ -127,20 +127,6 @@ function Convert-PSidToNameAndType {
     $Result
 }
 
-function Convert-PSidToRid {
-
-    [CmdletBinding()] Param(
-        [Parameter(Mandatory=$true)]
-        [IntPtr]$PSid
-    )
-
-    $SubAuthorityCountPtr = $Advapi32::GetSidSubAuthorityCount($PSid)
-    $SubAuthorityCount = [Runtime.InteropServices.Marshal]::ReadByte($SubAuthorityCountPtr)
-    $SubAuthorityPtr = $Advapi32::GetSidSubAuthority($PSid, $SubAuthorityCount - 1)
-    $SubAuthority = [UInt32] [Runtime.InteropServices.Marshal]::ReadInt32($SubAuthorityPtr)
-    $SubAuthority
-}
-
 function Convert-DateToString {
     <#
     .SYNOPSIS
@@ -166,74 +152,10 @@ function Convert-DateToString {
         [System.DateTime]$Date
     )
 
-    if ($null -ne $Date) {
-        $OutString = ""
-        $OutString += $Date.ToString('yyyy-MM-dd - HH:mm:ss')
-        $OutString
-    }
-}
-
-function Convert-DosDeviceToDevicePath {
-    <#
-    .SYNOPSIS
-    Helper - Convert a DOS device name (e.g. C:) to its device path
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    This function leverages the QueryDosDevice API to get the path of a DOS device (e.g. C: -> \Device\HarddiskVolume4)
-    
-    .PARAMETER DosDevice
-    A DOS device name such as C:
-    #>
-
-    [OutputType([String])]
-    [CmdletBinding()] Param(
-        [Parameter(Mandatory=$true)]
-        [String]$DosDevice
-    )
-
-    $TargetPathLen = 260
-    $TargetPathPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($TargetPathLen * 2)
-    $TargetPathLen = $Kernel32::QueryDosDevice($DosDevice, $TargetPathPtr, $TargetPathLen)
-
-    if ($TargetPathLen -eq 0) {
-        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TargetPathPtr)
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "QueryDosDevice('$($DosDevice)') - $([ComponentModel.Win32Exception] $LastError)"
-        return
-    }
-
-    [System.Runtime.InteropServices.Marshal]::PtrToStringUni($TargetPathPtr)
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TargetPathPtr)
-}
-
-function Get-CurrentUserSids {
-
-    [CmdletBinding()] Param()
-
-    if ($null -eq $global:CachedCurrentUserSids) {
-        $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $global:CachedCurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
-        $global:CachedCurrentUserSids += $UserIdentity.User.Value
-    }
-
-    $global:CachedCurrentUserSids
-}
-
-function Get-CurrentUserDenySids {
-
-    [CmdletBinding()] Param()
-
-    if ($null -eq $global:CachedCurrentUserDenySids) {
-        $global:CachedCurrentUserDenySids = [string[]](Get-TokenInformationGroups -InformationClass Groups | Where-Object { $_.Attributes.Equals("UseForDenyOnly") } | Select-Object -ExpandProperty SID)
-        if ($null -eq $global:CachedCurrentUserDenySids) {
-            $global:CachedCurrentUserDenySids = @()
-        }
-    }
-
-    $global:CachedCurrentUserDenySids
+    $OutString = ""
+    $OutString += $Date.ToString('yyyy-MM-dd - HH:mm:ss')
+    #$OutString += " ($($Date.ToString('o')))" # ISO format
+    $OutString
 }
 
 function Get-WindowsVersion {
@@ -330,10 +252,12 @@ function Get-ProcessTokenHandle {
 
         if ($ProcessHandle -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Verbose "OpenProcess($($ProcessId), 0x$('{0:x8}' -f $ProcessAccess))) - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Verbose "OpenProcess - $([ComponentModel.Win32Exception] $LastError)"
             return
         }
     }
+
+    Write-Verbose "Process handle: $('{0:8x}' -f $ProcessHandle)"
 
     [IntPtr]$TokenHandle = [IntPtr]::Zero
     $Success = $Advapi32::OpenProcessToken($ProcessHandle, $TokenAccess, [ref]$TokenHandle)
@@ -348,84 +272,6 @@ function Get-ProcessTokenHandle {
 
     $TokenHandle
 }
-
-# function Get-ProcessParentPid {
-
-#     [OutputType([UInt32])]
-#     [CmdletBinding()] Param(
-#         [Parameter(Mandatory=$true)]
-#         [UInt32]$ProcessId
-#     )
-
-#     $ProcessHandle = $Kernel32::OpenProcess($ProcessAccessRightsEnum::QueryLimitedInformation, $false, $ProcessId)
-#     if ($ProcessHandle -eq [IntPtr]::Zero) {
-#         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-#         Write-Verbose "OpenProcess - $([ComponentModel.Win32Exception] $LastError)"
-#         return
-#     }
-
-#     [UInt32]$DataSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type] $PPROCESS_BASIC_INFORMATION)
-#     [IntPtr]$ProcessInformationPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($DataSize)
-#     [UInt32]$ReturnLength = 0
-
-#     # ProcessBasicInformation = 0
-#     $Status = $Ntdll::NtQueryInformationProcess($ProcessHandle, 0, $ProcessInformationPtr, $DataSize, [ref] $ReturnLength)
-
-#     $Kernel32::CloseHandle($ProcessHandle) | Out-Null
-
-#     if ($Status -ne 0) {
-#         [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ProcessInformationPtr)
-#         Write-Verbose "NtQueryInformationProcess - 0x$('{0:x8}' -f $Status)"
-#         return
-#     }
-
-#     $ProcessInformation = [System.Runtime.InteropServices.Marshal]::PtrToStructure($ProcessInformationPtr, [type] $PPROCESS_BASIC_INFORMATION)
-#     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ProcessInformationPtr)
-
-#     $ProcessInformation.InheritedFromUniqueProcessId.ToInt32()
-# }
-
-# function Get-ProcessObjectAddress {
-
-#     [OutputType([Object[]])]
-#     [CmdletBinding()] Param(
-#         [UInt32]$ProcessId = 0
-#     )
-
-#     $ProcessHandles = @{}
-
-#     foreach ($Process in Get-Process) {
-        
-#         $ProcessHandle = $Kernel32::OpenProcess($ProcessAccessRightsEnum::QueryLimitedInformation, $false, $Process.Id)
-#         if ($ProcessHandle -eq [IntPtr]::Zero) {
-#             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-#             Write-Verbose "OpenProcess($($Process.Id)) - $([ComponentModel.Win32Exception] $LastError)"
-#             continue
-#         }
-
-#         $ProcessHandles += @{ $ProcessHandle = $Process.Id}
-#     }
-
-#     $MyHandles = Get-SystemInformationExtendedHandles -ProcessId $Pid
-
-#     foreach ($ProcessHandle in $ProcessHandles.Keys) {
-
-#         $ObjectAddress = $MyHandles | Where-Object { $_.HandleValue -eq $ProcessHandle } | Select-Object -ExpandProperty Object
-
-#         $Result = New-Object -TypeName PSObject
-#         $Result | Add-Member -MemberType "NoteProperty" -Name "ProcessId" -Value $ProcessHandles[$ProcessHandle]
-#         $Result | Add-Member -MemberType "NoteProperty" -Name "ObjectAddress" -Value $ObjectAddress
-
-#         if ($ProcessId -ne 0) {
-#             if ($ProcessId -eq $ProcessHandles[$ProcessHandle]) { $Result; break }
-#         }
-#         else {
-#             $Result
-#         }
-
-#         $null = $Kernel32::CloseHandle($ProcessHandle)
-#     }
-# }
 
 function Get-TokenInformationData {
     <#
@@ -457,6 +303,8 @@ function Get-TokenInformationData {
         Write-Verbose "GetTokenInformation - $([ComponentModel.Win32Exception] $LastError)"
         return
     }
+
+    Write-Verbose "GetTokenInformation() OK - DataSize = $DataSize"
 
     [IntPtr]$DataPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($DataSize)
 
@@ -557,6 +405,8 @@ function Get-TokenInformationGroups {
     if (-not $TokenGroupsPtr) { $Kernel32::CloseHandle($TokenHandle) | Out-Null; return }
 
     $TokenGroups = [Runtime.InteropServices.Marshal]::PtrToStructure($TokenGroupsPtr, [type] $TOKEN_GROUPS)
+
+    Write-Verbose "Number of groups: $($TokenGroups.GroupCount)"
 
     # Offset of the first SID_AND_ATTRIBUTES structure is +4 in 32-bits, and +8 in 64-bits (because
     # of the structure alignment in memory). Therefore we can use [IntPtr]::Size as the offset's
@@ -748,17 +598,16 @@ function Get-TokenInformationIntegrityLevel {
         [UInt32]$ProcessId = 0
     )
 
-    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId -ProcessAccess $ProcessAccessRightsEnum::QueryLimitedInformation
+    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId
     if (-not $TokenHandle) { return }
 
-    $TokenMandatoryLabelPtr = Get-TokenInformationData -TokenHandle $TokenHandle -InformationClass $TOKEN_INFORMATION_CLASS::TokenIntegrityLevel
-    if (-not $TokenMandatoryLabelPtr) { $Kernel32::CloseHandle($TokenHandle) | Out-Null; return }
+    $TokenIntegrityLevelPtr = Get-TokenInformationData -TokenHandle $TokenHandle -InformationClass $TOKEN_INFORMATION_CLASS::TokenIntegrityLevel
+    if (-not $TokenIntegrityLevelPtr) { $Kernel32::CloseHandle($TokenHandle) | Out-Null; return }
 
-    $TokenMandatoryLabel = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TokenMandatoryLabelPtr, [type] $TOKEN_MANDATORY_LABEL)
+    $TokenIntegrityLevel = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TokenIntegrityLevelPtr, [type] $TOKEN_MANDATORY_LABEL)
 
-    $SidString = Convert-PSidToStringSid -PSid $TokenMandatoryLabel.Label.Sid
-    $SidInfo = Convert-PSidToNameAndType -PSid $TokenMandatoryLabel.Label.Sid
-    $TokenIntegrityLevel = Convert-PSidToRid -PSid $TokenMandatoryLabel.Label.Sid
+    $SidString = Convert-PSidToStringSid -PSid $TokenIntegrityLevel.Label.Sid
+    $SidInfo = Convert-PSidToNameAndType -PSid $TokenIntegrityLevel.Label.Sid
 
     $Result = New-Object -TypeName PSObject
     $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $SidInfo.Name
@@ -766,9 +615,8 @@ function Get-TokenInformationIntegrityLevel {
     $Result | Add-Member -MemberType "NoteProperty" -Name "DisplayName" -Value $SidInfo.DisplayName
     $Result | Add-Member -MemberType "NoteProperty" -Name "SID" -Value $SidString
     $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value ($SidInfo.Type -as $SID_NAME_USE)
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Level" -Value $TokenIntegrityLevel
 
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TokenMandatoryLabelPtr)
+    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TokenIntegrityLevelPtr)
     $Kernel32::CloseHandle($TokenHandle) | Out-Null
 
     $Result
@@ -986,291 +834,6 @@ function Get-TokenInformationUser {
     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TokenUserPtr)
     $Kernel32::CloseHandle($TokenHandle) | Out-Null
 }
-
-function Get-ObjectName {
-    <#
-    .SYNOPSIS
-    Get the name of a Kernel object (if it has one).
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    This function leverages the NtQueryObject syscall to get the name of a Kernel object based on its handle.
-    
-    .PARAMETER ObjectHandle
-    The handle of an object for wchich we should retrieve the name.
-    #>
-
-    [OutputType([String])]
-    [CmdletBinding()] Param(
-        [Parameter(Mandatory=$true)]
-        [IntPtr]$ObjectHandle
-    )
-
-    [UInt32]$DataSize = 0x1000
-    [IntPtr]$ObjectNamePtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($DataSize)
-    [UInt32]$ReturnLength = 0
-
-    while ($true) {
-
-        # ObjectNameInformation = 1
-        $Status = $Ntdll::NtQueryObject($ObjectHandle, 1, $ObjectNamePtr, $DataSize, [ref] $ReturnLength)
-        if ($Status -eq 0xC0000004) {
-            $DataSize = $DataSize * 2
-            $ObjectNamePtr = [System.Runtime.InteropServices.Marshal]::ReAllocHGlobal($ObjectNamePtr, $DataSize)
-        }
-        else {
-            break
-        }
-    }
-
-    if ($Status -ne 0) {
-        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ObjectNamePtr)
-        Write-Verbose "NtQueryObject - 0x$('{0:x8}' -f $Status)"
-        return
-    }
-
-    $ObjectName = [Runtime.InteropServices.Marshal]::PtrToStructure($ObjectNamePtr, [type] $OBJECT_NAME_INFORMATION)
-    [Runtime.InteropServices.Marshal]::PtrToStringUni($ObjectName.Name.Buffer)
-
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ObjectNamePtr)
-}
-
-function Get-ObjectTypes {
-    <#
-    .SYNOPSIS
-    Get a list of kernel object types.
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    Helper - This function leverages the NtQueryObject syscall to list the object types and return a list of PS custom objects containing their index and name.
-    #>
-
-    [OutputType([Object[]])]
-    [CmdletBinding()] Param()
-
-    [UInt32]$DataSize = 0x10000
-    [IntPtr]$ObjectTypesPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($DataSize)
-    [UInt32]$ReturnLength = 0
-
-    while ($true) {
-
-        # ObjectTypesInformation = 3
-        $Status = $Ntdll::NtQueryObject([IntPtr]::Zero, 3, $ObjectTypesPtr, $DataSize, [ref] $ReturnLength)
-        if ($Status -eq 0xC0000004) {
-            $DataSize = $DataSize * 2
-            $ObjectTypesPtr = [System.Runtime.InteropServices.Marshal]::ReAllocHGlobal($ObjectTypesPtr, $DataSize)
-        }
-        else {
-            break
-        }
-    }
-
-    if ($Status -ne 0) {
-        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ObjectTypesPtr)
-        Write-Verbose "NtQueryObject - 0x$('{0:x8}' -f $Status)"
-        return
-    }
-
-    $NumberOfTypes = [UInt32] [Runtime.InteropServices.Marshal]::ReadInt32($ObjectTypesPtr)
-
-    Write-Verbose "Number of types: $($NumberOfTypes)"
-
-    $Offset = (4 + [IntPtr]::Size - 1) -band (-bnot ([IntPtr]::Size - 1))
-    $CurrentTypePtr = [IntPtr] ($ObjectTypesPtr.ToInt64() + $Offset)
-
-    for ($i = 0; $i -lt $NumberOfTypes; $i++) {
-
-        $CurrentType = [Runtime.InteropServices.Marshal]::PtrToStructure($CurrentTypePtr, [type] $OBJECT_TYPE_INFORMATION)
-
-        $TypeName = [Runtime.InteropServices.Marshal]::PtrToStringUni($CurrentType.TypeName.Buffer)
-
-        $Result = New-Object -TypeName PSObject
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Index" -Value $CurrentType.TypeIndex
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $TypeName
-        $Result
-
-        $Offset = [Runtime.InteropServices.Marshal]::SizeOf([type] $OBJECT_TYPE_INFORMATION)
-        $Offset += ($CurrentType.TypeName.MaximumLength + [IntPtr]::Size - 1) -band (-bnot ([IntPtr]::Size - 1))
-        $CurrentTypePtr = [IntPtr] ($CurrentTypePtr.ToInt64() + $Offset)
-    }
-
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ObjectTypesPtr)
-}
-
-function Get-SystemInformationData {
-    <#
-    .SYNOPSIS
-    Helper - Get system information through a syscall
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    This helper leverages the syscall NtQuerySystemInformation to retrieve information about the system.
-    
-    .PARAMETER InformationClass
-    The class of information to retrieve (e.g. basic, code integrity, processes, handles).
-
-    .NOTES
-    The information class is not defined as an enumeration because it is too big. Use hardcoded values instead when calling this function.
-    #>
-
-    [OutputType([IntPtr])]
-    [CmdletBinding()] Param(
-        [Parameter(Mandatory=$true)]
-        [UInt32]$InformationClass
-    )
-
-    [UInt32]$DataSize = 0x10000
-    [IntPtr]$SystemInformationPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($DataSize)
-    [UInt32]$ReturnLength = 0
-
-    while ($true) {
-
-        $Status = $Ntdll::NtQuerySystemInformation($InformationClass, $SystemInformationPtr, $DataSize, [ref] $ReturnLength)
-        if ($Status -eq 0xC0000004) {
-            $DataSize = $DataSize * 2
-            $SystemInformationPtr = [System.Runtime.InteropServices.Marshal]::ReAllocHGlobal($SystemInformationPtr, $DataSize)
-        }
-        else {
-            break
-        }
-    }
-
-    if ($Status -ne 0) {
-        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($SystemInformationPtr)
-        Write-Verbose "NtQuerySystemInformation - 0x$('{0:x8}' -f $Status)"
-        return
-    }
-
-    $SystemInformationPtr
-}
-
-function Get-SystemInformationExtendedHandles {
-    <#
-    .SYNOPSIS
-    Helper - List system handle information
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    This helper calls another helper function - Get-SystemInformationData - in order to get a list of extended system handle information.
-    
-    .PARAMETER InheritedOnly
-    Include only handles that are inherited from another process.
-    
-    .PARAMETER ProcessId
-    Include only handles that are opened in a specific process.
-    
-    .PARAMETER TypeIndex
-    Include only handles of a certain object type.
-
-    .EXAMPLE
-    PS C:\> Get-SystemInformationExtendedHandles -InheritedOnly
-
-    Object           : -91242903594912
-    UniqueProcessId  : 5980
-    HandleValue      : 2964
-    GrantedAccess    : 4
-    HandleAttributes : 2
-    ObjectTypeIndex  : 42
-    ObjectType       : Section
-
-    [...]
-    #>
-
-    [CmdletBinding()] Param(
-        [Switch]$InheritedOnly = $false,
-        [UInt32]$ProcessId = 0,
-        [UInt32]$TypeIndex = 0
-    )
-
-    $ObjectTypes = Get-ObjectTypes
-
-    # SystemExtendedHandleInformation = 64
-    $SystemHandlesPtr = Get-SystemInformationData -InformationClass 64
-    if (-not $SystemHandlesPtr) { return }
-
-    $SystemHandles = [System.Runtime.InteropServices.Marshal]::PtrToStructure($SystemHandlesPtr, [type] $SYSTEM_HANDLE_INFORMATION_EX)
-    
-    Write-Verbose "Number of handles: $($SystemHandles.NumberOfHandles)"
-
-    $CurrentHandleInfoPtr = [IntPtr] ($SystemHandlesPtr.ToInt64() + ([IntPtr]::Size * 2))
-    for ($i = 0; $i -lt $SystemHandles.NumberOfHandles; $i++) {
-
-        # Get the handle information structure at the current pointer.
-        $CurrentHandleInfo = [Runtime.InteropServices.Marshal]::PtrToStructure($CurrentHandleInfoPtr, [type] $SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX)
-
-        # Pre-calculate the pointer for the next handle information structure.
-        $CurrentHandleInfoPtr = [IntPtr] ($CurrentHandleInfoPtr.ToInt64() + [Runtime.InteropServices.Marshal]::SizeOf([type] $SYSTEM_HANDLE_TABLE_ENTRY_INFO_EX))
-
-        # If InheritedOnly, ignore handles that are not inherited (HANDLE_INHERIT = 0x2).
-        if ($InheritedOnly -and (($CurrentHandleInfo.HandleAttributes -band 0x2) -ne 0x2)) { continue }
-
-        # If a PID filter is set, ignore handles that are not associated to this process.
-        if (($ProcessId -ne 0) -and ($CurrentHandleInfo.UniqueProcessId -ne $ProcessId)) { continue }
-
-        # If an object type index is set, ignore handles that are not of this type.
-        if (($TypeIndex -ne 0) -and ($CurrentHandleInfo.ObjectTypeIndex -ne $TypeIndex)) { continue }
-
-        $Result = $CurrentHandleInfo | Select-Object Object,UniqueProcessId,HandleValue,GrantedAccess,HandleAttributes,ObjectTypeIndex
-        $Result | Add-Member -MemberType "NoteProperty" -Name "ObjectType" -Value $($ObjectTypes | Where-Object { $_.Index -eq $CurrentHandleInfo.ObjectTypeIndex } | Select-Object -ExpandProperty Name)
-        $Result
-    }
-
-    [System.Runtime.InteropServices.Marshal]::FreeHGlobal($SystemHandlesPtr)
-}
-
-# function Get-Toolhelp32SnapshotProcess {
-#     <#
-#     .SYNOPSIS
-#     Helper - Enumerate processes
-
-#     Author: @itm4n
-#     License: BSD 3-Clause
-    
-#     .DESCRIPTION
-#     This function leverages the Toolhelp32Snapshot API set to enumerate basic information about the currently running processes.
-#     #>
-
-#     [CmdletBinding()] Param()
-
-#     # TH32CS_SNAPPROCESS = 0x00000002
-#     $SnaphostHandle = $Kernel32::CreateToolhelp32Snapshot(0x00000002, 0)
-#     if ($SnaphostHandle -eq -1) {
-#         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-#         Write-Verbose "CreateToolhelp32Snapshot KO - $([ComponentModel.Win32Exception] $LastError)"
-#         return
-#     }
-
-#     $ProcessEntry = New-Object WinApiModule.PROCESSENTRY32
-#     $ProcessEntry.Size = [Runtime.InteropServices.Marshal]::SizeOf([type] $PROCESSENTRY32)
-#     $ProcessEntryPtr = [Runtime.InteropServices.Marshal]::AllocHGlobal([Runtime.InteropServices.Marshal]::SizeOf([type] $PROCESSENTRY32))
-#     [Runtime.InteropServices.Marshal]::StructureToPtr($ProcessEntry, $ProcessEntryPtr, $true)
-
-#     if (-not $Kernel32::Process32First($SnaphostHandle, $ProcessEntryPtr)) {
-#         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-#         Write-Verbose "Process32First KO - $([ComponentModel.Win32Exception] $LastError)"
-#         [Runtime.InteropServices.Marshal]::FreeHGlobal($ProcessEntryPtr)
-#         $null = $Kernel32::CloseHandle($SnaphostHandle)
-#         return
-#     }
-
-#     do {
-#         $ProcessEntry = [Runtime.InteropServices.Marshal]::PtrToStructure($ProcessEntryPtr, [type] $PROCESSENTRY32)
-#         $Result = $ProcessEntry | Select-Object ProcessId,Threads,ParentProcessId,Flags
-#         $Result | Add-Member -MemberType "NoteProperty" -Name "ExeFile" -Value ($ProcessEntry.ExeFile -join "")
-#         $Result
-#     } while ($Kernel32::Process32Next($SnaphostHandle, $ProcessEntryPtr))
-
-#     [Runtime.InteropServices.Marshal]::FreeHGlobal($ProcessEntryPtr)
-#     $null = $Kernel32::CloseHandle($SnaphostHandle)
-# }
 
 function Get-InstalledPrograms {
     <#
@@ -1675,12 +1238,6 @@ function Get-ServiceList {
             # FilterLevel = 1 - Add the service to the list of its ImagePath is not empty
             if ($FilterLevel -le 1) { $ServiceItem; continue }
 
-            # Ignore services with no explicit type
-            if ($null -eq $ServiceItem.Type) {
-                Write-Warning "Service $($ServiceItem.Name) has no type"
-                continue
-            }
-
             $TypeMask = $ServiceTypeEnum::Win32OwnProcess -bor $ServiceTypeEnum::Win32ShareProcess -bor $ServiceTypeEnum::InteractiveProcess
             if (($ServiceItem.Type -band $TypeMask) -gt 0) {
 
@@ -1693,265 +1250,6 @@ function Get-ServiceList {
                     if ($FilterLevel -le 3) { $ServiceItem; continue }
                 }
             }
-        }
-    }
-}
-
-function Get-AclModificationRights {
-    <#
-    .SYNOPSIS
-    Helper - Enumerates modification rights the current user has on an object.
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    
-    .DESCRIPTION
-    This cmdlet retrieves the ACL of an object and returns the ACEs that grant modification permissions to the current user. It should be noted that, in case of deny ACEs, restricted rights are removed from the permission list of the ACEs.
-    
-    .PARAMETER Path
-    The full path of a securable object.
-    
-    .PARAMETER Type
-    The target object type (e.g. "File").
-    
-    .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\foo123.txt -Type File
-    
-    ModifiablePath    : C:\Temp\foo123.txt
-    IdentityReference : NT AUTHORITY\Authenticated Users
-    Permissions       : Delete, WriteAttributes, Synchronize, ReadControl, ReadData, AppendData, WriteExtendedAttributes,
-                        ReadAttributes, WriteData, ReadExtendedAttributes, Execute
-
-    .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\deny-delete.txt -Type File
-
-    ModifiablePath    : C:\Temp\deny-delete.txt
-    IdentityReference : NT AUTHORITY\Authenticated Users
-    Permissions       : WriteAttributes, Synchronize, ReadControl, ReadData, AppendData, WriteExtendedAttributes,
-                        ReadAttributes, WriteData, ReadExtendedAttributes, Execute
-
-    .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\deny-write.txt -Type File
-
-    ModifiablePath    : C:\Temp\deny-write.txt
-    IdentityReference : NT AUTHORITY\Authenticated Users
-    Permissions       : Delete, Synchronize, ReadControl, ReadData, ReadAttributes, ReadExtendedAttributes, Execute
-    #>
-
-    [CmdletBinding()] Param(
-        [String]
-        $Path,
-
-        [ValidateSet("File", "Directory", "RegistryKey")]
-        [String]
-        $Type
-    )
-
-    BEGIN {
-        $TypeFile = "File"
-        $TypeDirectory = "Directory"
-        $TypeRegistryKey = "RegistryKey"
-
-        $FileAccessMask = @{
-            [UInt32]'0x80000000' = 'GenericRead'
-            [UInt32]'0x40000000' = 'GenericWrite'
-            [UInt32]'0x20000000' = 'GenericExecute'
-            [UInt32]'0x10000000' = 'GenericAll'
-            [UInt32]'0x02000000' = 'MaximumAllowed'
-            [UInt32]'0x01000000' = 'AccessSystemSecurity'
-            [UInt32]'0x00100000' = 'Synchronize'
-            [UInt32]'0x00080000' = 'WriteOwner'
-            [UInt32]'0x00040000' = 'WriteDAC'
-            [UInt32]'0x00020000' = 'ReadControl'
-            [UInt32]'0x00010000' = 'Delete'
-            [UInt32]'0x00000100' = 'WriteAttributes'
-            [UInt32]'0x00000080' = 'ReadAttributes'
-            [UInt32]'0x00000040' = 'DeleteChild'
-            [UInt32]'0x00000020' = 'Execute'
-            [UInt32]'0x00000010' = 'WriteExtendedAttributes'
-            [UInt32]'0x00000008' = 'ReadExtendedAttributes'
-            [UInt32]'0x00000004' = 'AppendData'
-            [UInt32]'0x00000002' = 'WriteData'
-            [UInt32]'0x00000001' = 'ReadData'
-        }
-
-        $DirectoryAccessMask = @{
-            [UInt32]'0x80000000' = 'GenericRead'
-            [UInt32]'0x40000000' = 'GenericWrite'
-            [UInt32]'0x20000000' = 'GenericExecute'
-            [UInt32]'0x10000000' = 'GenericAll'
-            [UInt32]'0x02000000' = 'MaximumAllowed'
-            [UInt32]'0x01000000' = 'AccessSystemSecurity'
-            [UInt32]'0x00100000' = 'Synchronize'
-            [UInt32]'0x00080000' = 'WriteOwner'
-            [UInt32]'0x00040000' = 'WriteDAC'
-            [UInt32]'0x00020000' = 'ReadControl'
-            [UInt32]'0x00010000' = 'Delete'
-            [UInt32]'0x00000100' = 'WriteAttributes'
-            [UInt32]'0x00000080' = 'ReadAttributes'
-            [UInt32]'0x00000040' = 'DeleteChild'
-            [UInt32]'0x00000020' = 'Traverse'
-            [UInt32]'0x00000010' = 'WriteExtendedAttributes'
-            [UInt32]'0x00000008' = 'ReadExtendedAttributes'
-            [UInt32]'0x00000004' = 'AddSubdirectory'
-            [UInt32]'0x00000002' = 'AddFile'
-            [UInt32]'0x00000001' = 'ListDirectory'
-        }
-
-        $RegistryKeyAccessMask = @{
-            # Generic access rights
-            [UInt32]'0x10000000' = 'GenericAll'
-            [UInt32]'0x20000000' = 'GenericExecute'
-            [UInt32]'0x40000000' = 'GenericWrite'
-            [UInt32]'0x80000000' = 'GenericRead'
-            # Registry key access rights
-            [UInt32]'0x00000001' = 'QueryValue'
-            [UInt32]'0x00000002' = 'SetValue'
-            [UInt32]'0x00000004' = 'CreateSubKey'
-            [UInt32]'0x00000008' = 'EnumerateSubKeys'
-            [UInt32]'0x00000010' = 'Notify'
-            [UInt32]'0x00000020' = 'CreateLink'
-            # Valid standard access rights for registry keys
-            [UInt32]'0x00010000' = 'Delete'
-            [UInt32]'0x00020000' = 'ReadControl'
-            [UInt32]'0x00040000' = 'WriteDAC'
-            [UInt32]'0x00080000' = 'WriteOwner'
-        }
-
-        $AccessMask = @{
-            $TypeFile = $FileAccessMask
-            $TypeDirectory = $DirectoryAccessMask
-            $TypeRegistryKey = $RegistryKeyAccessMask
-        }
-
-        $AccessRights = @{
-            $TypeFile = "FileSystemRights"
-            $TypeDirectory = "FileSystemRights"
-            $TypeRegistryKey = "RegistryRights"
-        }
-
-        $ModificationRights = @{
-            $TypeFile = @('GenericWrite', 'GenericAll', 'MaximumAllowed', 'WriteOwner', 'WriteDAC', 'Delete', 'WriteData', 'AppendData')
-            $TypeDirectory = @('GenericWrite', 'GenericAll', 'MaximumAllowed', 'WriteOwner', 'WriteDAC', 'Delete', 'AddFile', 'AddSubdirectory')
-            $TypeRegistryKey = @('SetValue', 'CreateSubKey', 'Delete', 'WriteDAC', 'WriteOwner')
-        }
-
-        $CurrentUserSids = Get-CurrentUserSids
-        $CurrentUserDenySids = Get-CurrentUserDenySids
-
-        $ResolvedIdentities = @{}
-
-        function Convert-NameToSid {
-
-            Param([String]$Name)
-
-            if (($Name -match '^S-1-5.*') -or ($Name -match '^S-1-15-.*')) { $Name; return }
-
-            if (-not ($ResolvedIdentities[$Name])) {
-                $Identity = New-Object System.Security.Principal.NTAccount($Name)
-                try {
-                    $ResolvedIdentities[$Name] = $Identity.Translate([System.Security.Principal.SecurityIdentifier]) | Select-Object -ExpandProperty Value
-                }
-                catch {
-                    $null = $_
-                }
-            }
-            $ResolvedIdentities[$Name]
-        }
-    }
-
-    PROCESS {
-
-        try {
-    
-            # First things first, try to get the ACL of the object given its path.
-            $Acl = Get-Acl -Path $Path -ErrorAction SilentlyContinue -ErrorVariable GetAclError
-            if ($GetAclError) { return }
-    
-            # If no ACL is returned, it means that the object has a "null" DACL, in which case everyone is
-            # granted full access to the object. We can therefore simply return a "virtual" ACE that grants
-            # Everyone the "FullControl" right and exit.
-            if ($null -eq $Acl) {
-                $Result = New-Object -TypeName PSObject
-                $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $Path
-                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value (Convert-SidToName -Sid "S-1-1-0")
-                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value "GenericAll"
-                $Result
-                return
-            }
-            
-            $DenyAces = [Object[]]($Acl | Select-Object -ExpandProperty Access | Where-Object { $_.AccessControlType -match "Deny" })
-            $AllowAces = [Object[]]($Acl | Select-Object -ExpandProperty Access | Where-Object { $_.AccessControlType -match "Allow" })
-    
-            # Here we simply get the access mask, access list name and list of access rights that are
-            # specific to the object type we are dealing with.
-            $TypeAccessMask = $AccessMask[$Type]
-            $TypeAccessRights = $AccessRights[$Type]
-            $TypeModificationRights = $ModificationRights[$Type]
-
-            # Before checking the object permissions, we first need to enumerate deny ACEs (if any) that
-            # would restrict the rights we may have on the target object.
-            $RestrictedRights = @()
-            if ($DenyAces) { # Need to make sure it not null because of PSv2
-                foreach ($DenyAce in $DenyAces) {
-    
-                    # Ignore "InheritOnly" ACEs because they only apply to child objects, not to the object itself
-                    # (e.g.: a file in a directory or a sub-key of a registry key).
-                    if ($DenyAce.PropagationFlags -band ([System.Security.AccessControl.PropagationFlags]"InheritOnly").value__) { continue }
-        
-                    # Convert the ACE's identity reference name to its SID. If the SID is not in the list
-                    # of deny-only SIDs of the current Token, ignore it. If the SID does not match the 
-                    # current user SID or the SID of any of its groups, ignore it as well.
-                    # Note: deny-only SIDs are only used to check access-denied ACEs.
-                    # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-attributes-in-an-access-token
-                    $IdentityReferenceSid = Convert-NameToSid -Name $DenyAce.IdentityReference
-                    if ($CurrentUserDenySids -notcontains $IdentityReferenceSid) { continue }
-                    if ($CurrentUserSids -notcontains $IdentityReferenceSid) { continue }
-    
-                    $Restrictions = $TypeAccessMask.Keys | Where-Object { $DenyAce.$TypeAccessRights.value__ -band $_ } | ForEach-Object { $TypeAccessMask[$_] }
-                    $RestrictedRights += [String[]]$Restrictions
-                }
-            }
-            
-            # Need to make sure it not null because of PSv2
-            if ($AllowAces) {
-                foreach ($AllowAce in $AllowAces) {
-
-                    # Ignore "InheritOnly" ACEs because they only apply to child objects, not to the object itself
-                    # (e.g.: a file in a directory or a sub-key of a registry key).
-                    if ($AllowAce.PropagationFlags -band ([System.Security.AccessControl.PropagationFlags]"InheritOnly").value__) { continue }
-
-                    # Here, we simply extract the permissions granted by the current ACE
-                    $Permissions = New-Object System.Collections.ArrayList
-                    $TypeAccessMask.Keys | Where-Object { $AllowAce.$TypeAccessRights.value__ -band $_ } | ForEach-Object { $null = $Permissions.Add($TypeAccessMask[$_]) }
-        
-                    # ... and we remove any right that would be restricted due to deny ACEs.
-                    if ($RestrictedRights) {
-                        foreach ($RestrictedRight in $RestrictedRights) {
-                            $null = $Permissions.Remove($RestrictedRight)
-                        }
-                    }
-    
-                    # Here, we filter out ACEs that do not apply to the current user by checking whether the ACE's
-                    # identity reference is in the current user's SID list.
-                    $IdentityReferenceSid = Convert-NameToSid -Name $AllowAce.IdentityReference
-                    if ($CurrentUserSids -notcontains $IdentityReferenceSid) { continue }
-    
-                    # We compare the list of permissions (minus the potential restrictions) againts a list of
-                    # predefined modification rights. If there is no match, we ignore the ACE.
-                    $Comparison = Compare-Object -ReferenceObject $Permissions -DifferenceObject $TypeModificationRights -IncludeEqual -ExcludeDifferent
-                    if (-not $Comparison) { continue }
-    
-                    $Result = New-Object -TypeName PSObject
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $Path
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $AllowAce.IdentityReference
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($Permissions -join ", ")
-                    $Result
-                }
-            }
-        }
-        catch {
-            Write-Debug "Could not handle path: $($Path)"
         }
     }
 }
@@ -2006,6 +1304,36 @@ function Get-ModifiablePath {
 
     BEGIN {
 
+        # from http://stackoverflow.com/questions/28029872/retrieving-security-descriptor-and-getting-number-for-filesystemrights
+        $AccessMask = @{
+            [UInt32]'0x80000000' = 'GenericRead'
+            [UInt32]'0x40000000' = 'GenericWrite'
+            [UInt32]'0x20000000' = 'GenericExecute'
+            [UInt32]'0x10000000' = 'GenericAll'
+            [UInt32]'0x02000000' = 'MaximumAllowed'
+            [UInt32]'0x01000000' = 'AccessSystemSecurity'
+            [UInt32]'0x00100000' = 'Synchronize'
+            [UInt32]'0x00080000' = 'WriteOwner'
+            [UInt32]'0x00040000' = 'WriteDAC'
+            [UInt32]'0x00020000' = 'ReadControl'
+            [UInt32]'0x00010000' = 'Delete'
+            [UInt32]'0x00000100' = 'WriteAttributes'
+            [UInt32]'0x00000080' = 'ReadAttributes'
+            [UInt32]'0x00000040' = 'DeleteChild'
+            [UInt32]'0x00000020' = 'Execute/Traverse'
+            [UInt32]'0x00000010' = 'WriteExtendedAttributes'
+            [UInt32]'0x00000008' = 'ReadExtendedAttributes'
+            [UInt32]'0x00000004' = 'AppendData/AddSubdirectory'
+            [UInt32]'0x00000002' = 'WriteData/AddFile'
+            [UInt32]'0x00000001' = 'ReadData/ListDirectory'
+        }
+
+        $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $CurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
+        $CurrentUserSids += $UserIdentity.User.Value
+
+        $TranslatedIdentityReferences = @{}
+
         function Get-FirstExistingParentFolder {
 
             Param(
@@ -2039,7 +1367,7 @@ function Get-ModifiablePath {
             if ($PSBoundParameters['LiteralPaths']) {
 
                 $TempPath = $([System.Environment]::ExpandEnvironmentVariables($TargetPath))
-                
+
                 if (Test-Path -Path $TempPath -ErrorAction SilentlyContinue) {
 
                     $ResolvedPath = Resolve-Path -Path $TempPath | Select-Object -ExpandProperty Path
@@ -2115,16 +1443,72 @@ function Get-ModifiablePath {
                 }
             }
 
-            foreach ($CandidatePath in $($CandidatePaths | Sort-Object -Unique)) {
+            $CandidatePaths | Sort-Object -Unique | ForEach-Object {
 
-                $CandidateItem = Get-Item -Path $CandidatePath -ErrorAction SilentlyContinue
-                if (-not $CandidateItem) { continue }
+                $CandidatePath = $_
 
-                if ($CandidateItem -is [System.IO.DirectoryInfo]) {
-                    Get-AclModificationRights -Path $CandidateItem.FullName -Type Directory
+                try {
+
+                    $Acl = Get-Acl -Path $CandidatePath | Select-Object -ExpandProperty Access
+
+                    # Check for NULL DACL first. If no DACL is set, 'Everyone' has full access on the object.
+                    if ($null -eq $Acl) {
+                        $Result = New-Object -TypeName PSObject
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $CandidatePath
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value (Convert-SidToName -Name "S-1-1-0")
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value "GenericAll"
+                        $Result
+                    }
+                    else {
+                        foreach ($Ace in $Acl) {
+
+                            # If the type of the current ACE is not 'Allow', ignore it.
+                            if ($Ace.AccessControlType -notmatch 'Allow') { continue }
+
+                            # If the object we are checking is a directory (i.e. a Container), the Propagation flags are very
+                            # important. This value determines whether the ACE applies to the object itself only or to the
+                            # child objects only. Although PropagationFlags allows a bitwise combination of its member values,
+                            # they are not really compatible with one another. For example, it can have the value
+                            # NoPropagateInherit (1), which indicates that the ACE is not propagated to child objects. The
+                            # other possible value is InheritOnly (2) and indicates that the ACE is propagated *only* to child
+                            # objects. Anyway, what's important to us is making sure that PropagationFlags does not contain the
+                            # value InheritOnly.
+                            if ($Ace.PropagationFlags -band ([System.Security.AccessControl.PropagationFlags]"InheritOnly").value__) { continue }
+
+                            $Permissions = $AccessMask.Keys | Where-Object { $Ace.FileSystemRights.value__ -band $_ } | ForEach-Object { $accessMask[$_] }
+
+                            # the set of permission types that allow for modification
+                            $Comparison = Compare-Object -ReferenceObject $Permissions -DifferenceObject @('GenericWrite', 'GenericAll', 'MaximumAllowed', 'WriteOwner', 'WriteDAC', 'WriteData/AddFile', 'AppendData/AddSubdirectory') -IncludeEqual -ExcludeDifferent
+
+                            if ($Comparison) {
+
+                                if ($Ace.IdentityReference -notmatch '^S-1-5.*' -and $Ace.IdentityReference -notmatch '^S-1-15-.*') {
+
+                                    if (-not ($TranslatedIdentityReferences[$Ace.IdentityReference])) {
+
+                                        # translate the IdentityReference if it's a username and not a SID
+                                        $IdentityUser = New-Object System.Security.Principal.NTAccount($Ace.IdentityReference)
+                                        $TranslatedIdentityReferences[$Ace.IdentityReference] = $IdentityUser.Translate([System.Security.Principal.SecurityIdentifier]) | Select-Object -ExpandProperty Value
+                                    }
+                                    $IdentitySID = $TranslatedIdentityReferences[$Ace.IdentityReference]
+                                }
+                                else {
+                                    $IdentitySID = $Ace.IdentityReference
+                                }
+
+                                if ($CurrentUserSids -contains $IdentitySID) {
+                                    $Result = New-Object -TypeName PSObject
+                                    $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $CandidatePath
+                                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $Ace.IdentityReference
+                                    $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $Permissions
+                                    $Result
+                                }
+                            }
+                        }
+                    }
                 }
-                else {
-                    Get-AclModificationRights -Path $CandidateItem.FullName -Type File
+                catch {
+                    $null = $_
                 }
             }
         }
@@ -2236,11 +1620,11 @@ function Get-ModifiableRegistryPath {
     A registry key path. Required
 
     .EXAMPLE
-    PS C:\> Get-ModifiableRegistryPath -Path "HKLM\SOFTWARE\Microsoft\Tracing"
+    PS C:\> Get-ModifiableRegistryPath -Path "Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\DVWS"
 
-    ModifiablePath    : HKLM\SOFTWARE\Microsoft\Tracing
-    IdentityReference : BUILTIN\Users
-    Permissions       : Notify, ReadControl, EnumerateSubKeys, CreateSubKey, SetValue, QueryValue
+    ModifiablePath    : {Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\DVWS}
+    IdentityReference : NT AUTHORITY\Authenticated Users
+    Permissions       : {ReadControl, ReadData/ListDirectory, AppendData/AddSubdirectory, WriteData/AddFile...}
     #>
 
     [CmdletBinding()]
@@ -2249,17 +1633,96 @@ function Get-ModifiableRegistryPath {
         [String[]]$Path
     )
 
-    BEGIN { }
+    BEGIN {
+        $AccessMask = @{
+            # Generic access rights
+            [UInt32]'0x10000000' = 'GenericAll'
+            [UInt32]'0x20000000' = 'GenericExecute'
+            [UInt32]'0x40000000' = 'GenericWrite'
+            [UInt32]'0x80000000' = 'GenericRead'
+            # Registry key access rights
+            [UInt32]'0x00000001' = 'QueryValue'
+            [UInt32]'0x00000002' = 'SetValue'
+            [UInt32]'0x00000004' = 'CreateSubKey'
+            [UInt32]'0x00000008' = 'EnumerateSubKeys'
+            [UInt32]'0x00000010' = 'Notify'
+            [UInt32]'0x00000020' = 'CreateLink'
+            # Valid standard access rights for registry keys
+            [UInt32]'0x00010000' = 'Delete'
+            [UInt32]'0x00020000' = 'ReadControl'
+            [UInt32]'0x00040000' = 'WriteDAC'
+            [UInt32]'0x00080000' = 'WriteOwner'
+        }
+
+        $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $CurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
+        $CurrentUserSids += $UserIdentity.User.Value
+
+        $TranslatedIdentityReferences = @{}
+    }
 
     PROCESS {
+        try {
+            $KeyAcl = Get-Acl -Path $Path -ErrorAction SilentlyContinue -ErrorVariable GetAclError
+            if (-not $GetAclError) {
 
-        $Path | ForEach-Object {
-            $RegPath = "Registry::$($_)"
-            $OrigPath = $_
-            Get-AclModificationRights -Path $RegPath -Type RegistryKey | ForEach-Object { $_.ModifiablePath = $OrigPath; $_ }
+                # Check for NULL DACL first. If no DACL, 'Everyone' has full access rights on the object.
+                if ($null -eq $KeyAcl) {
+                    $Result = New-Object -TypeName PSObject
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $Path
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value (Convert-SidToName -Sid "S-1-1-0")
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value 'GenericAll'
+                    $Result
+                }
+                else {
+                    $Aces = $KeyAcl | Select-Object -ExpandProperty Access | Where-Object { $_.AccessControlType -match 'Allow' }
+
+                    foreach ($Ace in $Aces) {
+                        $Permissions = $AccessMask.Keys | Where-Object { $Ace.RegistryRights.value__ -band $_ } | ForEach-Object { $AccessMask[$_] }
+                        if ($null -eq $Permissions) {
+                            Write-Verbose $Ace.RegistryRights.value__
+                        }
+
+                        # the set of permission types that allow for modification
+                        $Comparison = Compare-Object -ReferenceObject $Permissions -DifferenceObject @('SetValue', 'CreateSubKey', 'WriteDAC', 'WriteOwner') -IncludeEqual -ExcludeDifferent
+
+                        if (-not $Comparison) { continue }
+
+                        if (($Ace.IdentityReference -notmatch '^S-1-5.*') -and ($Ace.IdentityReference -notmatch '^S-1-15-.*')) {
+                            if (-not ($TranslatedIdentityReferences[$Ace.IdentityReference])) {
+                                # translate the IdentityReference if it's a username and not an SID
+                                $IdentityUser = New-Object System.Security.Principal.NTAccount($Ace.IdentityReference)
+                                try {
+                                    $TranslatedIdentityReferences[$Ace.IdentityReference] = $IdentityUser.Translate([System.Security.Principal.SecurityIdentifier]) | Select-Object -ExpandProperty Value
+                                }
+                                catch {
+                                    $IdentitySID = $null
+                                }
+                            }
+                            $IdentitySID = $TranslatedIdentityReferences[$Ace.IdentityReference]
+                        }
+                        else {
+                            $IdentitySID = $Ace.IdentityReference
+                        }
+
+                        if ($CurrentUserSids -contains $IdentitySID) {
+                            $Result = New-Object -TypeName PSObject
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $Path
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $Ace.IdentityReference
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $Permissions
+                            $Result
+                        }
+                    }
+                }
+            }
+        }
+        catch {
+            $null = $_
         }
     }
 }
+
+
 
 function Add-ServiceDacl {
     <#
@@ -2687,7 +2150,7 @@ function Get-HotFixList {
                 $Info | Add-Member -MemberType "NoteProperty" -Name "SupportInformation" -Value "$($_.supportInformation)"
             }
 
-            $PackageContentXml.GetElementsByTagName("package") | Where-Object { $null -ne $_.identifier } | ForEach-Object {
+            $PackageContentXml.GetElementsByTagName("package") | ForEach-Object {
 
                 $Info | Add-Member -MemberType "NoteProperty" -Name "Identifier" -Value "$($_.identifier)"
                 $Info | Add-Member -MemberType "NoteProperty" -Name "ReleaseType" -Value "$($_.releaseType)"
@@ -2711,7 +2174,7 @@ function Get-HotFixList {
             $AllPackages | ForEach-Object {
 
                 # Filter only KB-related packages
-                if (($_.Name | Split-Path -Leaf) -Like "Package_*for_KB*") {
+                if (($_.Name | Split-Path -Leaf) -Like "Package_*_for_KB*") {
 
                     $PackageProperties = $_ | Get-ItemProperty
 
@@ -2744,8 +2207,7 @@ function Get-HotFixList {
                             $Result | Add-Member -MemberType "NoteProperty" -Name "HotFixID" -Value "$PackageName"
                             $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value "$($PackageInfo.ReleaseType)"
                             $Result | Add-Member -MemberType "NoteProperty" -Name "InstalledBy" -Value "$InstalledBy"
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "InstalledOnDate" -Value $InstallDate
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "InstalledOn" -Value (Convert-DateToString -Date $InstallDate)
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "InstalledOn" -Value $InstallDate
 
                             [void]$CachedHotFixList.Add($Result)
                         }
@@ -2756,8 +2218,6 @@ function Get-HotFixList {
         else {
             # If we can't read the registry, fall back to the built-in 'Get-HotFix' cmdlet
             Get-HotFix | Select-Object HotFixID,Description,InstalledBy,InstalledOn | ForEach-Object {
-                $_ | Add-Member -MemberType "NoteProperty" -Name "InstalledOnDate" -Value $_.InstalledOn
-                $_.InstalledOn = Convert-DateToString -Date $_.InstalledOn
                 [void]$CachedHotFixList.Add($_)
             }
         }
@@ -3430,8 +2890,6 @@ function Test-ServiceDaclPermission {
                 $TargetPermissions = @('GenericAll', 'AllAccess')
             }
         }
-
-        $CurrentUserSids = Get-CurrentUserSids
     }
 
     PROCESS {
@@ -3443,6 +2901,11 @@ function Test-ServiceDaclPermission {
             # We might not be able to access the Service at all so we must check whether Add-ServiceDacl
             # returned something.
             if ($TargetService -and $TargetService.Dacl) {
+
+                # Enumerate all group SIDs the current user is a part of
+                $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+                $CurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
+                $CurrentUserSids += $UserIdentity.User.Value
 
                 # Check all the Dacl objects of the current service
                 foreach ($Ace in $TargetService.Dacl) {

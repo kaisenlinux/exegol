@@ -34,7 +34,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Quiddity
 {
@@ -45,8 +44,6 @@ namespace Quiddity
         public string Host { get; set; }
         public ushort Priority { get; set; }
         public ushort Weight { get; set; }
-
-        public static bool isRunning = false;
 
         public DNSListener()
         {
@@ -70,8 +67,6 @@ namespace Quiddity
         {
             UDPListener listener = new UDPListener(AddressFamily.InterNetwork);
             IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 53);
-            isRunning = true;
-            IAsyncResult udpAsync;
 
             if (String.Equals(ipAddress.AddressFamily.ToString(), "InterNetworkV6"))
             {
@@ -80,31 +75,13 @@ namespace Quiddity
 
             listener.Client.Bind(ipEndPoint);
 
-            while (isRunning)
+            while (true)
             {
 
                 try
                 {
-                    udpAsync = listener.BeginReceive(null, null);
-
-                    do
-                    {
-                        Thread.Sleep(10);
-
-                        if (!isRunning)
-                        {
-                            break;
-                        }
-
-                    }
-                    while (!udpAsync.IsCompleted);
-
-                    if (isRunning)
-                    {
-                        byte[] receiveBuffer = listener.EndReceive(udpAsync, ref ipEndPoint);
-                        ProcessRequest(receiveBuffer, listener, ipEndPoint, replyIP, replyIPv6);
-                    }
-
+                    byte[] receiveBuffer = listener.Receive(ref ipEndPoint);
+                    ProcessRequest(receiveBuffer, listener, ipEndPoint, replyIP, replyIPv6);
                 }
                 catch (Exception ex)
                 {

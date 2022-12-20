@@ -1,8 +1,6 @@
 $global:CachedServiceList = New-Object -TypeName System.Collections.ArrayList
 $global:CachedHotFixList = New-Object -TypeName System.Collections.ArrayList
 $global:CachedScheduledTaskList = New-Object -TypeName System.Collections.ArrayList
-$global:CachedCurrentUserSids = $null
-$global:CachedCurrentUserDenySids = $null
 $global:ResultArrayList = New-Object -TypeName System.Collections.ArrayList
 [string[]] $global:KeywordsOfInterest = "key", "passw", "secret", "pwd", "creds", "credential", "api"
 
@@ -129,7 +127,7 @@ function Invoke-PrivescCheck {
 "NET_TCP_ENDPOINTS",                "Invoke-TcpEndpointsCheck",                     "Network",          "TCP Endpoints",                        "Info", "Info",     "Table",    "True",     "False",        "False",        "List all TCP ports that are in a LISTEN state. For each one, the corresponding process is also returned."
 "NET_UDP_ENDPOINTS",                "Invoke-UdpEndpointsCheck",                     "Network",          "UDP Endpoints",                        "Info", "Info",     "Table",    "True",     "True",         "False",        "List all UDP ports that are in a LISTEN state. For each one, the corresponding process is also returned. DNS is filtered out to minimize the output."
 "NET_WLAN",                         "Invoke-WlanProfilesCheck",                     "Network",          "Saved Wi-Fi Profiles",                 "Info", "Info",     "List",     "True",     "True",         "False",        "Enumerate saved Wifi profiles. For WEP/WPA-PSK profiles, the clear-text passphrase is extracted (when possible). For 802.1x profiles, a series of tests is performed to highlight potential misconfiguration."
-"NET_AIRSTRIKE",                    "Invoke-AirstrikeAttackCheck",                  "Network",          "Select network from lock screen",      "Info", "Info",     "List",     "True",     "True",         "False",        "Checks whether the 'Do not display network selection UI' policy is enforced on workstations (c.f. Airstrike attack)."
+"NET_AIRSTRIKE",                    "Invoke-AirstrikeAttackCheck",                  "Network",          "Wi-Fi Airstrike Attack",               "Info", "Info",     "List",     "True",     "True",         "False",        "Checks whether the 'Do not display network selection UI' policy is enforced on workstations."
 "UPDATE_HISTORY",                   "Invoke-WindowsUpdateCheck",                    "Updates",          "Last Windows Update Date",             "Info", "Info",     "Table",    "True",     "True",         "False",        "Interact with the Windows Update service and determine when the system was last updated. Note that this check might be unreliable."
 "UPDATE_HOTFIX_INFO",               "Invoke-HotFixCheck -Info",                     "Updates",          "System up to date? (info)",            "Info", "Info",     "Table",    "True",     "True",         "False",        "Enumerate the installed updates and hotfixes by parsing the registry. If this fails, the check will fall back to the built-in 'Get-HotFix' cmdlet."
 "UPDATE_HOTFIX",                    "Invoke-HotFixCheck",                           "Updates",          "System up to date?",                   "Vuln", "Medium",   "Table",    "False",    "True",         "False",        "Enumerate the installed updates and hotfixes and check whether a patch was applied in the last 31 days."
@@ -144,7 +142,6 @@ function Invoke-PrivescCheck {
 "MISC_STARTUP_LAST",                "Invoke-SystemStartupCheck",                    "Misc",             "Last System Startup",                  "Info", "Info",     "Table",    "True",     "True",         "False",        "Determine the last system startup date and time based on the current tick count. Note that this might be unreliable."
 "MISC_DRIVES",                      "Invoke-SystemDrivesCheck",                     "Misc",             "Filesystem Drives",                    "Info", "Info",     "Table",    "True",     "True",         "False",        "List partitions, removable storage and mapped network shares."
 "MISC_NAMED_PIPES",                 "Invoke-NamedPipePermissionsCheck",             "Misc",             "Named Pipes Permission",               "Info", "Info",     "List",     "True",     "False",        "True",         "List modifiable named pipes that are not owned by the current user."
-"MISC_LEAKED_HANDLES",              "Invoke-ExploitableLeakedHandlesCheck",         "Misc",             "Exploitable leaked handles",           "Info", "Info",     "List",     "True",     "False",        "False",        "List leaked handles to privileged objects such as Processes, Threads, and Files."
 "@
 
     # Reset all global ArrayLists on startup

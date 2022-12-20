@@ -66,7 +66,6 @@ function Invoke-WsusConfigCheck {
     WUServer                           : http://acme-upd01.corp.internal.com:8535
     UseWUServer                        : 1
     SetProxyBehaviorForUpdateDetection : 1
-    DisableWindowsUpdateAccess         : (null)
 
     .NOTES
     "Beginning with the September 2020 cumulative update, HTTP-based intranet servers will be secure by default. [...] we are no longer allowing HTTP-based intranet servers to leverage user proxy by default to detect updates." The SetProxyBehaviorForUpdateDetection value determines whether this default behavior can be overriden. The default value is 0. If it is set to 1, WSUS can use user proxy settings as a fallback if detection using system proxy fails. See links 1 and 2 below for more details.
@@ -100,19 +99,12 @@ function Invoke-WsusConfigCheck {
 
     $WsusProxybehavior = $RegData
 
-    $RegKey = "HKLM\Software\Policies\Microsoft\Windows\WindowsUpdate"
-    $RegValue = "DisableWindowsUpdateAccess"
-    $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
-
-    $DisableWindowsUpdateAccess = $RegData
-
     if (($WusUrl -like "http://*") -and ($WusEnabled -eq 1)) {
 
         $Result = New-Object -TypeName PSObject
         $Result | Add-Member -MemberType "NoteProperty" -Name "WUServer" -Value $WusUrl
         $Result | Add-Member -MemberType "NoteProperty" -Name "UseWUServer" -Value $WusEnabled
         $Result | Add-Member -MemberType "NoteProperty" -Name "SetProxyBehaviorForUpdateDetection" -Value $(if ($null -eq $WsusProxybehavior) { "(null)" } else { $WsusProxybehavior })
-        $Result | Add-Member -MemberType "NoteProperty" -Name "DisableWindowsUpdateAccess" -Value $(if ($null -eq $DisableWindowsUpdateAccess) { "(null)" } else { $DisableWindowsUpdateAccess })
         $Result
     }
 }
@@ -305,16 +297,19 @@ function Invoke-DllHijackingCheck {
     $RegKey = "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
     $RegValue = "Path"
     $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue).$RegValue
-    $Paths = $RegData.Split(';') | ForEach-Object { $_.Trim() } | Where-Object { -not [String]::IsNullOrEmpty($_) }
+    $Paths = $RegData.Split(';')
 
     foreach ($Path in $Paths) {
-        $Path | Get-ModifiablePath -LiteralPaths | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) } | Foreach-Object {
-            $Result = New-Object -TypeName PSObject
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $Path
-            $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $_.ModifiablePath
-            $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $_.Permissions
-            $Result
+        if (-not [String]::IsNullOrEmpty($Path)) {
+            $Path | Get-ModifiablePath -LiteralPaths | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) } | Foreach-Object {
+
+                $Result = New-Object -TypeName PSObject
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $Path
+                $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $_.ModifiablePath
+                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $_.Permissions
+                $Result
+            }
         }
     }
 }

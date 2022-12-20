@@ -32,7 +32,6 @@
 using System;
 using System.Linq;
 using System.IO;
-using System.Text;
 
 namespace Quiddity.SMB2
 {
@@ -43,9 +42,6 @@ namespace Quiddity.SMB2
         public ushort DataLength { get; set; }
         public uint Reserved { get; set; }
         public byte[] Data { get; set; }
-
-        // custom
-        public string NetName { get; set; }
 
         public SMB2NegotiateContext()
         {
@@ -76,7 +72,7 @@ namespace Quiddity.SMB2
                     packetWriter.Write(this.DataLength);
                     packetWriter.Write(this.Reserved);
                     packetWriter.Write(this.Data);
-                    packetWriter.Write(new byte[2] { 0x00, 0x00 });
+                    packetWriter.Write(new byte[2] { 0x000, 0x00 });
                 }
 
                 if (contextTypes.Contains("2"))
@@ -88,7 +84,7 @@ namespace Quiddity.SMB2
                     packetWriter.Write(this.DataLength);
                     packetWriter.Write(this.Reserved);
                     packetWriter.Write(this.Data);
-                    packetWriter.Write(new byte[4] { 0x00, 0x00, 0x00, 0x00 });
+                    packetWriter.Write(new byte[4] { 0x000, 0x00, 0x00, 0x00 });
                 }
 
                 if (contextTypes.Contains("3"))
@@ -100,19 +96,6 @@ namespace Quiddity.SMB2
                     packetWriter.Write(this.DataLength);
                     packetWriter.Write(this.Reserved);
                     packetWriter.Write(this.Data);
-                }
-
-                if (contextTypes.Contains("5"))
-                {
-                    byte[] netName = Encoding.Unicode.GetBytes(this.NetName);
-                    this.ContextType = 5;
-                    this.DataLength = (ushort)netName.Length;
-                    this.Data = new byte[4] { 0x00, 0x00, 0x00, 0x00 };
-                    packetWriter.Write(this.ContextType);
-                    packetWriter.Write(this.DataLength);
-                    packetWriter.Write(this.Reserved);
-                    packetWriter.Write(this.Data);
-                    packetWriter.Write(netName);
                 }
 
                 return memoryStream.ToArray();

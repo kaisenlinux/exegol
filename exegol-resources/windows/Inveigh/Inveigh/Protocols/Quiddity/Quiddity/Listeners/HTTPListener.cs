@@ -41,7 +41,6 @@ using System.Security.Authentication;
 using System.Net.Security;
 using Quiddity.Support;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace Quiddity
 {
@@ -65,7 +64,6 @@ namespace Quiddity
         public static bool isRunning = false;
         public const SslProtocols tls12 = (SslProtocols)0x00000C00;
         public static Hashtable httpSessionTable = Hashtable.Synchronized(new Hashtable());
-        public static Hashtable tcpSessionTable = Hashtable.Synchronized(new Hashtable());
 
         public HTTPListener()
         {
@@ -117,23 +115,9 @@ namespace Quiddity
                             }
                             while (!tcpAsync.IsCompleted);
 
-                            if (isRunning)
-                            {
-                                TcpClient tcpClient = tcpListener.EndAcceptTcpClient(tcpAsync);
-                                string sourceIP = ((IPEndPoint)(tcpClient.Client.RemoteEndPoint)).Address.ToString();
-
-                                if (type.Equals("Proxy") && tcpSessionTable.ContainsKey(sourceIP) && DateTime.Compare((DateTime)tcpSessionTable[sourceIP], DateTime.Now) > 0)
-                                {
-                                    tcpClient.Client.Close();
-                                }
-                                else
-                                {
-                                    object[] parameters = { tcpClient, type, port };
-                                    ThreadPool.QueueUserWorkItem(new WaitCallback(ReceiveClient), parameters);
-                                }
-
-                            }
-
+                            TcpClient tcpClient = tcpListener.EndAcceptTcpClient(tcpAsync);
+                            object[] parameters = { tcpClient, type, port };
+                            ThreadPool.QueueUserWorkItem(new WaitCallback(ReceiveClient), parameters);
                         }
                         catch (Exception ex)
                         {
@@ -307,7 +291,7 @@ namespace Quiddity
                             }
 
                         }
-
+                        
                         if (type.Equals("Proxy"))
                         {
                             response.StatusCode = "407";
@@ -338,22 +322,22 @@ namespace Quiddity
                             response.WWWAuthenticate = string.Concat("Basic realm=", HTTPRealm);
                         }
 
-                        if (!string.IsNullOrEmpty(request.Authorization) && (request.Authorization.ToUpper().StartsWith("NTLM ") || request.Authorization.ToUpper().StartsWith("NEGOTIATE ")) || (!string.IsNullOrEmpty(request.ProxyAuthorization) && request.ProxyAuthorization.ToUpper().StartsWith("NTLM ")))
+                        if (!string.IsNullOrEmpty(request.Authorization) && (request.Authorization.ToUpper().StartsWith("NTLM ") || request.Authorization.ToUpper().StartsWith("NEGOTIATE ")) || (!string.IsNullOrEmpty(request.ProxyAuthorization)) && request.ProxyAuthorization.ToUpper().StartsWith("NTLM "))
                         {
                             string authorization = request.Authorization;
- 
+
                             if (!string.IsNullOrEmpty(request.ProxyAuthorization))
                             {
                                 authorization = request.ProxyAuthorization;
                             }
 
                             NTLMNegotiate ntlm = new NTLMNegotiate();
-                            ntlm.ReadBytes(Convert.FromBase64String(authorization.Split(' ')[1]), 0);
+                            ntlm.ReadBytes(Convert.FromBase64String(request.Authorization.Split(' ')[1]), 0);
 
                             if (ntlm.MessageType == 1)
                             {
                                 byte[] timestamp = BitConverter.GetBytes(DateTime.Now.ToFileTime());
-                                NTLMChallenge challenge = new NTLMChallenge(Challenge, NetbiosDomain, ComputerName, DNSDomain, ComputerName, DNSDomain, timestamp);
+                                NTLMChallenge challenge = new NTLMChallenge(Challenge, NetbiosDomain, ComputerName, DNSDomain, ComputerName, DNSDomain);
                                 byte[] challengeData = challenge.GetBytes(ComputerName);
                                 ntlmChallenge = BitConverter.ToString(challenge.ServerChallenge).Replace("-", "");
                                 string sessionTimestamp = BitConverter.ToString(timestamp).Replace("-", "");
@@ -399,7 +383,7 @@ namespace Quiddity
 
                                     try
                                     {
-                                        byte[] timestamp = new byte[8];                                 
+                                        byte[] timestamp = new byte[8];
                                         Buffer.BlockCopy(ntlmResponse.NtChallengeResponse, 24, timestamp, 0, 8);
                                         string sessionTimestamp = BitConverter.ToString(timestamp).Replace("-", "");
                                         ntlmChallenge = httpSessionTable[sessionTimestamp].ToString();
@@ -502,12 +486,6 @@ namespace Quiddity
                             if (type.Equals("Proxy"))
                             {
                                 tcpClient.Client.Close();
-
-                                if (!tcpSessionTable.ContainsKey(sourceIP) || DateTime.Compare((DateTime)tcpSessionTable[sourceIP], DateTime.Now) <= 0)
-                                {
-                                    tcpSessionTable[sourceIP] = DateTime.Now.AddSeconds(1);
-                                }
-
                             }
                             else
                             {

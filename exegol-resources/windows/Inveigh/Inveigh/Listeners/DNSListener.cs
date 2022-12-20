@@ -39,8 +39,8 @@ namespace Inveigh
 
             DNSChecker helper = new DNSChecker
             {
-                IgnoreQueries = Program.argIgnoreQueries,
-                ReplyToQueries = Program.argReplyToQueries,
+                IgnoreHosts = Program.argIgnoreHosts,
+                ReplyToHosts = Program.argReplyToHosts,
                 IgnoreIPs = Program.argIgnoreIPs,
                 ReplyToIPs = Program.argReplyToIPs,
                 IgnoreDomains = Program.argIgnoreDomains,

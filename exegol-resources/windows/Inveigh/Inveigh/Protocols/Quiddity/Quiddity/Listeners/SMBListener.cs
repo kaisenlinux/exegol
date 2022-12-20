@@ -85,13 +85,9 @@ namespace Quiddity
                             }
                             while (!tcpAsync.IsCompleted);
 
-                            if (isRunning)
-                            {
-                                tcpClient = tcpListener.EndAcceptTcpClient(tcpAsync);
-                                object[] parameters = { guid, tcpClient, port };
-                                ThreadPool.QueueUserWorkItem(new WaitCallback(ReceiveClient), parameters);
-                            }
-
+                            tcpClient = tcpListener.EndAcceptTcpClient(tcpAsync);
+                            object[] parameters = { guid, tcpClient, port };
+                            ThreadPool.QueueUserWorkItem(new WaitCallback(ReceiveClient), parameters);
                         }
                         catch (Exception ex)
                         {
@@ -142,7 +138,7 @@ namespace Quiddity
                     }
 
                     NetBIOSSessionService requestNetBIOSSessionService = new NetBIOSSessionService(requestData);
-                    SMBHelper smbHelper = new SMBHelper(); // todo check
+                    SMBHelper smbHelper = new SMBHelper();
 
                     if (requestNetBIOSSessionService.Type == 0 || smbHelper.Protocol[0] == 0xfe || smbHelper.Protocol[0] == 0xff)
                     {

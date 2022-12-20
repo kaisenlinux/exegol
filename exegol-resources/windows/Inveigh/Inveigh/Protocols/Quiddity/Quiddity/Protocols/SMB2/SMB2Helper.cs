@@ -109,6 +109,16 @@ namespace Quiddity.SMB2
             return Utilities.BlockCopy(netbiosData, headerData, commandData);
         }
 
+        public void NegotiateProtocol()
+        {
+
+        }
+
+        public void SessionSetup()
+        {
+
+        }
+
     }
 
 }
