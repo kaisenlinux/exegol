@@ -1,3 +1,10 @@
+exegol (4.1.1-2kaisen) kaisen-packages; urgency=medium
+
+  * Add a quilt patch for no display commercial sponsor
+  * Add a quilt patch for no display exegol not installed with git
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sat, 07 Jan 2023 02:51:02 +0100
+
 exegol (4.1.1-1kaisen) kaisen-packages; urgency=medium
 
   * Import of the version 4.1.1
