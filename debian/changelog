@@ -1,3 +1,10 @@
+exegol (4.1.1-3kaisen) kaisen-packages; urgency=medium
+
+  * Rebuild for Python 3.11
+  * Remove the version required for the exegol-docs package
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Mon, 20 Jan 2023 22:17:14 +0100
+
 exegol (4.1.1-2kaisen) kaisen-packages; urgency=medium
 
   * Add a quilt patch for no display commercial sponsor

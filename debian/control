@@ -21,6 +21,6 @@ Depends:
  python3-rich (>= 12.6.0),
  python3-git (>= 3.1.27),
  python3-yaml (>= 6.0),
-Suggests: exegol-docs (= ${source:Upstream-Version})
+Suggests: exegol-docs
 Description: Fully featured and community-driven hacking environment
  Exegol is a community-driven hacking environment, this project allows its users to easily deploy environments that are separated from the host, that could be dedicated for some Pentest engagements tools
