@@ -27,11 +27,13 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "EXEGOL" "1" "Dec 04, 2022" "" "Exegol"
+.TH "EXEGOL" "1" "May 14, 2023" "" "Exegol"
 .SH NAME
-exegol \- Exegol 4.1.0
+exegol \- Exegol 4.2.1
 .sp
-Exegol is a community\-driven hacking environment, powerful and yet simple enough to be used by anyone in day to day engagements. Exegol is the best solution to deploy powerful hacking environments securely, easily, professionally.
+Exegol is a community\-driven hacking environment, powerful and yet simple enough to be used by anyone in day to day engagements. Exegol is the best solution to deploy powerful hacking environments securely, easily, professionally. No more unstable, not\-so\-security\-focused systems lacking major offensive tools. Kali Linux (and similar alternatives) are great toolboxes for learners, students and junior pentesters. But professionals have different needs, and their context require a whole new design.
+[image: No more kali, parrot, blackarch]
+[image]
 .sp
 Exegol fits pentesters, CTF players, bug bounty hunters, researchers, beginners and advanced users, defenders, from stylish macOS users and corporate Windows pros to UNIX\-like power users.
 .sp
@@ -42,6 +44,8 @@ This documentation is a work in progress. We are actively writing it, but if the
 .UNINDENT
 .UNINDENT
 .SH THE EXEGOL PROJECT
+[image: Structure overview]
+[image]
 .sp
 Exegol is many things in one. Try it, and you\(aqll stop using your old, unstable and risky environment, no more monolithic system that gets messier, buggier and more at risk with time.
 .INDENT 0.0
@@ -52,6 +56,8 @@ Exegol is many things in one. Try it, and you\(aqll stop using your old, unstabl
 .IP \(bu 2
 \fI\%Offline resources\fP: Tired of always having to search github for your favorite privesc enumeration script? Exegol includes a set of resources, shared with all exegol containers and your host, including LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
 .UNINDENT
+[image: Structure overview]
+[image]
 .SH GETTING STARTED
 .sp
 Wanna try Exegol and join our great community? You need to \fI\%install requirements\fP first, then proceed to the OS\-specific instructions: \fI\%Linux\fP | \fI\%macOS\fP | \fI\%Windows\fP
@@ -60,7 +66,7 @@ Wanna try Exegol and join our great community? You need to \fI\%install requirem
 Have a bug report or feature request? Either open an issue on the \fI\%Exegol repo\fP or open a ticket on the \fI\%Exegol discord\fP (preferred, easier, more flexible).
 .sp
 Wanna chat? Need help? Join us on the \fI\%Exegol discord\fP!
-.SS Install
+.SS Install Exegol
 .sp
 Installing Exegol starts with installing the entrypoint to the whole project: the Python wrapper. Once the wrapper is installed, everything else can be managed from it.
 .sp
@@ -77,7 +83,7 @@ Once the wrapper is installed, the second step in setting up Exegol on a device 
 .SS Contents
 .INDENT 0.0
 .IP \(bu 2
-\fI\%Install\fP
+\fI\%Install Exegol\fP
 .INDENT 2.0
 .IP \(bu 2
 \fI\%Requirements\fP
@@ -89,7 +95,9 @@ Once the wrapper is installed, the second step in setting up Exegol on a device 
 .IP \(bu 2
 \fI\%2. Adding Exegol to the PATH\fP
 .IP \(bu 2
-\fI\%3. Installation of the first Exegol image\fP
+\fI\%3. (Optional) Using Exegol auto\-completion\fP
+.IP \(bu 2
+\fI\%4. Installation of the first Exegol image\fP
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -120,7 +128,8 @@ From Linux systems, Docker can be installed quickly and easily with the followin
 .sp
 .nf
 .ft C
-curl \-fsSL "https://get.docker.com/" \-o get\-docker.sh
+curl \-fsSL \(dqhttps://get.docker.com/\(dq \-o get\-docker.sh
+sh get\-docker.sh
 .ft P
 .fi
 .UNINDENT
@@ -131,14 +140,17 @@ curl \-fsSL "https://get.docker.com/" \-o get\-docker.sh
 \fBWARNING:\fP
 .INDENT 0.0
 .INDENT 3.5
-To run exegol from the user environment without \fIsudo\fP, the user must have privileged rights equivalent to root.
-To grant yourself these rights, you can use the following command
+By default, \fBsudo\fP will be required when running docker, hence needed as well for Exegol. For security reasons, it should stay that way, but it\(aqs possible to change that. In order to run exegol from the user environment without \fBsudo\fP, the user must have the appropriate rights. You can use the following command to grant them to the current user:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
+# add the sudo group to the user
 sudo usermod \-aG docker $(id \-u \-n)
+
+# \(dqreload\(dq the user groups with the newly added docker group
+newgrp docker
 .ft P
 .fi
 .UNINDENT
@@ -168,6 +180,15 @@ macOS XQuartz configuration requirement.UNINDENT
 [image: macOS Docker Desktop resources requirement]
 [image]
 macOS Docker Desktop resources requirement.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+\fI\%OrbStack\fP for \fBMac\fP is supported by Exegol wrapper from \fBv4.2.0\fP\&.
+.sp
+This support is still in beta, feel free to open issues on \fI\%GitHub\fP if you encounter any bugs.
+.UNINDENT
 .UNINDENT
 Windows
 To support graphical applications (\fI\%display sharing functionality\fP, e.g. Bloodhound, Wireshark, Burp, etc.), additional dependencies and configuration are required:
@@ -205,8 +226,32 @@ Exegol\(aqs wrapper can also be installed from sources (with Git). The wrapper t
 .sp
 .nf
 .ft C
-git clone "https://github.com/ThePorgs/Exegol"
-python3 \-m pip install \-\-user \-\-requirement "Exegol/requirements.txt"
+git clone \(dqhttps://github.com/ThePorgs/Exegol\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+If you have access to docker directly as a user, you can install the requirements only for your current user
+otherwise the requirements must be installed as root to run Exegol with sudo.
+With sudo
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo python3 \-m pip install \-\-requirement \(dqExegol/requirements.txt\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Directly as user
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+python3 \-m pip install \-\-user \-\-requirement \(dqExegol/requirements.txt\(dq
 .ft P
 .fi
 .UNINDENT
@@ -225,7 +270,7 @@ Once this is taken care of, the exegol wrapper can then be added to the \fBPATH\
 .sp
 .nf
 .ft C
-sudo ln \-s "$(pwd)/exegol.py" "/usr/local/bin/exegol"
+sudo ln \-s \(dq$(pwd)/exegol.py\(dq \(dq/usr/local/bin/exegol\(dq
 .ft P
 .fi
 .UNINDENT
@@ -241,10 +286,10 @@ To create the alias file correctly, open a powershell and place yourself in the 
 .sp
 .nf
 .ft C
-$AliasFile = "$HOME\ePowershellAliasesExport.txt"
-Set\-Alias \-Name exegol \-Value "$(pwd)\eexegol.py"
-Get\-Alias \-Name "exegol" | Export\-Alias \-Path $AliasFile
-echo "Import\-Alias \(aq$AliasFile\(aq" >> $PROFILE
+$AliasFile = \(dq$HOME\ePowershellAliasesExport.txt\(dq
+Set\-Alias \-Name exegol \-Value \(dq$(pwd)\eexegol.py\(dq
+Get\-Alias \-Name \(dqexegol\(dq | Export\-Alias \-Path $AliasFile
+echo \(dqImport\-Alias \(aq$AliasFile\(aq\(dq >> $PROFILE
 .ft P
 .fi
 .UNINDENT
@@ -277,7 +322,125 @@ If you have installed Python3 manually and Windows opens the \fBMicrosoft store\
 It is possible to disable this behavior in the Windows settings: \fBApps > Apps & features > App execution aliases\fP and disable aliases for \fBpython.exe\fP and \fBpython3.exe\fP\&.
 .UNINDENT
 .UNINDENT
-.SS 3. Installation of the first Exegol image
+.SS 3. (Optional) Using Exegol auto\-completion
+.sp
+Exegol supports auto\-completion in many shell environments but there is a configuration to add for this feature to work.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you have a source installation, make sure you have installed (or updated) the \fBrequirements.txt\fP packages before using the completer.
+.UNINDENT
+.UNINDENT
+Bash
+You can enable Exegol auto\-completion for your \fBcurrent user\fP with your \fB\&.bashrc\fP or you can enable the auto\-completion \fBsystem\-wide\fP with \fBbash\-completion\fP\&.
+Via bash\-completion
+To setup the auto\-completion system\-wide you first need to install \fBbash\-completion\fP on your system (if not already installed).
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo apt update && sudo apt install bash\-completion
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+At this point you should have a \fB/etc/bash_completion.d/\fP folder. It\(aqs in there that you can add any auto\-completion module that you want.
+.sp
+To generate and install the exegol completion configuration you can execute the following command with \fBregister\-python\-argcomplete\fP:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+register\-python\-argcomplete \-\-no\-defaults exegol | sudo tee /etc/bash_completion.d/exegol > /dev/null
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Via .bashrc
+Add the following command in your \fB~/.bashrc\fP config:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+eval \(dq$(register\-python\-argcomplete \-\-no\-defaults exegol)\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+If you have multiple tools using \fBargcomplete\fP you can also use the \fI\%global completion\fP method (need bash >= 4.2).
+.UNINDENT
+.UNINDENT
+Zsh
+To activate completions for zsh you need to have \fBbashcompinit\fP enabled in zsh:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+autoload \-U bashcompinit
+bashcompinit
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Afterwards you can enable completion by adding the following command in your \fB~/.zshrc\fP config:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+eval \(dq$(register\-python\-argcomplete \-\-no\-defaults exegol)\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Fish
+To activate completions for fish use:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+register\-python\-argcomplete \-\-no\-defaults \-\-shell fish exegol | source
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+or create new completion file, e.g:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+register\-python\-argcomplete \-\-no\-defaults \-\-shell fish exegol > ~/.config/fish/completions/exegol.fish
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+Tcsh
+To activate completions for tcsh use:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+eval \(garegister\-python\-argcomplete \-\-no\-defaults \-\-shell tcsh exegol\(ga
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS 4. Installation of the first Exegol image
 .sp
 Once the exegol wrapper is installed, you can download your first docker image with the following command:
 .INDENT 0.0
@@ -340,143 +503,6 @@ Help and examples can be obtained for each action directly from the wrapper with
 All actions are documented in the \fBexegol\-wrapper\fP part of this doc (e.g. \fI\%info\fP, \fI\%start\fP, \fI\%version\fP, ...)
 .sp
 Below is a, non\-exhaustive, list of what the wrapper supports:
-.TS
-center;
-|l|l|.
-_
-T{
-Feature
-T}	T{
-Description
-T}
-_
-T{
-\fI\%Display sharing\fP
-T}	T{
-Sharing of the graphic environment between the container and the host
-T}
-_
-T{
-\fI\%Workspace\fP
-T}	T{
-Persistent and shared workspace with the host
-T}
-_
-T{
-\fI\%Update\-fs\fP
-T}	T{
-Permission sharing between the container and the host
-T}
-_
-T{
-\fI\%OpenVPN connection\fP
-T}	T{
-Opening an isolated VPN tunnel dedicated to the exegol container
-T}
-_
-T{
-\fI\%Shell logging\fP
-T}	T{
-Recording of sessions (input and output) in log files with date and time
-T}
-_
-T{
-\fI\%Shared network\fP
-T}	T{
-Sharing the host\(aqs network interfaces
-T}
-_
-T{
-\fI\%Shared timezones\fP
-T}	T{
-Sharing the host\(aqs timezone configuration
-T}
-_
-T{
-\fI\%Exegol\-resources\fP
-T}	T{
-Easy access to a collection of resources and tools
-T}
-_
-T{
-\fI\%My\-resources\fP
-T}	T{
-User space dedicated to customization
-T}
-_
-T{
-\fI\%Volume sharing\fP
-T}	T{
-Support for specific volume addition
-T}
-_
-T{
-\fI\%Port sharing\fP
-T}	T{
-Support for port publishing
-T}
-_
-T{
-\fI\%Env. variables\fP
-T}	T{
-Support for environment variable configuration
-T}
-_
-T{
-\fI\%Device sharing\fP
-T}	T{
-Support for hardware sharing
-T}
-_
-T{
-\fI\%Capabilities\fP
-T}	T{
-Support for adding specific capabilities
-T}
-_
-T{
-\fI\%Privileged\fP
-T}	T{
-Support of the privileged mode
-T}
-_
-T{
-\fI\%Multi\-architecture\fP
-T}	T{
-Support for AMD64 and ARM64 architectures
-T}
-_
-T{
-\fI\%Local image\fP
-T}	T{
-Customized local image building
-T}
-_
-T{
-\fI\%Remote image\fP
-T}	T{
-Pre\-built image available for download
-T}
-_
-T{
-\fI\%Command execution\fP
-T}	T{
-Execution of specific command
-T}
-_
-T{
-\fI\%Daemon execution\fP
-T}	T{
-Support of the command execution in the background
-T}
-_
-T{
-\fI\%Temporary containers\fP
-T}	T{
-Support for command execution in a dedicated and temporary environment
-T}
-_
-.TE
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -528,7 +554,7 @@ This system is \fBautomatically activated\fP when a \fBnew\fP default workspace 
 .INDENT 3.5
 When the user uses an existing custom folder as workspace, this system is \fBdisabled\fP by default! This feature can be \fBenabled by default\fP by changing the \fI\%configuration of Exegol\fP\&.
 .sp
-Its activation is possible manually (see the option \fB\-\-update\-fs\fP of the \fI\%start action\fP) but it will lead to the \fBmodification\fP of the folder and its sub\-folders \fBpermissions\fP (as \fBg+s\fP).
+Its activation is possible manually (see the option \fB\-\-update\-fs\fP of the \fI\%start action\fP) but it will lead to the \fBmodification\fP of the folder and its sub\-folders \fBpermissions\fP (as \fBg+rws\fP).
 .sp
 If the user does not have the rights to perform such an operation, a \fBsudo command\fP will be proposed to the user that he will have to \fBexecute manually\fP to apply the necessary permissions for the proper functioning of the functionality (as \fBchgrp\fP + \fBg+rws\fP).
 .UNINDENT
@@ -615,7 +641,7 @@ Logs in \fB\&.gz\fP format can be replay directly \fBwithout unpacking\fP them w
 \fBHINT:\fP
 .INDENT 0.0
 .INDENT 3.5
-To display the whole session \fBwithout\fP the "video" mode, it is possible to use the command: \fBasciinema cat <filename_shell.asciinema>\fP
+To display the whole session \fBwithout\fP the \(dqvideo\(dq mode, it is possible to use the command: \fBasciinema cat <filename_shell.asciinema>\fP
 .UNINDENT
 .UNINDENT
 .sp
@@ -633,6 +659,7 @@ When you share or play an \fBasciinema\fP video, you can \fBcopy\fP and \fBpaste
 .UNINDENT
 .UNINDENT
 script
+\fBscript\fP is the \(dqclassic\(dq method of session logging, it was also the only option available before version \fB3.0.0\fP of exegol images.
 This method simply records \fBall\fP incoming (stdin) and outgoing (stdout/stderr) shell actions in a file.
 .sp
 \fBTIP:\fP
@@ -766,6 +793,17 @@ This feature is only available on \fBLinux\fP installations!
 Windows and MacOS installations are subject to the constraints and limitations of \fI\%Docker Desktop\fP\&.
 .UNINDENT
 .UNINDENT
+.SS Custom hostname
+.sp
+In some environments with OPSEC requirements, it may be necessary to change the hostname of your exegol container.
+.sp
+See the option \fB\-\-hostname HOSTNAME\fP of the \fI\%start action\fP for more details.
+.SS Comments
+.sp
+To add more context information about an exegol container, it is possible to add \fBcomments\fP to each Exegol container.
+The comment of an exegol container can be displayed with the command \fBexegol info <container_name>\fP
+.sp
+See the option \fB\-\-comment COMMENT\fP of the \fI\%start action\fP for more details.
 .SS Capabilities
 .sp
 Exegol supports adding \fBLinux capabilities\fP to the Exegol \fBcontainer\fP to perform tasks that require \fBadministrative\fP rights \fBwithout\fP allowing everything.
@@ -779,7 +817,7 @@ For more details on the capabilities supported by docker \fI\%check here\fP\&.
 .INDENT 3.5
 Not all Linux capabilities are allowed by the Exegol wrapper, here is the list of available capabilities:
 .sp
-SYS_RAWIO, SYS_MODULE, NET_BROADCAST, NET_ADMIN, SYS_CHROOT, MKNOD, NET_RAW, SYS_ADMIN, SETFCAP, SYS_PTRACE
+NET_ADMIN, NET_BROADCAST, SYS_MODULE, SYS_PTRACE, SYS_RAWIO, SYS_ADMIN, LINUX_IMMUTABLE, MAC_ADMIN, SYSLOG
 .sp
 For all other needs, consider the \fI\%privileged\fP mode.
 .UNINDENT
@@ -927,7 +965,7 @@ Exegol uses Docker images and containers. Understanding the difference is essent
 .UNINDENT
 .SS Offline resources
 .sp
-Exegol\(aqs "offline resources" are a neat choice of standalone tools and scripts that are often used during penetration tests,
+Exegol\(aqs \(dqoffline resources\(dq are a neat choice of standalone tools and scripts that are often used during penetration tests,
 CTFs and red\-teams, like LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
 Exegol users don\(aqt have to download those resources again every time they\(aqre needed anymore.
 Everything is managed by the wrapper and they are shared with every container (at \fB/opt/resources\fP).
@@ -938,7 +976,7 @@ This action can be used to install an Exegol image. At least one Exegol image is
 When this action is used, the image can either be:
 .INDENT 0.0
 .IP \(bu 2
-\fBdownloaded\fP (i.e. "pulled" in Docker terms) from \fI\%the official Dockerhub registry\fP\&. In this case, a compressed and pre\-built image is downloaded in the form of layers, and then uncompressed.
+\fBdownloaded\fP (i.e. \(dqpulled\(dq in Docker terms) from \fI\%the official Dockerhub registry\fP\&. In this case, a compressed and pre\-built image is downloaded in the form of layers, and then uncompressed.
 .IP \(bu 2
 \fBbuilt\fP locally by following the instructions of a Dockerfile offered on \fI\%the Exegol\-images GitHub repo\fP\&. Here again, no need to download the dockerfile manually, all of them are already at \fB/path/to/Exegol/exegol\-docker\-build/\fP\&.
 .UNINDENT
@@ -1005,7 +1043,7 @@ exegol install full
 exegol install myimage
 
 #Build the myimage image based on the full profile and log the operation
-exegol install myimage full \-\-build\-log "/tmp/build.log"
+exegol install myimage full \-\-build\-log \(dq/tmp/build.log\(dq
 .ft P
 .fi
 .UNINDENT
@@ -1115,6 +1153,18 @@ T{
 \fB\-p PORTS\fP, \fB\-\-port PORTS\fP
 T}	T{
 Share a network port between host and exegol (format: \-\-port [<host_ipv4>:]<host_port>[:<container_port>][:<protocol>]. This configuration will disable the shared network with the host.
+T}
+_
+T{
+\fB\-\-hostname HOSTNAME\fP
+T}	T{
+Set a custom hostname to the exegol container (default: exegol\-<name>)
+T}
+_
+T{
+\fB\-\-cap CAPABILITIES\fP
+T}	T{
+\fB(dangerous)\fP Capabilities allow to add specific privileges to the container (e.g. need to mount volumes, perform low\-level operations on the network, etc).
 T}
 _
 T{
@@ -1282,25 +1332,25 @@ exegol start demo full
 exegol start demo
 
 # Create a container test with a custom shared workspace
-exegol start test full \-w "./project/pentest/"
+exegol start test full \-w \(dq./project/pentest/\(dq
 
 # Create a container test sharing the current working directory
 exegol start test full \-cwd
 
 # Create a container htb with a VPN
-exegol start htb full \-\-vpn "~/vpn/lab_Dramelac.ovpn"
+exegol start htb full \-\-vpn \(dq~/vpn/lab_Dramelac.ovpn\(dq
 
 # Create a container app with custom volume
-exegol start app full \-V "/var/app/:/app/"
+exegol start app full \-V \(dq/var/app/:/app/\(dq
 
 # Get a shell based on tmux
 exegol start \-\-shell tmux
 
-# Use a Proxmark
-exegol start \-d "/dev/ttyACM0"
+# Share a specific hardware device (like Proxmark)
+exegol start \-d \(dq/dev/ttyACM0\(dq
 
-# Use an HackRF One
-exegol start \-d "/dev/bus/usb/"
+# Share every USB device connected to the host
+exegol start \-d \(dq/dev/bus/usb/\(dq
 .ft P
 .fi
 .UNINDENT
@@ -1545,7 +1595,7 @@ _
 # Print containers and images essentials information:
 exegol info
 
-# Print the detailed configuration of the "demo" container:
+# Print the detailed configuration of the \(dqdemo\(dq container:
 exegol info demo
 
 # Print verbose information:
@@ -1648,7 +1698,7 @@ exegol exec \-\-tmp full bloodhound
 exegol exec \-b \-\-tmp full bloodhound
 
 # Execute Wireshark in background, in a privileged temporary container:
-exegol exec \-\-background \-\-tmp \-\-privileged "nightly" "wireshark"
+exegol exec \-\-background \-\-tmp \-\-privileged \(dqnightly\(dq \(dqwireshark\(dq
 
 # Execute the command wireshark with network admin privileged:
 exegol exec \-b \-\-tmp \-\-cap NET_ADMIN full wireshark
@@ -1776,11 +1826,58 @@ _
 # Stop interactively one or more containers:
 exegol stop
 
-# Stop the "demo" container:
-exegol stop "demo"
+# Stop the \(dqdemo\(dq container:
+exegol stop \(dqdemo\(dq
 
-# Stop the "demo", "test" and "dev" container:
-exegol stop "demo" "test" "dev"
+# Stop the \(dqdemo\(dq, \(dqtest\(dq and \(dqdev\(dq container:
+exegol stop \(dqdemo\(dq \(dqtest\(dq \(dqdev\(dq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS \fBrestart\fP action
+.sp
+The purpose of the \fBrestart\fP action is to stop and directly restart an Exegol container.
+.sp
+If these containers have a \fBprivileged\fP or \fBdevice\fP configuration, restarting the container will refresh the available devices inside the container.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+Restarting a container will reset the \fBhosts\fP, \fBresolv.conf\fP files (and probably more).
+.UNINDENT
+.UNINDENT
+.SS Options
+.sp
+The options of the restart action are limited to selecting the container to be restarted and some starting options that can be also found on the \fI\%start action\fP\&.
+.TS
+center;
+|l|l|.
+_
+T{
+Option
+T}	T{
+Description
+T}
+_
+T{
+\fBCONTAINER\fP
+T}	T{
+Tag used to target the Exegol containers to restart
+T}
+_
+.TE
+.SS Command examples
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# Restart interactively one container:
+exegol restart
+
+# Restart the \(dqdemo\(dq container:
+exegol restart \(dqdemo\(dq
 .ft P
 .fi
 .UNINDENT
@@ -1827,11 +1924,11 @@ _
 # Remove interactively one or more containers:
 exegol remove
 
-# Remove the "demo" container:
-exegol remove "demo"
+# Remove the \(dqdemo\(dq container:
+exegol remove \(dqdemo\(dq
 
-# Remove the "demo", "test" and "dev" container without asking for user confirmation:
-exegol remove \-F "demo" "test" "dev"
+# Remove the \(dqdemo\(dq, \(dqtest\(dq and \(dqdev\(dq container without asking for user confirmation:
+exegol remove \-F \(dqdemo\(dq \(dqtest\(dq \(dqdev\(dq
 .ft P
 .fi
 .UNINDENT
@@ -1881,11 +1978,11 @@ _
 # Remove interactively one or more containers:
 exegol uninstall
 
-# Remove the "full" container:
-exegol uninstall "full"
+# Remove the \(dqfull\(dq container:
+exegol uninstall \(dqfull\(dq
 
-# Remove the "full", "ad" and "web" container without asking for user confirmation:
-exegol uninstall \-F "full" "ad" "web"
+# Remove the \(dqfull\(dq, \(dqad\(dq and \(dqweb\(dq container without asking for user confirmation:
+exegol uninstall \-F \(dqfull\(dq \(dqad\(dq \(dqweb\(dq
 .ft P
 .fi
 .UNINDENT
@@ -1978,12 +2075,12 @@ exegol version \-vvv
 .UNINDENT
 .SS Exegol home directory
 .sp
-The \fB~/.exegol\fP folder exists in the user\(aqs home folder to centralize:doc:\fIexegol resources </the\-exegol\-project/offline\-resources>\fP, \fI\%"my\-resources"\fP, volumes and also the configuration file.
+The \fB~/.exegol\fP folder exists in the user\(aqs home folder to centralize:doc:\fIexegol resources </the\-exegol\-project/offline\-resources>\fP, \fI\%\(dqmy\-resources\(dq\fP, volumes and also the configuration file.
 .INDENT 0.0
 .IP \(bu 2
 The \fBconfiguration file\fP (YAML) is located at \fB~/.exegol/config.yml\fP and is generated by the wrapper during the first execution, with the default configurations.
 .IP \(bu 2
-By default, every exegol container has a \fBworkspace volume\fP\&. If the path of this volume is not specified by the user (\fI\%see start parameters\fP), a folder with the name of the container will be created in the "private workspace" folder. By default, this folder is located at \fB~/.exegol/workspaces/\fP\&.
+By default, every exegol container has a \fBworkspace volume\fP\&. If the path of this volume is not specified by the user (\fI\%see start parameters\fP), a folder with the name of the container will be created in the \(dqprivate workspace\(dq folder. By default, this folder is located at \fB~/.exegol/workspaces/\fP\&.
 .UNINDENT
 .SS Exegol configuration
 .sp
@@ -2004,7 +2101,7 @@ Volume path can be changed at any time but already existing containers will not 
 .UNINDENT
 .INDENT 0.0
 .IP \(bu 2
-\fBmy_resources_path\fP: the "my\-resources" volume is a storage space dedicated to the user to customize his environment and tools. This volume is, by default, shared across all exegol containers. See \fI\%details about it\fP\&.
+\fBmy_resources_path\fP: the \(dqmy\-resources\(dq volume is a storage space dedicated to the user to customize his environment and tools. This volume is, by default, shared across all exegol containers. See \fI\%details about it\fP\&.
 .IP \(bu 2
 \fBexegol_resources_path\fP: exegol\-resources are data and static tools downloaded in addition to docker images. These tools are complementary and are accessible directly from the host. See \fI\%details\fP\&.
 .IP \(bu 2
@@ -2032,7 +2129,7 @@ Change the configuration of the shell logging functionality.
 .UNINDENT
 .SS My\-resources
 .sp
-"My\-resources" is a major feature allowing Exegol users to have a volume, shared with all Exegol containers, that can centralize their own resources and configurations. It allows users to enjoy their own tools that are not available in Exegol but also to customize their Exegol setup. More information on the dedicated documentation page \fI\%My\-Resources\fP\&.
+\(dqMy\-resources\(dq is a major feature allowing Exegol users to have a volume, shared with all Exegol containers, that can centralize their own resources and configurations. It allows users to enjoy their own tools that are not available in Exegol but also to customize their Exegol setup. More information on the dedicated documentation page \fI\%My\-Resources\fP\&.
 .sp
 This volume is accessible from the host at \fB~/.exegol/my\-resources/\fP and from the containers (if the feature was left enabled at the container creation) at \fB/opt/my\-resources\fP\&.
 .sp
@@ -2041,7 +2138,7 @@ To facilitate its use, a read/write access system \fBshared\fP (between the host
 \fBHINT:\fP
 .INDENT 0.0
 .INDENT 3.5
-To allow this permissions sharing, the "my\-resources" folder (and all subdirectories) must have the Set\-GID permission bit set.
+To allow this permissions sharing, the \(dqmy\-resources\(dq folder (and all subdirectories) must have the Set\-GID permission bit set.
 This is done automatically by the wrapper if the current user has sufficient rights.
 Otherwise, the wrapper will display a sudo command to be executed manually to update the relevant permissions.
 .UNINDENT
@@ -2134,13 +2231,13 @@ _
 .TE
 .SS My resources
 .sp
-"My\-resources" brings great features allowing users to make Exegol their own and customize it even further. This feature relies on a simple volume shared between the host and all exegol containers, and an advanced integration in the Exegol images directly.
+\(dqMy\-resources\(dq brings great features allowing users to make Exegol their own and customize it even further. This feature relies on a simple volume shared between the host and all exegol containers, and an advanced integration in the Exegol images directly.
 To learn more about the volume options, details are available \fI\%here\fP\&.
 .sp
-Below are the features offered by "My\-resources", allowing users to extend Exegol beyond what is initially included (\fI\%tools\fP, \fI\%resources\fP).
+Below are the features offered by \(dqMy\-resources\(dq, allowing users to extend Exegol beyond what is initially included (\fI\%tools\fP, \fI\%resources\fP).
 .INDENT 0.0
 .IP \(bu 2
-\fI\%Custom tools\fP: users can store add their own custom standalone tools, binaries and scripts in the "my\-resources" volume. This volume is accessible from all containers at \fB/opt/my\-resources\fP\&.
+\fI\%Custom tools\fP: users can store add their own custom standalone tools, binaries and scripts in the \(dqmy\-resources\(dq volume. This volume is accessible from all containers at \fB/opt/my\-resources\fP\&.
 .IP \(bu 2
 \fI\%Supported setups\fP: users can customize their exegol environments automatically and transparently without having to manually setting things up for each and every new Exegol container they create. In this functionality, a pre\-set list of supported custom configuration is set, and will improve with time. It\(aqs the easier and most user\-friendly approach to customizing a few configurations.
 .IP \(bu 2
@@ -2166,6 +2263,8 @@ Below are the features offered by "My\-resources", allowing users to extend Exeg
 \fI\%vim (vimrc, configs)\fP
 .IP \(bu 2
 \fI\%tmux (conf)\fP
+.IP \(bu 2
+\fI\%firefox (addons)\fP
 .UNINDENT
 .IP \(bu 2
 \fI\%User setup\fP
@@ -2197,7 +2296,7 @@ The most simple approach would be to add standalone binaries, but users could al
 cp /path/to/tool ~/.exegol/my\-resources/bin/
 
 # Example for a symbolic link
-git \-C ~/.exegol/my\-resources/ clone "https://github.com/someauthor/sometool"
+git \-C ~/.exegol/my\-resources/ clone \(dqhttps://github.com/someauthor/sometool\(dq
 ln \-s ~/.exegol/my\-resources/sometool/script.py ~/.exegol/my\-resources/bin/script.py
 .ft P
 .fi
@@ -2335,6 +2434,19 @@ To automatically overwrite the \fB~/.tmux.conf\fP configuration file, simply cre
 It is possible to install \fBplugins\fP with the APT customization system, details \fI\%here\fP\&.
 .UNINDENT
 .UNINDENT
+.SS \fBfirefox\fP (addons)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.2\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily install arbitrary firefox addons in any new exegol container.
+.sp
+The \fB/opt/my\-resources/setup/firefox/addons.txt\fP file allows the user to list addons to install from online sources. It must be filled with their links in Mozilla\(aqs shop (for example \fI\%https://addons.mozilla.org/fr/firefox/addon/foxyproxy\-standard/\fP ).
+The \fB\&.xpi\fP files in \fB/opt/my\-resources/setup/firefox/addons/\fP folder will be installed as well.
 .SS User setup
 .sp
 \fBSEE ALSO:\fP
@@ -2344,7 +2456,7 @@ Available from version \fB3.0.0\fP of any exegol image.
 .UNINDENT
 .UNINDENT
 .sp
-The \fB/opt/my\-resources/setup/load_user_setup.sh\fP script is executed on the first startup of each new container that has the "my\-resources" feature enabled. Arbitrary code can be added in this file, in order to customize Exegol (dependency installation, configuration file copy, etc).
+The \fB/opt/my\-resources/setup/load_user_setup.sh\fP script is executed on the first startup of each new container that has the \(dqmy\-resources\(dq feature enabled. Arbitrary code can be added in this file, in order to customize Exegol (dependency installation, configuration file copy, etc).
 .sp
 \fBWARNING:\fP
 .INDENT 0.0
@@ -2366,22 +2478,22 @@ Logs in \fB\&.gz\fP format can be viewed directly \fBwithout unpacking\fP them w
 .UNINDENT
 .SS Intro
 .sp
-Exegol\(aqs "offline resources" are a neat choice of standalone tools and scripts that are often used during penetration tests,
+Exegol\(aqs \(dqoffline resources\(dq are a neat choice of standalone tools and scripts that are often used during penetration tests,
 CTFs and red\-teams, like LinPEAS, WinPEAS, LinEnum, PrivescCheck, SysinternalsSuite, mimikatz, Rubeus, PowerSploit and many more.
 Exegol users don\(aqt have to download those resources again every time they\(aqre needed anymore.
 Everything is managed by the wrapper and they are shared with every container (at \fB/opt/resources\fP).
 .SS Users
 .SS Roadmap
 .sp
-The roadmap is available on the discord server, feel free to visit it and upvote your favorite features
+The roadmap is available on GitHub: \fI\%https://github.com/orgs/ThePorgs/projects/1/views/1\fP
+[image: Roadmap (GitHub)]
+[image]
 .SS Discord
 .sp
 An Exegol discord has been created to facilitate exchanges between the community, open tickets, share ideas, vote on future features to prioritize etc..
-[image: Capgemini logo]
-[image]
 .SS Changelogs
 .sp
-WIP
+\fIWork in Progress\fP
 .SS Contributors
 .SS Opening issues
 .sp
@@ -2405,9 +2517,79 @@ WIP : Coming \(aqsoon\(aq
 .SS Maintainers
 .sp
 This part of the documentation is meant for Exegol maintainers.
-.SS Exegol Release checklist
+.SS Contents
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Maintainers\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Wrapper release\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Preparation\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%1. Git updates\fP
+.IP \(bu 2
+\fI\%2. Config reviews\fP
+.UNINDENT
+.IP \(bu 2
+\fI\%Tests & build\fP
+.IP \(bu 2
+\fI\%Post build\fP
+.IP \(bu 2
+\fI\%Upload\fP
+.IP \(bu 2
+\fI\%Post\-Deploy\fP
+.UNINDENT
+.IP \(bu 2
+\fI\%Images release\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%Prepare changes\fP
+.IP \(bu 2
+\fI\%Merge changes\fP
+.IP \(bu 2
+\fI\%New tag\fP
+.IP \(bu 2
+\fI\%Publish release\fP
+.UNINDENT
+.IP \(bu 2
+\fI\%CI/CD Pipeline\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%GitHub Actions\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%1. Setting up secrets\fP
+.IP \(bu 2
+\fI\%2. Deploying a runner\fP
+.IP \(bu 2
+\fI\%3. Checking runners status\fP
+.IP \(bu 2
+\fI\%4. Understanding the pipelines\fP
+.IP \(bu 2
+\fI\%4. Common errors\fP
+.INDENT 2.0
+.IP \(bu 2
+\fI\%1. docker login\fP
+.IP \(bu 2
+\fI\%2. Disk space\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.SS Wrapper release
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The wrapper documentation must be aligned with the wrapper features. Make sure to add code to the appropriate \fI\%Exegol docs\fP branch and have a pull request ready. The docs PR can be merged once the wrapper is released.
+.UNINDENT
+.UNINDENT
 .SS Preparation
-.SS Git updates
+.SS 1. Git updates
 .sp
 The first step is to update the project and sub\-modules, meaning pointing the exegol\-images and exegol\-resources sub\-modules to the latest master version.
 Even if the wrapper is able to auto\-update itself, it is always better to keep the base reference at least up to date.
@@ -2455,7 +2637,7 @@ exegol update \-v
 .fi
 .UNINDENT
 .UNINDENT
-.SS Configs
+.SS 2. Config reviews
 .INDENT 0.0
 .IP \(bu 2
 Review exegol.utils.ConstantConfig variables
@@ -2496,7 +2678,7 @@ Exegol can only be published through a \fBsource\fP build distribution because o
 .ft C
 python3 setup.py clean test && \e
    (rm \-rf Exegol.egg\-info && python3 \-m build \-\-sdist) || \e
-   echo "Some tests failed, check your code and requirements before publishing!"
+   echo \(dqSome tests failed, check your code and requirements before publishing!\(dq
 .ft P
 .fi
 .UNINDENT
@@ -2531,7 +2713,7 @@ Check package upload on the test repository (optional)
 .sp
 .nf
 .ft C
-python3 \-m twine upload \-repository testpypi dist/* \-\-verbose
+python3 \-m twine upload \-\-repository testpypi dist/* \-\-verbose
 .ft P
 .fi
 .UNINDENT
@@ -2559,6 +2741,369 @@ Fast\-forward dev branch to the latest master commit
 .IP \(bu 2
 Change the wrapper version on the dev branch to \fBx.y.zb1\fP
 .UNINDENT
+.SS Images release
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The images documentation must be aligned with the images features. Make sure to add code to the appropriate \fI\%Exegol docs\fP branch and have a pull request ready. The docs PR can be merged once the images are released.
+.UNINDENT
+.UNINDENT
+.SS Prepare changes
+.sp
+The first step consists in preparing the \fBdev\fP branch for merge.
+.INDENT 0.0
+.IP 1. 3
+create a pull request \fBdev \-> main\fP named \fBRelease X.Y.Z\fP (\fBRelease X.Y.ZbI\fP is also accepted, X, Y, Z and I being numbers. Creating this pull request will trigger the \fBpre\-release\fP workflows. The PR comment must indicate all major changes.
+.IP 2. 3
+edit the \fBdev\fP branch until the pull requests checks (pipeline) all pass, effectively publishing all images to the preproduction Dockerhub registry
+.IP 3. 3
+once all checks are good, the PR needs to be approved by a maintainer.
+.UNINDENT
+.SS Merge changes
+.sp
+Once the PR is approved and ready for merge, it can be merged
+.INDENT 0.0
+.IP 1. 3
+merge the PR with \fBCreate a merge commit\fP
+.IP 2. 3
+Synchronize the \fBdev\fP branch with the latest \fBmain\fP update with a \fBfast\-forward merge\fP
+.UNINDENT
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+git pull \-\-all
+git checkout dev
+git merge \-\-ff\-only main
+git push
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS New tag
+.sp
+The \fBX.Y.Z\fP (or \fBX.Y.ZbI\fP) tag then needs to be placed on the same commit the \fBdev\fP and \fBmain\fP branches point to.
+.sp
+Optionally, the \(dqAnnotated Tag Message\(dq can be set to the PR initial comment with the \fB\-\-file message.txt\fP argument in the \fBgit tag\fP command below.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+git tag \(dqX.Y.Z\(dq
+git push origin \-\-tags
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Puhing this tag will trigger the \fBrelease\fP workflow. Simply put, the workflow will migrate the images from preprod registry to production registry.
+.sp
+Maintainers needs to make sure workflow goes as planned and images end up in the prod Dockerhub registry. If the release fails for some reason, the tag can be deleted, changes pushed, and then the tag can be created again to trigger the release again (\fBgit tag \-d \(dqX.Y.Z\(dq && git push \-\-delete origin \(dqX.Y.Z\(dq\fP).
+.SS Publish release
+.sp
+The final step is to create a \(dqrelease\(dq in github (\fI\%https://github.com/ThePorgs/Exegol\-images/releases/new\fP).
+.INDENT 0.0
+.IP 1. 3
+The release must point to the tag created before.
+.IP 2. 3
+The release must be named \fBExegol images X.Y.Z\fP\&.
+.IP 3. 3
+The release notes can be created with the \fBGenerate releases notes\fP button.
+.IP 4. 3
+Set it as \fBlatest release\fP\&.
+.IP 5. 3
+Publish
+.UNINDENT
+.SS CI/CD Pipeline
+.sp
+The Exegol project relies on a continuous integration and continuous deployment (CI/CD) pipeline for multiple scenarios. At the time of writing, Tue 31 Jan 2023, the pipeline is structured as follows:
+.INDENT 0.0
+.IP \(bu 2
+the GitHub Actions platform is used on \fI\%the Exegol\-images submodule\fP\&. Its workflows allow to build and push images on \fI\%the official Dockerhub registry\fP, run tests to make sure the tools are installed properly, run tests to help review pull requests, etc. GitHub Actions workflows are also being developped for packaging and publishing the Python wrapper on PyPI (\fI\%Exegol on PyPI\fP).
+.IP \(bu 2
+no pipeline(s) yet on the Python wrapper, resources, docs, etc. But it\(aqs definitely in the roadmap.
+.UNINDENT
+.SS GitHub Actions
+.sp
+The GitHub Actions pipeline(s) need runners to operate the various jobs configured for each workflow. The Exegol project relies on self\-hosted runners instead of the GitHub\-hosted runners mainly for costing reasons.
+.sp
+At the time of writing, Tue 31 Jan 2023, the Exegol\-images pipeline(s) require ARM64 and AMD64 runners in order to build, and run corresponding architectured images.
+.SS 1. Setting up secrets
+.sp
+There are some operations that the runner will operate that will require authentication, including:
+\- pushing Python packages on PyPI
+\- pushing Docker images on Dockerhub
+.sp
+In order to allow this, GitHub Actions can be set up with secrets that the runner will be able to use later on. This part of the documentation shows what secrets must be set up and how.
+PyPI
+API Tokens can be created in the maintainer account\(aqs \fI\%PyPI account settings\fP, in the \fBAPI Tokens\fP part. The scope must be set to \fBProject: Exegol\fP\&. The tokens are linked to the personal PyPI account.
+Dockerhub
+Access Tokens can be created in the maintainer account\(aqs \fI\%Dockerhub security settings\fP\&. Permissions must be set to \fBRead, Write, Delete\fP\&. The tokens are linked to the personal Dockerhub account.
+.sp
+Once the token is created, it can be added as follows:
+.INDENT 0.0
+.IP \(bu 2
+For Exegol\-images, go to the \fI\%Exegol\-images repo settings > secrets > actions\fP\&. At the time of writing, 11 Feb. 2023, Dockerhub secrets are named \fBDOCKER_USERNAME\fP and \fBDOCKER_PASSWORD\fP in the workflows.
+.IP \(bu 2
+For the Python wrapper, go to the \fI\%Exegol repo settings > secrets > actions\fP\&. At the time of writing, 11 Feb. 2023, the PyPI token is named \fBPYPI_API_TOKEN\fP in the workflows.
+.UNINDENT
+.SS 2. Deploying a runner
+.sp
+The runner can either run on macOS, Linux, or Windows, as those three operating systems are supporting by the GHA (GitHub Action) platform. x64 and ARM64 are supported for macOS and Windows, and for Linux, ARM is supported as well.
+.sp
+Below are the hardware requirements for each runner:
+.INDENT 0.0
+.IP \(bu 2
+enough RAM \fI(to be defined)\fP
+.IP \(bu 2
+enough CPU \fI(to be defined)\fP
+.IP \(bu 2
+enough free disk space (at least ~100GB, bare minimum)
+.UNINDENT
+.sp
+Before deploying a GHA agent on a runner, software requirements must be met:
+.INDENT 0.0
+.IP \(bu 2
+Docker (or Docker Desktop for Windows and macOS)
+.IP \(bu 2
+jq (lightweight and flexible command\-line JSON processor)
+.UNINDENT
+Linux
+For Linux systems, Docker is required in order to have the GitHub Actions agent running.
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+Docker can be installed quickly and easily with the following command\-line:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+curl \-fsSL \(dqhttps://get.docker.com/\(dq \-o get\-docker.sh
+sh get\-docker.sh
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+To run exegol from the user environment without \fBsudo\fP, the user must have privileged rights equivalent to root.
+To grant yourself these rights, you can use the following command
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# add the sudo group to the user
+sudo usermod \-aG docker $(id \-u \-n)
+
+# \(dqreload\(dq the user groups
+newgrp
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.sp
+The \fBjq\fP utility is also required and can be installed with the following command line:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+apt install jq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Once the requirements are met, the agent can be deployed as follows (with sufficient permissions in the GitHub repository):
+.INDENT 0.0
+.IP \(bu 2
+go to \fI\%https://github.com/ThePorgs/Exegol\-images/settings/actions/runners\fP
+.IP \(bu 2
+click on \(dqNew self\-hosted runner\(dq
+.IP \(bu 2
+select \fBLinux\fP as operating system, as well as the right architecture and follow the instructions
+.IP \(bu 2
+when running the \fBconfig.sh\fP script, the following settings must be set
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+name of the runner group: Default
+.IP \(bu 2
+name of the runner: \fIup to you\fP
+.IP \(bu 2
+additional labels: \fBbuilder,tester\fP (adapt this if the runner is to be used for only one of those actions). If the runner is an X64/AMD64, the \fBAMD64\fP tag needs to be set as well. If the runner is ARM64, the right tag will be set automatically.
+.IP \(bu 2
+name of work folder: \fIup to you\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+start the runner with the \fBrun.sh\fP script
+.IP \(bu 2
+(option) configure the agent as a service if it is to be run unattended/headless with \fBsudo ./svc.sh install <user>\fP, more info at \fI\%https://docs.github.com/en/actions/hosting\-your\-own\-runners/configuring\-the\-self\-hosted\-runner\-application\-as\-a\-service\fP
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+When configuring the agent as a service, it will be enabled, meaning it will start at boot. The \fBsystemctl is\-enabled\fP command should return \fBenabled\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo systemctl is\-enabled actions.runner.ThePorgs\-Exegol\-images.<runner\-name>.service
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In order to start the service, either reboot the runner, or use \fBsystemctl\fP\&.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+sudo systemctl start actions.runner.ThePorgs\-Exegol\-images.<runner\-name>.service
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+[image: Created a new runner]
+[image]
+[image: Configuring the runner (GitHub)]
+[image]
+[image: Configuring the runner (Local)]
+[image]
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Screenshots annotated with \fI\%https://annotely.com/\fP
+.UNINDENT
+.UNINDENT
+macOS
+For macOS, \fBDocker Desktop\fP must be installed: \fI\%https://docs.docker.com/desktop/install/mac\-install/\fP\&.
+.INDENT 0.0
+.IP \(bu 2
+In \fBSettings > Resources > Advanced\fP, the \fBvirtual disk limit\fP must be set to at least 100GB.
+.IP \(bu 2
+In \fBSettings > Resources > Advanced\fP, allocate enough CPUs, Memory and Swap.
+.UNINDENT
+.sp
+The \fBjq\fP tool can be installed as follows.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+# install brew
+ruby \-e \(dq$(curl \-fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\(dq < /dev/null 2> /dev/null
+
+# install jq
+brew install jq
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+\fBXcode Command Line Tools\fP are also required, and they can be installed with the following command line.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+xcode\-select \-\-install
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Once the requirements are met, the agent can be deployed as follows (with sufficient permissions in the GitHub repository):
+.INDENT 0.0
+.IP \(bu 2
+go to \fI\%https://github.com/ThePorgs/Exegol\-images/settings/actions/runners\fP
+.IP \(bu 2
+click on \(dqNew self\-hosted runner\(dq
+.IP \(bu 2
+select \fBmacOS\fP as operating system, as well as the right architecture and follow the instructions
+.IP \(bu 2
+when running the \fBconfig.sh\fP script, the following settings must be set
+.INDENT 2.0
+.INDENT 3.5
+.INDENT 0.0
+.IP \(bu 2
+name of the runner group: Default
+.IP \(bu 2
+name of the runner: \fIup to you\fP
+.IP \(bu 2
+additional labels: \fBbuilder,tester\fP (adapt this if the runner is to be used for only one of those actions). If the runner is an X64/AMD64, the \fBAMD64\fP tag needs to be set as well. If the runner is ARM64, the right tag will be set automatically.
+.IP \(bu 2
+name of work folder: \fIup to you\fP
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+start the runner with the \fBrun.sh\fP script
+.IP \(bu 2
+the agent must \fBnot\fP be configured as a service with \fB\&./svc.sh install\fP\&. Some errors have been raised when setting up the pipeline like this.
+.UNINDENT
+.sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+\fBTODO\fP : how to make that service run at boot unattended without using svc.sh install?
+.UNINDENT
+.UNINDENT
+.SS 3. Checking runners status
+.sp
+Go to \fI\%https://github.com/ThePorgs/Exegol\-images/settings/actions/runners\fP
+.SS 4. Understanding the pipelines
+.sp
+\fBTODO\fP explain the pipelines, include diagrams.
+.SS 4. Common errors
+.SS 1. docker login
+.sp
+When configuring a macOS agent as a service with \fB\&./svc.sh install\fP, the following error was met during workflow run.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+Run docker/login\-action@v2
+with:
+    username: ***
+    password: ***
+    ecr: auto
+    logout: true
+Logging into Docker Hub...
+Error: Error saving credentials: error storing credentials \- err: exit status 1, out: \(gaerror storing credentials \- err: exit status 1, out: \(gaUser interaction is not allowed.\(ga\(ga
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In order to avoid that error, the runner was started interactively with \fB\&./run.sh\fP\&.
+.SS 2. Disk space
+.sp
+When there\(aqs not enough
+.sp
+You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: 62 MB
 .SS Sponsors
 [image: Capgemini logo]
 [image]
@@ -2579,7 +3124,15 @@ Dramelac and I work at \fBCapgemini\fP and we thank them for allocating some tim
 .fi
 .sp
 .sp
-We also thank \fBHackTheBox\fP for continuously supporting the community and for helping us financially to acquire the necessary hardware for supporting multiple architectures (AMD64, ARM64). Show some love at \fI\%https://www.hackthebox.com/\fP !
+We thank \fBHackTheBox\fP for continuously supporting the community and for helping us financially to acquire the necessary hardware for supporting multiple architectures (AMD64, ARM64). Show some love at \fI\%https://www.hackthebox.com/\fP !
+[image: JetBrains logo]
+[image]
+.nf
+
+.fi
+.sp
+.sp
+We thank \fBJetBrains\fP for supporting this community project through its OpenSource support program. More information at \fI\%https://jb.gg/OpenSourceSupport\fP !
 .SS Credits
 .sp
 Credits and thanks go to every infosec addicts that contribute and share but most specifically to
@@ -2589,13 +3142,13 @@ Credits and thanks go to every infosec addicts that contribute and share but mos
 .IP \(bu 2
 \fI\%LamaBzh\fP for working on \fI\%Exegol\-images\fP
 .IP \(bu 2
-\fI\%th1b4ud\fP for the inspiration \fI\%"Kali Linux in 3 seconds with Docker"\fP\&.
+\fI\%th1b4ud\fP for the inspiration \fI\%\(dqKali Linux in 3 seconds with Docker\(dq\fP\&.
 .IP \(bu 2
 all behind Docker, Debian, Python, the various requirements to the project, all the tools and resources loaded in Exegol, and all Exegol users for their trust and patience!
 .UNINDENT
 .SH AUTHOR
 Shutdown & Dramelac
 .SH COPYRIGHT
-2022, Shutdown & Dramelac
+2023, Shutdown & Dramelac
 .\" Generated by docutils manpage writer.
 .

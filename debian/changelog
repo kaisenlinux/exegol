@@ -1,3 +1,18 @@
+exegol (4.2.1-1kaisen) kaisen-packages; urgency=medium
+
+  * Import of the version 4.2.1
+  * New  action "restart" to automatically stop and start a container
+  * Add the --comment option allows to add more information to a new containers, apart from the title
+  * Add the --hostname option allows to customize the hostname inside the Exegol container for OPSEC purposes during network activities
+  * Add the auto-completion feature for the exegol wrapper
+  * Add the support for OrbStack container engine on MacOS
+  * Add more minor improvement (github workflows, debug version, registry image caching)
+  * Minor update with bug fixes for HTTP error after docker image installation
+  * Replace the no-display-commercial-sponsor quilt patch by the no-link-to-commercial-sponsors quilt patch
+  * Add the no-display-update-message quilt patch
+
+ -- Mehdi Lecomte - Labrute! <labrute@kaisenlinux.org>  Sun, 14 May 2023 23:00:47 +0100
+
 exegol (4.1.1-3kaisen) kaisen-packages; urgency=medium
 
   * Rebuild for Python 3.11

@@ -2,12 +2,13 @@ Source: exegol
 Section: admin
 Priority: optional
 Maintainer: Mehdi Lecomte - Labrute! <labrute@kaisenlinux.org>
+Uploaders: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 Rules-Requires-Root: no
 Build-Depends:
  debhelper-compat (= 13),
  python3,
  dh-python,
-Standards-Version: 4.6.1
+Standards-Version: 4.6.2
 Homepage: https://github.com/ThePorgs/Exegol
 Vcs-Browser: https://gitlab.com/kaisenlinux/packages/exegol
 Vcs-Git: https://gitlab.com/kaisenlinux/packages/exegol.git
@@ -21,6 +22,7 @@ Depends:
  python3-rich (>= 12.6.0),
  python3-git (>= 3.1.27),
  python3-yaml (>= 6.0),
+ python3-argcomplete (>= 2.0.0),
 Suggests: exegol-docs
 Description: Fully featured and community-driven hacking environment
  Exegol is a community-driven hacking environment, this project allows its users to easily deploy environments that are separated from the host, that could be dedicated for some Pentest engagements tools
