@@ -18,6 +18,7 @@ Architecture: amd64 arm64
 Depends:
  ${misc:Depends},
  docker.io (>= 6.0.0),
+ python3-docker,
  python3-requests (>= 2.28.0),
  python3-rich (>= 12.6.0),
  python3-git (>= 3.1.27),

@@ -1,3 +1,9 @@
+exegol (4.2.2-2kaisen) kaisen-packages; urgency=medium
+
+  * Add python3-docker as dependancy
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sat, 05 Aug 2023 15:38:02 +0100
+
 exegol (4.2.2-1kaisen) kaisen-packages; urgency=medium
 
   * Import of the version 4.2.2
