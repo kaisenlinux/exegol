@@ -1,20 +1,20 @@
-Author: Mehdi Lecomte - Labrute! <labrute@kaisenlinux.org>
+Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.2.1.orig/exegol/manager/ExegolManager.py
-+++ exegol-4.2.1/exegol/manager/ExegolManager.py
+--- exegol-4.2.5.orig/exegol/manager/ExegolManager.py
++++ exegol-4.2.5/exegol/manager/ExegolManager.py
 @@ -224,12 +224,12 @@ class ExegolManager:
          logger.debug(f"Shell type: {EnvInfo.getShellType()}")
          if not UpdateManager.isUpdateTag() and UserConfig().auto_check_updates:
              UpdateManager.checkForWrapperUpdate()
 -        if UpdateManager.isUpdateTag():
 -            logger.empty_line()
--            if Confirm("An [green]Exegol[/green] update is [orange3]available[/orange3], do you want to update ?", default=True):
+-            if Confirm(f"An [green]Exegol[/green] update is [orange3]available[/orange3] ({UpdateManager.display_current_version()} -> {UpdateManager.display_latest_version()}), do you want to update ?", default=True):
 -                UpdateManager.updateWrapper()
 -        else:
 -            logger.empty_line(log_level=logging.DEBUG)
 +        #if UpdateManager.isUpdateTag():
 +            #logger.empty_line()
-+            #if Confirm("An [green]Exegol[/green] update is [orange3]available[/orange3], do you want to update ?", default=True):
++            #if Confirm(f"An [green]Exegol[/green] update is [orange3]available[/orange3] ({UpdateManager.display_current_version()} -> {UpdateManager.display_latest_version()}), do you want to update ?", default=True):
 +                #UpdateManager.updateWrapper()
 +        #else:
 +            #logger.empty_line(log_level=logging.DEBUG)

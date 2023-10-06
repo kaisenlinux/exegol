@@ -27,9 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "EXEGOL" "1" "May 14, 2023" "" "Exegol"
+.TH "EXEGOL" "1" "Oct 06, 2023" "" "Exegol"
 .SH NAME
-exegol \- Exegol 4.2.2
+exegol \- Exegol 4.2.5
 .sp
 Exegol is a community\-driven hacking environment, powerful and yet simple enough to be used by anyone in day to day engagements. Exegol is the best solution to deploy powerful hacking environments securely, easily, professionally. No more unstable, not\-so\-security\-focused systems lacking major offensive tools. Kali Linux (and similar alternatives) are great toolboxes for learners, students and junior pentesters. But professionals have different needs, and their context require a whole new design.
 [image: No more kali, parrot, blackarch]
@@ -126,12 +126,10 @@ From Linux systems, Docker can be installed quickly and easily with the followin
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 curl \-fsSL \(dqhttps://get.docker.com/\(dq \-o get\-docker.sh
 sh get\-docker.sh
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -144,15 +142,13 @@ By default, \fBsudo\fP will be required when running docker, hence needed as wel
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # add the sudo group to the user
 sudo usermod \-aG docker $(id \-u \-n)
 
 # \(dqreload\(dq the user groups with the newly added docker group
 newgrp docker
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -212,11 +208,9 @@ While this is the easiest and most user\-friendly technique, for more advanced u
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 \-m pip install exegol
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Installing from sources
@@ -224,11 +218,9 @@ Exegol\(aqs wrapper can also be installed from sources (with Git). The wrapper t
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 git clone \(dqhttps://github.com/ThePorgs/Exegol\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -238,22 +230,18 @@ With sudo
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 sudo python3 \-m pip install \-\-requirement \(dqExegol/requirements.txt\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Directly as user
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 \-m pip install \-\-user \-\-requirement \(dqExegol/requirements.txt\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS 2. Adding Exegol to the \fBPATH\fP
@@ -268,11 +256,9 @@ Once this is taken care of, the exegol wrapper can then be added to the \fBPATH\
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 sudo ln \-s \(dq$(pwd)/exegol.py\(dq \(dq/usr/local/bin/exegol\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Windows
@@ -284,14 +270,12 @@ To create the alias file correctly, open a powershell and place yourself in the 
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 $AliasFile = \(dq$HOME\ePowershellAliasesExport.txt\(dq
 Set\-Alias \-Name exegol \-Value \(dq$(pwd)\eexegol.py\(dq
 Get\-Alias \-Name \(dqexegol\(dq | Export\-Alias \-Path $AliasFile
 echo \(dqImport\-Alias \(aq$AliasFile\(aq\(dq >> $PROFILE
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -304,11 +288,9 @@ If the configuration is not correct it can be configured as \fBadministrator\fP 
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 Set\-ExecutionPolicy \-ExecutionPolicy RemoteSigned
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -332,6 +314,13 @@ Exegol supports auto\-completion in many shell environments but there is a confi
 If you have a source installation, make sure you have installed (or updated) the \fBrequirements.txt\fP packages before using the completer.
 .UNINDENT
 .UNINDENT
+.sp
+\fBIMPORTANT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The following configurations must be made in your \fBhost\fP environment.
+.UNINDENT
+.UNINDENT
 Bash
 You can enable Exegol auto\-completion for your \fBcurrent user\fP with your \fB\&.bashrc\fP or you can enable the auto\-completion \fBsystem\-wide\fP with \fBbash\-completion\fP\&.
 Via bash\-completion
@@ -339,11 +328,9 @@ To setup the auto\-completion system\-wide you first need to install \fBbash\-co
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 sudo apt update && sudo apt install bash\-completion
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -353,11 +340,9 @@ To generate and install the exegol completion configuration you can execute the 
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 register\-python\-argcomplete \-\-no\-defaults exegol | sudo tee /etc/bash_completion.d/exegol > /dev/null
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Via .bashrc
@@ -365,11 +350,9 @@ Add the following command in your \fB~/.bashrc\fP config:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 eval \(dq$(register\-python\-argcomplete \-\-no\-defaults exegol)\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -384,12 +367,10 @@ To activate completions for zsh you need to have \fBbashcompinit\fP enabled in z
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 autoload \-U bashcompinit
 bashcompinit
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -397,11 +378,9 @@ Afterwards you can enable completion by adding the following command in your \fB
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 eval \(dq$(register\-python\-argcomplete \-\-no\-defaults exegol)\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Fish
@@ -409,11 +388,9 @@ To activate completions for fish use:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 register\-python\-argcomplete \-\-no\-defaults \-\-shell fish exegol | source
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -421,11 +398,9 @@ or create new completion file, e.g:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 register\-python\-argcomplete \-\-no\-defaults \-\-shell fish exegol > ~/.config/fish/completions/exegol.fish
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 Tcsh
@@ -433,11 +408,9 @@ To activate completions for tcsh use:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 eval \(garegister\-python\-argcomplete \-\-no\-defaults \-\-shell tcsh exegol\(ga
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS 4. Installation of the first Exegol image
@@ -446,11 +419,9 @@ Once the exegol wrapper is installed, you can download your first docker image w
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol install
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS Updates
@@ -465,11 +436,9 @@ Wrappers installed with pip don\(aqt support auto\-update. The wrapper itself ca
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 \-m pip install \-\-upgrade exegol
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -503,6 +472,155 @@ Help and examples can be obtained for each action directly from the wrapper with
 All actions are documented in the \fBexegol\-wrapper\fP part of this doc (e.g. \fI\%info\fP, \fI\%start\fP, \fI\%version\fP, ...)
 .sp
 Below is a, non\-exhaustive, list of what the wrapper supports:
+.TS
+center;
+|l|l|.
+_
+T{
+Feature
+T}	T{
+Description
+T}
+_
+T{
+\fI\%Display sharing\fP
+T}	T{
+Sharing of the graphic environment between the container and the host
+T}
+_
+T{
+\fI\%Workspace\fP
+T}	T{
+Persistent and shared workspace with the host
+T}
+_
+T{
+\fI\%Update\-fs\fP
+T}	T{
+Permission sharing between the container and the host
+T}
+_
+T{
+\fI\%OpenVPN connection\fP
+T}	T{
+Opening an isolated VPN tunnel dedicated to the exegol container
+T}
+_
+T{
+\fI\%Shell logging\fP
+T}	T{
+Recording of sessions (input and output) in log files with date and time
+T}
+_
+T{
+\fI\%Shared network\fP
+T}	T{
+Sharing the host\(aqs network interfaces
+T}
+_
+T{
+\fI\%Shared timezones\fP
+T}	T{
+Sharing the host\(aqs timezone configuration
+T}
+_
+T{
+\fI\%Exegol\-resources\fP
+T}	T{
+Easy access to a collection of resources and tools
+T}
+_
+T{
+\fI\%My\-resources\fP
+T}	T{
+User space dedicated to customization
+T}
+_
+T{
+\fI\%Volume sharing\fP
+T}	T{
+Support for specific volume addition
+T}
+_
+T{
+\fI\%Port sharing\fP
+T}	T{
+Support for port publishing
+T}
+_
+T{
+\fI\%Env. variables\fP
+T}	T{
+Support for environment variable configuration
+T}
+_
+T{
+\fI\%Device sharing\fP
+T}	T{
+Support for hardware sharing
+T}
+_
+T{
+\fI\%Custom hostname\fP
+T}	T{
+Support for customizing a specific container hostname
+T}
+_
+T{
+\fI\%Comments\fP
+T}	T{
+User can add any text comments to the container
+T}
+_
+T{
+\fI\%Capabilities\fP
+T}	T{
+Support for adding specific capabilities
+T}
+_
+T{
+\fI\%Privileged\fP
+T}	T{
+Support of the privileged mode
+T}
+_
+T{
+\fI\%Multi\-architecture\fP
+T}	T{
+Support for AMD64 and ARM64 architectures
+T}
+_
+T{
+\fI\%Local image\fP
+T}	T{
+Customized local image building
+T}
+_
+T{
+\fI\%Remote image\fP
+T}	T{
+Pre\-built image available for download
+T}
+_
+T{
+\fI\%Command execution\fP
+T}	T{
+Execution of specific command
+T}
+_
+T{
+\fI\%Daemon execution\fP
+T}	T{
+Support of the command execution in the background
+T}
+_
+T{
+\fI\%Temporary containers\fP
+T}	T{
+Support for command execution in a dedicated and temporary environment
+T}
+_
+.TE
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -988,11 +1106,9 @@ The \fBinstall\fP action can be used without any particular argument or option. 
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol install
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -1031,8 +1147,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 #Install or build interactively an exegol image
 exegol install
 
@@ -1044,8 +1159,7 @@ exegol install myimage
 
 #Build the myimage image based on the full profile and log the operation
 exegol install myimage full \-\-build\-log \(dq/tmp/build.log\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBstart\fP action
@@ -1070,11 +1184,9 @@ The \fBstart\fP action can be used without any additional argument or option. th
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol start
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -1320,8 +1432,7 @@ The environment variables configured with \fB\-\-env ENVS\fP during the \fBcreat
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Start interactively a container
 exegol start
 
@@ -1351,8 +1462,7 @@ exegol start \-d \(dq/dev/ttyACM0\(dq
 
 # Share every USB device connected to the host
 exegol start \-d \(dq/dev/bus/usb/\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBinfo\fP action
@@ -1365,11 +1475,9 @@ Standard (default)
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol info
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -1426,11 +1534,9 @@ Verbose
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol info \-v
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -1477,11 +1583,9 @@ Advanced
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol info \-vv
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -1508,11 +1612,9 @@ Debug
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol info \-vvv
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -1590,8 +1692,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Print containers and images essentials information:
 exegol info
 
@@ -1606,8 +1707,7 @@ exegol info \-vv
 
 # Print debug information:
 exegol info \-vvv
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBexec\fP action
@@ -1680,8 +1780,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Execute the command bloodhound in the container demo:
 exegol exec demo bloodhound
 
@@ -1702,8 +1801,7 @@ exegol exec \-\-background \-\-tmp \-\-privileged \(dqnightly\(dq \(dqwireshark\
 
 # Execute the command wireshark with network admin privileged:
 exegol exec \-b \-\-tmp \-\-cap NET_ADMIN full wireshark
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBupdate\fP action
@@ -1775,8 +1873,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Update interactively an exegol image:
 exegol update
 
@@ -1788,8 +1885,7 @@ exegol update \-\-skip\-git full
 
 # Update exegol modules and have the option to change branch without updating docker image:
 exegol update \-v \-\-skip\-images
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBstop\fP action
@@ -1821,8 +1917,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Stop interactively one or more containers:
 exegol stop
 
@@ -1831,8 +1926,7 @@ exegol stop \(dqdemo\(dq
 
 # Stop the \(dqdemo\(dq, \(dqtest\(dq and \(dqdev\(dq container:
 exegol stop \(dqdemo\(dq \(dqtest\(dq \(dqdev\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBrestart\fP action
@@ -1871,15 +1965,13 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Restart interactively one container:
 exegol restart
 
 # Restart the \(dqdemo\(dq container:
 exegol restart \(dqdemo\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBremove\fP action
@@ -1919,8 +2011,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Remove interactively one or more containers:
 exegol remove
 
@@ -1929,8 +2020,7 @@ exegol remove \(dqdemo\(dq
 
 # Remove the \(dqdemo\(dq, \(dqtest\(dq and \(dqdev\(dq container without asking for user confirmation:
 exegol remove \-F \(dqdemo\(dq \(dqtest\(dq \(dqdev\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBuninstall\fP action
@@ -1973,8 +2063,7 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Remove interactively one or more containers:
 exegol uninstall
 
@@ -1983,8 +2072,7 @@ exegol uninstall \(dqfull\(dq
 
 # Remove the \(dqfull\(dq, \(dqad\(dq and \(dqweb\(dq container without asking for user confirmation:
 exegol uninstall \-F \(dqfull\(dq \(dqad\(dq \(dqweb\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS \fBversion\fP action
@@ -2046,15 +2134,13 @@ _
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Show version information
 exegol version
 
 # Show version and system information
 exegol version \-vvv
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS Advanced uses
@@ -2075,7 +2161,7 @@ exegol version \-vvv
 .UNINDENT
 .SS Exegol home directory
 .sp
-The \fB~/.exegol\fP folder exists in the user\(aqs home folder to centralize:doc:\fIexegol resources </the\-exegol\-project/offline\-resources>\fP, \fI\%\(dqmy\-resources\(dq\fP, volumes and also the configuration file.
+The \fB~/.exegol\fP folder exists in the user\(aqs home folder to centralize \fI\%\(dqexegol resources\(dq\fP, \fI\%\(dqmy\-resources\(dq\fP, volumes and also the configuration file.
 .INDENT 0.0
 .IP \(bu 2
 The \fBconfiguration file\fP (YAML) is located at \fB~/.exegol/config.yml\fP and is generated by the wrapper during the first execution, with the default configurations.
@@ -2174,6 +2260,3184 @@ the detailed logs of the docker build process can also be saved in a file with t
 .UNINDENT
 .UNINDENT
 .UNINDENT
+.SS Tools list
+.sp
+Click \fI\%here\fP to see the lists of tools featured in the latest nightly images.
+.sp
+\fBERROR:\fP
+.INDENT 0.0
+.INDENT 3.5
+[August 5th, 2023] \- The lists descriptions were mostly AI\-generated for this first version of the tools list in order to get the list shipped quickly. Many descriptions are wrong and will be fixed very soon.
+.UNINDENT
+.UNINDENT
+.sp
+\fBHINT:\fP
+.INDENT 0.0
+.INDENT 3.5
+The lists featured here are automatically generated. Exegol features CI/CD pipelines that build the images. At build, most tools are tested. If at least one test fails, the image doesn\(aqt get published.
+.UNINDENT
+.UNINDENT
+.TS
+center;
+|l|l|l|l|l|.
+_
+T{
+Image tag
+T}	T{
+Version
+T}	T{
+Arch
+T}	T{
+Build date
+T}	T{
+Tools list
+T}
+_
+T{
+nightly
+T}	T{
+552360f0
+T}	T{
+arm64
+T}	T{
+2023\-10\-02T17:32:46Z
+T}	T{
+\fBnightly_552360f0_arm64.csv\fP
+T}
+_
+T{
+nightly
+T}	T{
+552360f0
+T}	T{
+amd64
+T}	T{
+2023\-10\-02T17:00:45Z
+T}	T{
+\fBnightly_552360f0_amd64.csv\fP
+T}
+_
+.TE
+.TS
+center;
+|l|l|l|l|l|.
+_
+T{
+Image tag
+T}	T{
+Version
+T}	T{
+Arch
+T}	T{
+Build date
+T}	T{
+Tools list
+T}
+_
+T{
+ad
+T}	T{
+3.1.1
+T}	T{
+amd64
+T}	T{
+2023\-08\-18T02:59:03Z
+T}	T{
+\fBad_3.1.1_amd64.csv\fP
+T}
+_
+T{
+ad
+T}	T{
+3.1.1
+T}	T{
+arm64
+T}	T{
+2023\-08\-18T02:58:49Z
+T}	T{
+\fBad_3.1.1_arm64.csv\fP
+T}
+_
+T{
+full
+T}	T{
+3.1.1
+T}	T{
+amd64
+T}	T{
+2023\-08\-18T01:36:37Z
+T}	T{
+\fBfull_3.1.1_amd64.csv\fP
+T}
+_
+T{
+full
+T}	T{
+3.1.1
+T}	T{
+arm64
+T}	T{
+2023\-08\-18T01:36:23Z
+T}	T{
+\fBfull_3.1.1_arm64.csv\fP
+T}
+_
+T{
+web
+T}	T{
+3.1.1
+T}	T{
+amd64
+T}	T{
+2023\-08\-18T01:35:14Z
+T}	T{
+\fBweb_3.1.1_amd64.csv\fP
+T}
+_
+T{
+light
+T}	T{
+3.1.1
+T}	T{
+amd64
+T}	T{
+2023\-08\-18T01:35:00Z
+T}	T{
+\fBlight_3.1.1_amd64.csv\fP
+T}
+_
+T{
+osint
+T}	T{
+3.1.1
+T}	T{
+amd64
+T}	T{
+2023\-08\-18T01:34:47Z
+T}	T{
+\fBosint_3.1.1_amd64.csv\fP
+T}
+_
+T{
+web
+T}	T{
+3.1.1
+T}	T{
+arm64
+T}	T{
+2023\-08\-18T01:08:44Z
+T}	T{
+\fBweb_3.1.1_arm64.csv\fP
+T}
+_
+T{
+light
+T}	T{
+3.1.1
+T}	T{
+arm64
+T}	T{
+2023\-08\-18T01:05:12Z
+T}	T{
+\fBlight_3.1.1_arm64.csv\fP
+T}
+_
+T{
+osint
+T}	T{
+3.1.1
+T}	T{
+arm64
+T}	T{
+2023\-08\-18T01:04:50Z
+T}	T{
+\fBosint_3.1.1_arm64.csv\fP
+T}
+_
+T{
+ad
+T}	T{
+3.1.0
+T}	T{
+amd64
+T}	T{
+2023\-08\-10T00:33:47Z
+T}	T{
+\fBad_3.1.0_amd64.csv\fP
+T}
+_
+T{
+ad
+T}	T{
+3.1.0
+T}	T{
+arm64
+T}	T{
+2023\-08\-10T00:11:36Z
+T}	T{
+\fBad_3.1.0_arm64.csv\fP
+T}
+_
+T{
+web
+T}	T{
+3.1.0
+T}	T{
+amd64
+T}	T{
+2023\-08\-09T11:12:12Z
+T}	T{
+\fBweb_3.1.0_amd64.csv\fP
+T}
+_
+T{
+web
+T}	T{
+3.1.0
+T}	T{
+arm64
+T}	T{
+2023\-08\-09T11:11:33Z
+T}	T{
+\fBweb_3.1.0_arm64.csv\fP
+T}
+_
+T{
+osint
+T}	T{
+3.1.0
+T}	T{
+amd64
+T}	T{
+2023\-08\-09T10:50:11Z
+T}	T{
+\fBosint_3.1.0_amd64.csv\fP
+T}
+_
+T{
+osint
+T}	T{
+3.1.0
+T}	T{
+arm64
+T}	T{
+2023\-08\-09T10:48:56Z
+T}	T{
+\fBosint_3.1.0_arm64.csv\fP
+T}
+_
+T{
+full
+T}	T{
+3.1.0
+T}	T{
+arm64
+T}	T{
+2023\-08\-09T09:12:21Z
+T}	T{
+\fBfull_3.1.0_arm64.csv\fP
+T}
+_
+T{
+full
+T}	T{
+3.1.0
+T}	T{
+amd64
+T}	T{
+2023\-08\-09T22:27:20Z
+T}	T{
+\fBfull_3.1.0_amd64.csv\fP
+T}
+_
+T{
+light
+T}	T{
+3.1.0
+T}	T{
+amd64
+T}	T{
+2023\-08\-09T02:53:53Z
+T}	T{
+\fBlight_3.1.0_amd64.csv\fP
+T}
+_
+T{
+light
+T}	T{
+3.1.0
+T}	T{
+arm64
+T}	T{
+2023\-08\-09T01:50:40Z
+T}	T{
+\fBlight_3.1.0_arm64.csv\fP
+T}
+_
+.TE
+.sp
+Below is the list of tools featured in the latest nightly (AMD64) image.
+.TS
+center;
+|l|l|l|.
+_
+T{
+Tool
+T}	T{
+Link
+T}	T{
+Description
+T}
+_
+T{
+aclpwn
+T}	T{
+\fI\%https://github.com/aas\-n/aclpwn.py\fP
+T}	T{
+Tool for testing the security of Active Directory access controls.
+T}
+_
+T{
+adidnsdump
+T}	T{
+\fI\%https://github.com/dirkjanm/adidnsdump\fP
+T}	T{
+Active Directory Integrated DNS dump utility
+T}
+_
+T{
+aircrack\-ng
+T}	T{
+\fI\%https://www.aircrack\-ng.org\fP
+T}	T{
+A suite of tools for wireless penetration testing
+T}
+_
+T{
+amass
+T}	T{
+\fI\%https://github.com/OWASP/Amass\fP
+T}	T{
+A DNS enumeration / attack surface mapping & external assets discovery tool
+T}
+_
+T{
+amber
+T}	T{
+\fI\%https://github.com/EgeBalci/amber\fP
+T}	T{
+Forensic tool to recover browser history / cookies and credentials
+T}
+_
+T{
+androguard
+T}	T{
+\fI\%https://github.com/androguard/androguard\fP
+T}	T{
+Reverse engineering and analysis of Android applications
+T}
+_
+T{
+android\-tools\-adb
+T}	T{
+\fI\%https://developer.android.com/studio/command\-line/adb\fP
+T}	T{
+A collection of tools for debugging Android applications
+T}
+_
+T{
+anew
+T}	T{
+\fI\%https://github.com/tomnomnom/anew\fP
+T}	T{
+A simple tool for filtering and manipulating text data / such as log files and other outputs.
+T}
+_
+T{
+angr
+T}	T{
+\fI\%https://github.com/angr/angr\fP
+T}	T{
+a platform\-agnostic binary analysis framework
+T}
+_
+T{
+apksigner
+T}	T{
+\fI\%https://source.android.com/security/apksigning\fP
+T}	T{
+arguably the most important step to optimize your APK file
+T}
+_
+T{
+apktool
+T}	T{
+\fI\%https://github.com/iBotPeaches/Apktool\fP
+T}	T{
+It is a tool for reverse engineering 3rd party / closed / binary Android apps.
+T}
+_
+T{
+arjun
+T}	T{
+\fI\%https://github.com/s0md3v/Arjun\fP
+T}	T{
+HTTP parameter discovery suite.
+T}
+_
+T{
+arsenal
+T}	T{
+\fI\%https://github.com/Orange\-Cyberdefense/arsenal\fP
+T}	T{
+Powerful weapons for penetration testing.
+T}
+_
+T{
+ascii
+T}	T{
+\fI\%https://github.com/moul/ascii\fP
+T}	T{
+ASCII command\-line tool to replace images with color\-coded ASCII art.
+T}
+_
+T{
+assetfinder
+T}	T{
+\fI\%https://github.com/tomnomnom/assetfinder\fP
+T}	T{
+Tool to find subdomains and IP addresses associated with a domain.
+T}
+_
+T{
+autoconf
+T}	T{
+\fI\%https://www.gnu.org/software/autoconf/autoconf.html\fP
+T}	T{
+Tool for producing shell scripts to configure source code packages
+T}
+_
+T{
+autorecon
+T}	T{
+\fI\%https://github.com/Tib3rius/AutoRecon\fP
+T}	T{
+Multi\-threaded network reconnaissance tool which performs automated enumeration of services.
+T}
+_
+T{
+avrdude
+T}	T{
+\fI\%https://github.com/avrdudes/avrdude\fP
+T}	T{
+AVRDUDE is a command\-line program that allows you to download/upload/manipulate the ROM and EEPROM contents of AVR microcontrollers using the in\-system programming technique (ISP).
+T}
+_
+T{
+awscli
+T}	T{
+\fI\%https://aws.amazon.com/cli/\fP
+T}	T{
+Command\-line interface for Amazon Web Services.
+T}
+_
+T{
+azure\-cli
+T}	T{
+\fI\%https://github.com/Azure/azure\-cli\fP
+T}	T{
+A great cloud needs great tools; we\(aqre excited to introduce Azure CLI our next generation multi\-platform command line experience for Azure.
+T}
+_
+T{
+bettercap
+T}	T{
+\fI\%https://github.com/bettercap/bettercap\fP
+T}	T{
+The Swiss Army knife for 802.11 / BLE / and Ethernet networks reconnaissance and MITM attacks.
+T}
+_
+T{
+binwalk
+T}	T{
+\fI\%https://github.com/ReFirmLabs/binwalk\fP
+T}	T{
+Binwalk is a tool for analyzing / reverse engineering / and extracting firmware images.
+T}
+_
+T{
+Blackbird
+T}	T{
+\fI\%https://github.com/p1ngul1n0/blackbird\fP
+T}	T{
+An OSINT tool to search fast for accounts by username across 581 sites.
+T}
+_
+T{
+bloodhound
+T}	T{
+\fI\%https://github.com/BloodHoundAD/BloodHound\fP
+T}	T{
+Active Directory security tool for reconnaissance and attacking AD environments.
+T}
+_
+T{
+bloodhound\-import
+T}	T{
+\fI\%https://github.com/fox\-it/BloodHound.py\fP
+T}	T{
+Import data into BloodHound for analyzing active directory trust relationships
+T}
+_
+T{
+bloodhound\-quickwin
+T}	T{
+\fI\%https://github.com/kaluche/bloodhound\-quickwin\fP
+T}	T{
+A tool for BloodHounding on Windows machines without .NET or Powershell installed
+T}
+_
+T{
+bloodhound.py
+T}	T{
+\fI\%https://github.com/fox\-it/BloodHound.py\fP
+T}	T{
+BloodHound ingestor in Python.
+T}
+_
+T{
+bolt
+T}	T{
+\fI\%https://github.com/s0md3v/bolt\fP
+T}	T{
+Bolt crawls the target website to the specified depth and stores all the HTML forms found in a database for further processing.
+T}
+_
+T{
+bqm
+T}	T{
+\fI\%https://github.com/Acceis/bqm\fP
+T}	T{
+Tool to deduplicate custom BloudHound queries from different datasets and merge them in one file.
+T}
+_
+T{
+brakeman
+T}	T{
+\fI\%https://github.com/presidentbeef/brakeman\fP
+T}	T{
+Static analysis tool for Ruby on Rails applications
+T}
+_
+T{
+bruteforce\-luks
+T}	T{
+\fI\%https://github.com/glv2/bruteforce\-luks\fP
+T}	T{
+A tool to help recover encrypted LUKS2 containers
+T}
+_
+T{
+bully
+T}	T{
+\fI\%https://github.com/aanarchyy/bully\fP
+T}	T{
+bully is a tool for brute\-forcing WPS (Wireless Protected Setup) PINs.
+T}
+_
+T{
+burpsuite
+T}	T{
+\fI\%https://portswigger.net/burp\fP
+T}	T{
+Web application security testing tool.
+T}
+_
+T{
+buster
+T}	T{
+\fI\%https://github.com/sham00n/Buster\fP
+T}	T{
+Advanced OSINT tool
+T}
+_
+T{
+byp4xx
+T}	T{
+\fI\%https://github.com/lobuhi/byp4xx\fP
+T}	T{
+A Swiss Army knife for bypassing web application firewalls and filters.
+T}
+_
+T{
+carbon14
+T}	T{
+\fI\%https://github.com/Lazza/carbon14\fP
+T}	T{
+OSINT tool for estimating when a web page was written.
+T}
+_
+T{
+Censys
+T}	T{
+\fI\%https://github.com/censys/censys\-python\fP
+T}	T{
+An easy\-to\-use and lightweight API wrapper for Censys APIs
+T}
+_
+T{
+certipy
+T}	T{
+\fI\%https://github.com/ly4k/Certipy\fP
+T}	T{
+Python tool to create and sign certificates
+T}
+_
+T{
+certsync
+T}	T{
+\fI\%https://github.com/zblurx/certsync\fP
+T}	T{
+certsync is a tool that helps you synchronize certificates between two directories.
+T}
+_
+T{
+cewl
+T}	T{
+\fI\%https://digi.ninja/projects/cewl.php\fP
+T}	T{
+Generates custom wordlists by spidering a target\(aqs website and parsing the results
+T}
+_
+T{
+chainsaw
+T}	T{
+\fI\%https://github.com/WithSecureLabs/chainsaw\fP
+T}	T{
+Rapidly Search and Hunt through Windows Forensic Artefacts
+T}
+_
+T{
+checksec\-py
+T}	T{
+\fI\%https://github.com/Wenzel/checksec.py\fP
+T}	T{
+Python wrapper script for checksec.sh from paX.
+T}
+_
+T{
+chisel
+T}	T{
+\fI\%https://github.com/jpillora/chisel\fP
+T}	T{
+Go based TCP tunnel with authentication and encryption support
+T}
+_
+T{
+cloudfail
+T}	T{
+\fI\%https://github.com/m0rtem/CloudFail\fP
+T}	T{
+a reconnaissance tool for identifying misconfigured CloudFront domains.
+T}
+_
+T{
+cloudmapper
+T}	T{
+\fI\%https://github.com/duo\-labs/cloudmapper\fP
+T}	T{
+CloudMapper helps you analyze your Amazon Web Services (AWS) environments.
+T}
+_
+T{
+cloudsplaining
+T}	T{
+\fI\%https://github.com/salesforce/cloudsplaining\fP
+T}	T{
+AWS IAM Security Assessment tool that identifies violations of least privilege and generates a risk\-prioritized report.
+T}
+_
+T{
+cloudsploit
+T}	T{
+\fI\%https://github.com/aquasecurity/cloudsploit\fP
+T}	T{
+Cloud Security Posture Management
+T}
+_
+T{
+clusterd
+T}	T{
+\fI\%https://github.com/hatRiot/clusterd\fP
+T}	T{
+A tool to distribute and remotely manage Hacking Team\(aqs RCS agents.
+T}
+_
+T{
+cmsmap
+T}	T{
+\fI\%https://github.com/Dionach/CMSmap\fP
+T}	T{
+Tool for security audit of web content management systems.
+T}
+_
+T{
+coercer
+T}	T{
+\fI\%https://github.com/p0dalirius/coercer\fP
+T}	T{
+DFS\-R target coercion tool
+T}
+_
+T{
+constellation
+T}	T{
+\fI\%https://github.com/constellation\-app/Constellation\fP
+T}	T{
+Find and exploit vulnerabilities in mobile applications.
+T}
+_
+T{
+corscanner
+T}	T{
+\fI\%https://github.com/chenjj/CORScanner\fP
+T}	T{
+a Python script for finding CORS misconfigurations.
+T}
+_
+T{
+cowpatty
+T}	T{
+\fI\%https://github.com/joswr1ght/cowpatty\fP
+T}	T{
+cowpatty is a tool for offline dictionary attacks against WPA\-PSK (Pre\-Shared Key) networks.
+T}
+_
+T{
+crackhound
+T}	T{
+\fI\%https://github.com/trustedsec/crackhound.git\fP
+T}	T{
+A fast WPA/WPA2/WPA3 WiFi Handshake capture / password recovery and analysis tool
+T}
+_
+T{
+crackmapexec
+T}	T{
+\fI\%https://github.com/mpgn/CrackMapExec\fP
+T}	T{
+Network scanner.
+T}
+_
+T{
+crunch
+T}	T{
+\fI\%https://github.com/crunchsec/crunch\fP
+T}	T{
+A wordlist generator where you can specify a standard character set or a character set you specify.
+T}
+_
+T{
+cupp
+T}	T{
+\fI\%https://github.com/Mebus/cupp\fP
+T}	T{
+Cupp is a tool used to generate personalized password lists based on target information.
+T}
+_
+T{
+cyperoth
+T}	T{
+\fI\%https://github.com/seajaysec/cypheroth\fP
+T}	T{
+Automated extensible toolset that runs cypher queries against Bloodhound\(aqs Neo4j backend and saves output to spreadsheets.
+T}
+_
+T{
+darkarmour
+T}	T{
+\fI\%https://github.com/bats3c/darkarmour\fP
+T}	T{
+a tool to detect and evade common antivirus products
+T}
+_
+T{
+dex2jar
+T}	T{
+\fI\%https://github.com/pxb1988/dex2jar\fP
+T}	T{
+A tool to convert Android\(aqs dex files to Java\(aqs jar files
+T}
+_
+T{
+dfscoerce
+T}	T{
+\fI\%https://github.com/Wh04m1001/dfscoerce\fP
+T}	T{
+DFS\-R target coercion tool
+T}
+_
+T{
+dirb
+T}	T{
+\fI\%https://github.com/v0re/dirb\fP
+T}	T{
+Web Content Scanner
+T}
+_
+T{
+dirsearch
+T}	T{
+\fI\%https://github.com/maurosoria/dirsearch\fP
+T}	T{
+Tool for searching files and directories on a web site.
+T}
+_
+T{
+divideandscan
+T}	T{
+\fI\%https://github.com/snovvcrash/divideandscan\fP
+T}	T{
+Advanced subdomain scanner
+T}
+_
+T{
+dns2tcp
+T}	T{
+\fI\%https://github.com/alex\-sector/dns2tcp\fP
+T}	T{
+dns2tcp is a tool for relaying TCP connections over DNS.
+T}
+_
+T{
+dnschef
+T}	T{
+\fI\%https://github.com/iphelix/dnschef\fP
+T}	T{
+Tool for DNS MITM attacks
+T}
+_
+T{
+dnsenum
+T}	T{
+\fI\%https://github.com/fwaeytens/dnsenum\fP
+T}	T{
+dnsenum is a tool for enumerating DNS information about a domain.
+T}
+_
+T{
+dnsx
+T}	T{
+\fI\%https://github.com/projectdiscovery/dnsx\fP
+T}	T{
+A tool for DNS reconnaissance that can help identify subdomains and other related domains.
+T}
+_
+T{
+donpapi
+T}	T{
+\fI\%https://github.com/login\-securite/DonPAPI\fP
+T}	T{
+Dumping revelant information on compromised targets without AV detection
+T}
+_
+T{
+droopescan
+T}	T{
+\fI\%https://github.com/droope/droopescan\fP
+T}	T{
+Scan Drupal websites for vulnerabilities.
+T}
+_
+T{
+drupwn
+T}	T{
+\fI\%https://github.com/immunIT/drupwn\fP
+T}	T{
+Drupal security scanner.
+T}
+_
+T{
+eaphammer
+T}	T{
+\fI\%https://github.com/s0lst1c3/eaphammer\fP
+T}	T{
+EAPHammer is a toolkit for performing targeted evil twin attacks against WPA2\-Enterprise networks.
+T}
+_
+T{
+enum4linux\-ng
+T}	T{
+\fI\%https://github.com/cddmp/enum4linux\-ng\fP
+T}	T{
+Tool for enumerating information from Windows and Samba systems.
+T}
+_
+T{
+enyx
+T}	T{
+\fI\%https://github.com/trickster0/enyx\fP
+T}	T{
+Framework for building offensive security tools.
+T}
+_
+T{
+evilwinrm
+T}	T{
+\fI\%https://github.com/Hackplayers/evil\-winrm\fP
+T}	T{
+Tool to connect to a remote Windows system with WinRM.
+T}
+_
+T{
+exif
+T}	T{
+\fI\%https://exiftool.org/\fP
+T}	T{
+Utility to read / write and edit metadata in image / audio and video files
+T}
+_
+T{
+exifprobe
+T}	T{
+\fI\%https://github.com/hfiguiere/exifprobe\fP
+T}	T{
+Exifprobe is a command\-line tool to parse EXIF data from image files.
+T}
+_
+T{
+exiftool
+T}	T{
+\fI\%https://github.com/exiftool/exiftool\fP
+T}	T{
+ExifTool is a Perl library and command\-line tool for reading / writing and editing meta information in image / audio and video files.
+T}
+_
+T{
+exiv2
+T}	T{
+\fI\%https://github.com/Exiv2/exiv2\fP
+T}	T{
+Image metadata library and toolset
+T}
+_
+T{
+ExtractBitlockerKeys
+T}	T{
+\fI\%https://github.com/p0dalirius/ExtractBitlockerKeys\fP
+T}	T{
+A system administration or post\-exploitation script to automatically extract the bitlocker recovery keys from a domain.
+T}
+_
+T{
+eyewitness
+T}	T{
+\fI\%https://github.com/FortyNorthSecurity/EyeWitness\fP
+T}	T{
+a tool to take screenshots of websites / provide some server header info / and identify default credentials if possible.
+T}
+_
+T{
+fcrackzip
+T}	T{
+\fI\%https://github.com/hyc/fcrackzip\fP
+T}	T{
+Password cracker for zip archives.
+T}
+_
+T{
+fdisk
+T}	T{
+\fI\%https://github.com/karelzak/util\-linux\fP
+T}	T{
+Collection of basic system utilities / including fdisk partitioning tool
+T}
+_
+T{
+feroxbuster
+T}	T{
+\fI\%https://github.com/epi052/feroxbuster\fP
+T}	T{
+Simple / fast and recursive content discovery tool
+T}
+_
+T{
+ffuf
+T}	T{
+\fI\%https://github.com/ffuf/ffuf\fP
+T}	T{
+Fast web fuzzer written in Go.
+T}
+_
+T{
+fierce
+T}	T{
+\fI\%https://github.com/mschwager/fierce\fP
+T}	T{
+A DNS reconnaissance tool for locating non\-contiguous IP space
+T}
+_
+T{
+finalrecon
+T}	T{
+\fI\%https://github.com/thewhiteh4t/FinalRecon\fP
+T}	T{
+A web reconnaissance tool that gathers information about web pages
+T}
+_
+T{
+findomain
+T}	T{
+\fI\%https://github.com/findomain/findomain\fP
+T}	T{
+The fastest and cross\-platform subdomain enumerator.
+T}
+_
+T{
+finduncommonshares
+T}	T{
+\fI\%https://github.com/p0dalirius/FindUncommonShares\fP
+T}	T{
+Script that can help identify shares that are not commonly found on a Windows system.
+T}
+_
+T{
+firefox
+T}	T{
+\fI\%https://www.mozilla.org\fP
+T}	T{
+A web browser
+T}
+_
+T{
+foremost
+T}	T{
+\fI\%https://doc.ubuntu\-fr.org/foremost\fP
+T}	T{
+Foremost is a forensic tool for recovering files based on their headers / footers / and internal data structures.
+T}
+_
+T{
+freerdp2\-x11
+T}	T{
+\fI\%https://github.com/FreeRDP/FreeRDP\fP
+T}	T{
+FreeRDP is a free implementation of the Remote Desktop Protocol (RDP) released under the Apache license.
+T}
+_
+T{
+frida
+T}	T{
+\fI\%https://github.com/frida/frida\fP
+T}	T{
+Dynamic instrumentation toolkit
+T}
+_
+T{
+fuxploider
+T}	T{
+\fI\%https://github.com/almandin/fuxploider\fP
+T}	T{
+a Python tool for finding and exploiting file upload forms/directories.
+T}
+_
+T{
+fzf
+T}	T{
+\fI\%https://github.com/junegunn/fzf\fP
+T}	T{
+🌸 A command\-line fuzzy finder
+T}
+_
+T{
+gau
+T}	T{
+\fI\%https://github.com/lc/gau\fP
+T}	T{
+Fast tool for fetching URLs
+T}
+_
+T{
+genusernames
+T}	T{
+\fI\%https://gitlab.com/\-/snippets/2480505/raw/main/bash\fP
+T}	T{
+GenUsername is a Python tool for generating a list of usernames based on a name or email address.
+T}
+_
+T{
+GeoPincer
+T}	T{
+\fI\%https://github.com/tloja/GeoPincer\fP
+T}	T{
+GeoPincer is a script that leverages OpenStreetMap\(aqs Overpass API in order to search for locations.
+T}
+_
+T{
+geowordlists
+T}	T{
+\fI\%https://github.com/p0dalirius/GeoWordlists\fP
+T}	T{
+tool to generate wordlists of passwords containing cities at a defined distance around the client city.
+T}
+_
+T{
+gf
+T}	T{
+\fI\%https://github.com/tomnomnom/gf\fP
+T}	T{
+A wrapper around grep to avoid typing common patterns
+T}
+_
+T{
+ghidra
+T}	T{
+\fI\%https://github.com/NationalSecurityAgency/ghidra\fP
+T}	T{
+Software reverse engineering suite of tools.
+T}
+_
+T{
+git\-dumper
+T}	T{
+\fI\%https://github.com/arthaud/git\-dumper\fP
+T}	T{
+Small script to dump a Git repository from a website.
+T}
+_
+T{
+githubemail
+T}	T{
+\fI\%https://github.com/paulirish/github\-email\fP
+T}	T{
+a command\-line tool to retrieve a user\(aqs email from Github.
+T}
+_
+T{
+gittools
+T}	T{
+\fI\%https://github.com/internetwache/GitTools\fP
+T}	T{
+A collection of Git tools including a powerful Dumper for dumping Git repositories.
+T}
+_
+T{
+gmsadumper
+T}	T{
+\fI\%https://github.com/micahvandeusen/gMSADumper\fP
+T}	T{
+A tool for extracting credentials and other information from a Microsoft Active Directory domain.
+T}
+_
+T{
+gobuster
+T}	T{
+\fI\%https://github.com/OJ/gobuster\fP
+T}	T{
+Tool to discover hidden files and directories.
+T}
+_
+T{
+goldencopy
+T}	T{
+\fI\%https://github.com/0x09AL/golden_copy.git\fP
+T}	T{
+A tool to copy data from Golden Ticket and Silver Ticket
+T}
+_
+T{
+GoMapEnum
+T}	T{
+\fI\%https://github.com/nodauf/GoMapEnum\fP
+T}	T{
+Nothing new but existing techniques are brought together in one tool.
+T}
+_
+T{
+gopherus
+T}	T{
+\fI\%https://github.com/tarunkant/Gopherus\fP
+T}	T{
+Gopherus is a simple command line tool for exploiting vulnerable Gopher servers.
+T}
+_
+T{
+gosecretsdump
+T}	T{
+\fI\%https://github.com/c\-sto/gosecretsdump\fP
+T}	T{
+Implements NTLMSSP network authentication protocol in Go
+T}
+_
+T{
+goshs
+T}	T{
+\fI\%https://github.com/patrickhener/goshs\fP
+T}	T{
+Goshs is a replacement for Python\(aqs SimpleHTTPServer. It allows uploading and downloading via HTTP/S with either self\-signed certificate or user provided certificate and you can use HTTP basic auth.
+T}
+_
+T{
+gowitness
+T}	T{
+\fI\%https://github.com/sensepost/gowitness\fP
+T}	T{
+A website screenshot utility written in Golang.
+T}
+_
+T{
+GPOddity
+T}	T{
+\fI\%https://github.com/synacktiv/GPOddity\fP
+T}	T{
+Aiming at automating GPO attack vectors through NTLM relaying (and more)
+T}
+_
+T{
+gpp\-decrypt
+T}	T{
+\fI\%https://github.com/t0thkr1s/gpp\-decrypt\fP
+T}	T{
+A tool to decrypt Group Policy Preferences passwords
+T}
+_
+T{
+gqrx
+T}	T{
+\fI\%https://github.com/csete/gqrx\fP
+T}	T{
+Software defined radio receiver powered by GNU Radio and Qt
+T}
+_
+T{
+gron
+T}	T{
+\fI\%https://github.com/tomnomnom/gron\fP
+T}	T{
+Make JSON greppable!
+T}
+_
+T{
+h2csmuggler
+T}	T{
+\fI\%https://github.com/BishopFox/h2csmuggler\fP
+T}	T{
+HTTP Request Smuggling tool using H2C upgrade
+T}
+_
+T{
+h8mail
+T}	T{
+\fI\%https://github.com/khast3x/h8mail\fP
+T}	T{
+Email OSINT and breach hunting.
+T}
+_
+T{
+hackrf
+T}	T{
+\fI\%https://github.com/mossmann/hackrf\fP
+T}	T{
+Low cost software defined radio platform
+T}
+_
+T{
+haiti
+T}	T{
+\fI\%https://github.com/noraj/haiti\fP
+T}	T{
+haiti is a A CLI tool (and library) to identify hash types (hash type identifier).
+T}
+_
+T{
+hakrawler
+T}	T{
+\fI\%https://github.com/hakluke/hakrawler\fP
+T}	T{
+a fast web crawler for gathering URLs and other information from websites
+T}
+_
+T{
+hakrevdns
+T}	T{
+\fI\%https://github.com/hakluke/hakrevdns\fP
+T}	T{
+Reverse DNS lookup utility that can help with discovering subdomains and other information.
+T}
+_
+T{
+hashcat
+T}	T{
+\fI\%https://hashcat.net/hashcat\fP
+T}	T{
+A tool for advanced password recovery
+T}
+_
+T{
+hashonymize
+T}	T{
+\fI\%https://github.com/ShutdownRepo/hashonymize\fP
+T}	T{
+This small tool is aimed at anonymizing hashes files for offline but online cracking like Google Collab for instance (see \fI\%https://github.com/ShutdownRepo/google\-colab\-hashcat\fP).
+T}
+_
+T{
+hcxdumptool
+T}	T{
+\fI\%https://github.com/ZerBea/hcxdumptool\fP
+T}	T{
+Small tool to capture packets from wlan devices.
+T}
+_
+T{
+hcxtools
+T}	T{
+\fI\%https://github.com/ZerBea/hcxtools\fP
+T}	T{
+Tools for capturing and analyzing packets from WLAN devices.
+T}
+_
+T{
+hexedit
+T}	T{
+\fI\%https://github.com/pixel/hexedit\fP
+T}	T{
+View and edit binary files
+T}
+_
+T{
+holehe
+T}	T{
+\fI\%https://github.com/megadose/holehe\fP
+T}	T{
+Exploit a vulnerable Samba service to gain root access.
+T}
+_
+T{
+hping3
+T}	T{
+\fI\%https://github.com/antirez/hping\fP
+T}	T{
+A network tool able to send custom TCP/IP packets
+T}
+_
+T{
+httpmethods
+T}	T{
+\fI\%https://github.com/ShutdownRepo/httpmethods\fP
+T}	T{
+Tool for exploiting HTTP methods (e.g. PUT / DELETE / etc.)
+T}
+_
+T{
+httprobe
+T}	T{
+\fI\%https://github.com/tomnomnom/httprobe\fP
+T}	T{
+A simple utility for enumerating HTTP and HTTPS servers.
+T}
+_
+T{
+httpx
+T}	T{
+\fI\%https://github.com/projectdiscovery/httpx\fP
+T}	T{
+A tool for identifying web technologies and vulnerabilities / including outdated software versions and weak encryption protocols.
+T}
+_
+T{
+hydra
+T}	T{
+\fI\%https://github.com/vanhauser\-thc/thc\-hydra\fP
+T}	T{
+Hydra is a parallelized login cracker which supports numerous protocols to attack.
+T}
+_
+T{
+ida
+T}	T{
+\fI\%https://www.hex\-rays.com/products/ida/\fP
+T}	T{
+Interactive disassembler for software analysis.
+T}
+_
+T{
+ignorant
+T}	T{
+\fI\%https://github.com/megadose/ignorant\fP
+T}	T{
+holehe but for phone numbers.
+T}
+_
+T{
+imagemagick
+T}	T{
+\fI\%https://github.com/ImageMagick/ImageMagick\fP
+T}	T{
+ImageMagick is a free and open\-source image manipulation tool used to create / edit / compose / or convert bitmap images.
+T}
+_
+T{
+impacket
+T}	T{
+\fI\%https://github.com/ThePorgs/impacket\fP
+T}	T{
+Set of tools for working with network protocols (ThePorgs version).
+T}
+_
+T{
+ipinfo
+T}	T{
+\fI\%https://github.com/ipinfo/cli\fP
+T}	T{
+Get information about an IP address or hostname.
+T}
+_
+T{
+iptables
+T}	T{
+\fI\%https://linux.die.net/man/8/iptables\fP
+T}	T{
+Userspace command line tool for configuring kernel firewall
+T}
+_
+T{
+jackit
+T}	T{
+\fI\%https://github.com/insecurityofthings/jackit\fP
+T}	T{
+Exploit to take over a wireless mouse and keyboard
+T}
+_
+T{
+jadx
+T}	T{
+\fI\%https://github.com/skylot/jadx\fP
+T}	T{
+Java decompiler
+T}
+_
+T{
+jd\-gui
+T}	T{
+\fI\%https://github.com/java\-decompiler/jd\-gui\fP
+T}	T{
+A standalone Java Decompiler GUI
+T}
+_
+T{
+jdwp
+T}	T{
+\fI\%https://github.com/IOActive/jdwp\-shellifier\fP
+T}	T{
+This exploitation script is meant to be used by pentesters against active JDWP service / in order to gain Remote Code Execution.
+T}
+_
+T{
+john
+T}	T{
+\fI\%https://github.com/openwall/john\fP
+T}	T{
+John the Ripper password cracker.
+T}
+_
+T{
+joomscan
+T}	T{
+\fI\%https://github.com/rezasp/joomscan\fP
+T}	T{
+A tool to enumerate Joomla\-based websites
+T}
+_
+T{
+jwt
+T}	T{
+\fI\%https://github.com/ticarpi/jwt_tool\fP
+T}	T{
+a command\-line tool for working with JSON Web Tokens (JWTs)
+T}
+_
+T{
+kadimus
+T}	T{
+\fI\%https://github.com/P0cL4bs/Kadimus\fP
+T}	T{
+a tool for detecting and exploiting file upload vulnerabilities
+T}
+_
+T{
+KeePwn
+T}	T{
+\fI\%https://github.com/Orange\-Cyberdefense/KeePwn\fP
+T}	T{
+KeePwn is a tool that extracts passwords from KeePass 1.x and 2.x databases.
+T}
+_
+T{
+kerbrute
+T}	T{
+\fI\%https://github.com/ropnop/kerbrute\fP
+T}	T{
+A tool to perform Kerberos pre\-auth bruteforcing
+T}
+_
+T{
+kiterunner
+T}	T{
+\fI\%https://github.com/assetnote/kiterunner\fP
+T}	T{
+Tool for operating Active Directory environments.
+T}
+_
+T{
+Kraken
+T}	T{
+\fI\%https://github.com/kraken\-ng/Kraken.git\fP
+T}	T{
+Kraken is a modular multi\-language webshell focused on web post\-exploitation and defense evasion. It supports three technologies (PHP / JSP and ASPX) and is core is developed in Python.
+T}
+_
+T{
+krbjack
+T}	T{
+\fI\%https://github.com/almandin/krbjack\fP
+T}	T{
+A Kerberos AP\-REQ hijacking tool with DNS unsecure updates abuse.
+T}
+_
+T{
+krbrelayx
+T}	T{
+\fI\%https://github.com/dirkjanm/krbrelayx\fP
+T}	T{
+a tool for performing Kerberos relay attacks
+T}
+_
+T{
+kubectl
+T}	T{
+\fI\%https://kubernetes.io/docs/reference/kubectl/overview/\fP
+T}	T{
+Command\-line interface for managing Kubernetes clusters.
+T}
+_
+T{
+ldapdomaindump
+T}	T{
+\fI\%https://github.com/dirkjanm/ldapdomaindump\fP
+T}	T{
+A tool for dumping domain data from an LDAP service
+T}
+_
+T{
+ldaprelayscan
+T}	T{
+\fI\%https://github.com/zyn3rgy/LdapRelayScan\fP
+T}	T{
+Check Domain Controllers for LDAP server protections regarding the relay of NTLM authentication.
+T}
+_
+T{
+ldapsearch
+T}	T{
+\fI\%https://wiki.debian.org/LDAP/LDAPUtils\fP
+T}	T{
+Search for and display entries (ldap)
+T}
+_
+T{
+ldapsearch\-ad
+T}	T{
+\fI\%https://github.com/yaap7/ldapsearch\-ad\fP
+T}	T{
+LDAP search utility with AD support
+T}
+_
+T{
+LDAPWordlistHarvester
+T}	T{
+\fI\%https://github.com/p0dalirius/LDAPWordlistHarvester\fP
+T}	T{
+Generate a wordlist from the information present in LDAP in order to crack passwords of domain accounts
+T}
+_
+T{
+ldeep
+T}	T{
+\fI\%https://github.com/franc\-pentest/ldeep\fP
+T}	T{
+ldeep is a tool to discover hidden paths on Web servers.
+T}
+_
+T{
+libmspack
+T}	T{
+\fI\%https://github.com/kyz/libmspack\fP
+T}	T{
+C library for Microsoft compression formats.
+T}
+_
+T{
+libnfc
+T}	T{
+\fI\%https://github.com/grundid/nfctools\fP
+T}	T{
+Library for Near Field Communication (NFC) devices
+T}
+_
+T{
+libnfc\-crypto1\-crack
+T}	T{
+\fI\%https://github.com/droidnewbie2/acr122uNFC\fP
+T}	T{
+Implementation of cryptographic attack on Mifare Classic RFID cards
+T}
+_
+T{
+libusb\-dev
+T}	T{
+\fI\%https://github.com/libusb/libusb\fP
+T}	T{
+Library for USB device access
+T}
+_
+T{
+ligolo\-ng
+T}	T{
+\fI\%https://github.com/nicocha30/ligolo\-ng\fP
+T}	T{
+An advanced yet simple tunneling tool that uses a TUN interface.
+T}
+_
+T{
+linkedin2username
+T}	T{
+\fI\%https://github.com/initstring/linkedin2username\fP
+T}	T{
+Generate a list of LinkedIn usernames from a company name.
+T}
+_
+T{
+linkfinder
+T}	T{
+\fI\%https://github.com/GerbenJavado/LinkFinder\fP
+T}	T{
+a Python script that finds endpoints and their parameters in JavaScript files.
+T}
+_
+T{
+lnkup
+T}	T{
+\fI\%https://github.com/Plazmaz/lnkUp\fP
+T}	T{
+This tool will allow you to generate LNK payloads. Upon rendering or being run they will exfiltrate data.
+T}
+_
+T{
+lsassy
+T}	T{
+\fI\%https://github.com/Hackndo/lsassy\fP
+T}	T{
+Windows secrets and passwords extraction tool.
+T}
+_
+T{
+ltrace
+T}	T{
+\fI\%https://github.com/dkogan/ltrace\fP
+T}	T{
+ltrace is a debugging program for Linux and Unix that intercepts and records dynamic library calls that are called by an executed process.
+T}
+_
+T{
+maigret
+T}	T{
+\fI\%https://github.com/soxoj/maigret\fP
+T}	T{
+Collects information about a target email (or domain) from Google and Bing search results
+T}
+_
+T{
+maltego
+T}	T{
+\fI\%https://www.paterva.com/web7/downloads.php\fP
+T}	T{
+A tool used for open\-source intelligence and forensics
+T}
+_
+T{
+manspider
+T}	T{
+\fI\%https://github.com/blacklanternsecurity/MANSPIDER\fP
+T}	T{
+Manspider will crawl every share on every target system. If provided creds don\(aqt work it will fall back to \(aqguest\(aq then to a null session.
+T}
+_
+T{
+mariadb\-client
+T}	T{
+\fI\%https://github.com/MariaDB/server\fP
+T}	T{
+MariaDB is a community\-developed fork of the MySQL relational database management system. The mariadb\-client package includes command\-line utilities for interacting with a MariaDB server.
+T}
+_
+T{
+masky
+T}	T{
+\fI\%https://github.com/Z4kSec/masky\fP
+T}	T{
+masky is a tool to mask sensitive data / such as credit card numbers / in logs and other files.
+T}
+_
+T{
+masscan
+T}	T{
+\fI\%https://github.com/robertdavidgraham/masscan\fP
+T}	T{
+Masscan is an Internet\-scale port scanner
+T}
+_
+T{
+mdcat
+T}	T{
+\fI\%https://github.com/swsnr/mdcat\fP
+T}	T{
+Fancy cat for Markdown
+T}
+_
+T{
+metasploit
+T}	T{
+\fI\%https://github.com/rapid7/metasploit\-framework\fP
+T}	T{
+A popular penetration testing framework that includes many exploits and payloads
+T}
+_
+T{
+mfcuk
+T}	T{
+\fI\%https://github.com/nfc\-tools/mfcuk\fP
+T}	T{
+Implementation of an attack on Mifare Classic and Plus RFID cards
+T}
+_
+T{
+mfdread
+T}	T{
+\fI\%https://github.com/zhovner/mfdread\fP
+T}	T{
+Tool for reading/writing Mifare RFID tags
+T}
+_
+T{
+mfoc
+T}	T{
+\fI\%https://github.com/nfc\-tools/mfoc\fP
+T}	T{
+Implementation of \(aqoffline nested\(aq attack by Nethemba
+T}
+_
+T{
+minicom
+T}	T{
+\fI\%https://doc.ubuntu\-fr.org/minicom\fP
+T}	T{
+Minicom is a text\-based serial communication program for Unix\-like operating systems.
+T}
+_
+T{
+mitm6
+T}	T{
+\fI\%https://github.com/fox\-it/mitm6\fP
+T}	T{
+Tool to conduct a man\-in\-the\-middle attack against IPv6 protocols.
+T}
+_
+T{
+mobsf
+T}	T{
+\fI\%https://github.com/MobSF/Mobile\-Security\-Framework\-MobSF\fP
+T}	T{
+Automated and all\-in\-one mobile application (Android/iOS/Windows) pen\-testing malware analysis and security assessment framework
+T}
+_
+T{
+moodlescan
+T}	T{
+\fI\%https://github.com/inc0d3/moodlescan\fP
+T}	T{
+Scan Moodle sites for information and vulnerabilities.
+T}
+_
+T{
+mousejack
+T}	T{
+\fI\%https://github.com/BastilleResearch/mousejack\fP
+T}	T{
+Exploit to take over a wireless mouse and keyboard
+T}
+_
+T{
+msprobe
+T}	T{
+\fI\%https://github.com/puzzlepeaches/msprobe\fP
+T}	T{
+msprobe is a tool to identify Microsoft Windows hosts and servers that are running certain services.
+T}
+_
+T{
+MurMurHash
+T}	T{
+\fI\%https://github.com/QU35T\-code/MurMurHash\fP
+T}	T{
+This little tool is to calculate a MurmurHash value of a favicon to hunt phishing websites on the Shodan platform.
+T}
+_
+T{
+naabu
+T}	T{
+\fI\%https://github.com/projectdiscovery/naabu\fP
+T}	T{
+A fast and reliable port scanner that can detect open ports and services.
+T}
+_
+T{
+name\-that\-hash
+T}	T{
+\fI\%https://github.com/HashPals/Name\-That\-Hash\fP
+T}	T{
+Online tool for identifying hashes.
+T}
+_
+T{
+nasm
+T}	T{
+\fI\%https://github.com/netwide\-assembler/nasm\fP
+T}	T{
+NASM is an 80x86 assembler designed for portability and modularity.
+T}
+_
+T{
+nbtscan
+T}	T{
+\fI\%https://github.com/charlesroelli/nbtscan\fP
+T}	T{
+NBTscan is a program for scanning IP networks for NetBIOS name information.
+T}
+_
+T{
+neo4j
+T}	T{
+\fI\%https://github.com/neo4j/neo4j\fP
+T}	T{
+Database.
+T}
+_
+T{
+neovim
+T}	T{
+\fI\%https://neovim.io/\fP
+T}	T{
+hyperextensible Vim\-based text editor
+T}
+_
+T{
+netdiscover
+T}	T{
+\fI\%https://github.com/netdiscover\-scanner/netdiscover\fP
+T}	T{
+netdiscover is an active/passive address reconnaissance tool
+T}
+_
+T{
+netexec
+T}	T{
+\fI\%https://github.com/Pennyw0rth/NetExec\fP
+T}	T{
+Network scanner (Crackmapexec updated).
+T}
+_
+T{
+nfct
+T}	T{
+\fI\%https://github.com/grundid/nfctools\fP
+T}	T{
+Tool for Near Field Communication (NFC) devices
+T}
+_
+T{
+ngrok
+T}	T{
+\fI\%https://github.com/inconshreveable/ngrok\fP
+T}	T{
+Expose a local server behind a NAT or firewall to the internet
+T}
+_
+T{
+nmap
+T}	T{
+\fI\%https://nmap.org\fP
+T}	T{
+The Network Mapper \- a powerful network discovery and security auditing tool
+T}
+_
+T{
+nmap\-parse\-ouptut
+T}	T{
+\fI\%https://github.com/ernw/nmap\-parse\-output\fP
+T}	T{
+Converts/manipulates/extracts data from a Nmap scan output.
+T}
+_
+T{
+noPac
+T}	T{
+\fI\%https://github.com/Ridter/noPac\fP
+T}	T{
+Exploiting CVE\-2021\-42278 and CVE\-2021\-42287 to impersonate DA from standard domain user.
+T}
+_
+T{
+nosqlmap
+T}	T{
+\fI\%https://github.com/codingo/NoSQLMap\fP
+T}	T{
+a Python tool for testing NoSQL databases for security vulnerabilities.
+T}
+_
+T{
+ntlmv1\-multi
+T}	T{
+\fI\%https://github.com/evilmog/ntlmv1\-multi\fP
+T}	T{
+Exploit a vulnerability in Microsoft Windows to gain system\-level access.
+T}
+_
+T{
+nuclei
+T}	T{
+\fI\%https://github.com/projectdiscovery/nuclei\fP
+T}	T{
+A fast and customizable vulnerability scanner that can detect a wide range of issues / including XSS / SQL injection / and misconfigured servers.
+T}
+_
+T{
+oaburl
+T}	T{
+\fI\%https://gist.githubusercontent.com/snovvcrash/4e76aaf2a8750922f546eed81aa51438/raw/96ec2f68a905eed4d519d9734e62edba96fd15ff/oaburl.py\fP
+T}	T{
+Find Open redirects and other vulnerabilities.
+T}
+_
+T{
+objection
+T}	T{
+\fI\%https://github.com/sensepost/objection\fP
+T}	T{
+Runtime mobile exploration
+T}
+_
+T{
+objectwalker
+T}	T{
+\fI\%https://github.com/p0dalirius/objectwalker\fP
+T}	T{
+A python module to explore the object tree to extract paths to interesting objects in memory.
+T}
+_
+T{
+oneforall
+T}	T{
+\fI\%https://github.com/shmilylty/OneForAll\fP
+T}	T{
+a powerful subdomain collection tool.
+T}
+_
+T{
+onesixtyone
+T}	T{
+\fI\%https://github.com/trailofbits/onesixtyone\fP
+T}	T{
+onesixtyone is an SNMP scanner which utilizes a sweep technique to achieve very high performance.
+T}
+_
+T{
+osrframework
+T}	T{
+\fI\%https://github.com/i3visio/osrframework\fP
+T}	T{
+Include references to a bunch of different applications related to username checking / DNS lookups / information leaks research / deep web search / regular expressions extraction and many others.
+T}
+_
+T{
+pass
+T}	T{
+\fI\%https://github.com/hashcat/hashcat\fP
+T}	T{
+TODO
+T}
+_
+T{
+PassTheCert
+T}	T{
+\fI\%https://github.com/AlmondOffSec/PassTheCert\fP
+T}	T{
+PassTheCert is a tool to extract Active Directory user password hashes from a domain controller\(aqs local certificate store.
+T}
+_
+T{
+patator
+T}	T{
+\fI\%https://github.com/lanjelot/patator\fP
+T}	T{
+Login scanner.
+T}
+_
+T{
+pcredz
+T}	T{
+\fI\%https://github.com/lgandx/PCredz\fP
+T}	T{
+PowerShell credential dumper
+T}
+_
+T{
+pcsc
+T}	T{
+\fI\%https://pcsclite.apdu.fr/\fP
+T}	T{
+Middleware for smart card readers
+T}
+_
+T{
+pdfcrack
+T}	T{
+\fI\%https://github.com/robins/pdfcrack\fP
+T}	T{
+A tool for cracking password\-protected PDF files
+T}
+_
+T{
+peepdf
+T}	T{
+\fI\%https://github.com/jesparza/peepdf\fP
+T}	T{
+peepdf is a Python tool to explore PDF files in order to find out if the file can be harmful or not.
+T}
+_
+T{
+petitpotam
+T}	T{
+\fI\%https://github.com/topotam/PetitPotam\fP
+T}	T{
+Windows machine account manipulation
+T}
+_
+T{
+phoneinfoga
+T}	T{
+\fI\%https://github.com/sundowndev/PhoneInfoga\fP
+T}	T{
+Information gathering & OSINT framework for phone numbers.
+T}
+_
+T{
+photon
+T}	T{
+\fI\%https://github.com/s0md3v/Photon\fP
+T}	T{
+a fast web crawler which extracts URLs / files / intel & endpoints from a target.
+T}
+_
+T{
+PHP filter chain generator
+T}	T{
+\fI\%https://github.com/synacktiv/php_filter_chain_generator\fP
+T}	T{
+A CLI to generate PHP filters chain / get your RCE without uploading a file if you control entirely the parameter passed to a require or an include in PHP!
+T}
+_
+T{
+phpggc
+T}	T{
+\fI\%https://github.com/ambionics/phpggc\fP
+T}	T{
+Exploit generation tool for the PHP platform.
+T}
+_
+T{
+pkcrack
+T}	T{
+\fI\%https://github.com/keyunluo/pkcrack\fP
+T}	T{
+tool to generate wordlists of passwords containing cities at a defined distance around the client city
+T}
+_
+T{
+pkinittools
+T}	T{
+\fI\%https://github.com/dirkjanm/PKINITtools\fP
+T}	T{
+Pkinit support tools
+T}
+_
+T{
+polenum
+T}	T{
+\fI\%https://github.com/Wh1t3Fox/polenum\fP
+T}	T{
+Polenum is a Python script which uses the Impacket library to extract user information through the SMB protocol.
+T}
+_
+T{
+powershell
+T}	T{
+\fI\%https://github.com/PowerShell/PowerShell\fP
+T}	T{
+a command\-line shell and scripting language designed for system administration and automation
+T}
+_
+T{
+pp\-finder
+T}	T{
+\fI\%https://github.com/yeswehack/pp\-finder\fP
+T}	T{
+Prototype pollution finder tool for javascript. pp\-finder lets you find prototype pollution candidates in your code.
+T}
+_
+T{
+pre2k
+T}	T{
+\fI\%https://github.com/garrettfoster13/pre2k\fP
+T}	T{
+pre2k is a tool to check if a Windows domain has any pre\-2000 Windows 2000 logon names still in use.
+T}
+_
+T{
+prips
+T}	T{
+\fI\%https://manpages.ubuntu.com/manpages/focal/man1/prips.1.html\fP
+T}	T{
+A utility for quickly generating IP ranges or enumerating hosts within a specified range.
+T}
+_
+T{
+privexchange
+T}	T{
+\fI\%https://github.com/dirkjanm/PrivExchange\fP
+T}	T{
+a tool to perform attacks against Microsoft Exchange server using NTLM relay techniques
+T}
+_
+T{
+prowler
+T}	T{
+\fI\%https://github.com/prowler\-cloud/prowler\fP
+T}	T{
+Perform Cloud Security best practices assessments / audits / incident response / compliance / continuous monitoring / hardening and forensics readiness.
+T}
+_
+T{
+proxmark3
+T}	T{
+\fI\%https://github.com/Proxmark/proxmark3\fP
+T}	T{
+Open source RFID research toolkit.
+T}
+_
+T{
+proxychains
+T}	T{
+\fI\%https://github.com/rofl0r/proxychains\fP
+T}	T{
+Proxy chains \- redirect connections through proxy servers.
+T}
+_
+T{
+pst\-utils
+T}	T{
+\fI\%https://manpages.debian.org/jessie/pst\-utils/readpst.1\fP
+T}	T{
+pst\-utils is a set of tools for working with Outlook PST files.
+T}
+_
+T{
+pth\-tools
+T}	T{
+\fI\%https://github.com/byt3bl33d3r/pth\-toolkit\fP
+T}	T{
+A toolkit to perform pass\-the\-hash attacks
+T}
+_
+T{
+pwncat
+T}	T{
+\fI\%https://github.com/calebstewart/pwncat\fP
+T}	T{
+A lightweight and versatile netcat alternative that includes various additional features.
+T}
+_
+T{
+pwndb
+T}	T{
+\fI\%https://github.com/davidtavarez/pwndb\fP
+T}	T{
+A command\-line tool for searching the pwndb database of compromised credentials.
+T}
+_
+T{
+pwndbg
+T}	T{
+\fI\%https://github.com/pwndbg/pwndbg\fP
+T}	T{
+a GDB plugin that makes debugging with GDB suck less
+T}
+_
+T{
+pwnedornot
+T}	T{
+\fI\%https://github.com/thewhiteh4t/pwnedOrNot\fP
+T}	T{
+Check if a password has been leaked in a data breach.
+T}
+_
+T{
+pwninit
+T}	T{
+\fI\%https://github.com/io12/pwninit\fP
+T}	T{
+A tool for automating starting binary exploit challenges
+T}
+_
+T{
+pwntools
+T}	T{
+\fI\%https://github.com/Gallopsled/pwntools\fP
+T}	T{
+a CTF framework and exploit development library
+T}
+_
+T{
+pygpoabuse
+T}	T{
+\fI\%https://github.com/Hackndo/pyGPOAbuse\fP
+T}	T{
+A tool for abusing GPO permissions to escalate privileges
+T}
+_
+T{
+pykek
+T}	T{
+\fI\%https://github.com/preempt/pykek\fP
+T}	T{
+PyKEK (Python Kerberos Exploitation Kit) a python library to manipulate KRB5\-related data.
+T}
+_
+T{
+pylaps
+T}	T{
+\fI\%https://github.com/p0dalirius/pylaps\fP
+T}	T{
+Utility for enumerating and querying LDAP servers.
+T}
+_
+T{
+pypykatz
+T}	T{
+\fI\%https://github.com/skelsec/pypykatz\fP
+T}	T{
+a Python library for mimikatz\-like functionality
+T}
+_
+T{
+pyrit
+T}	T{
+\fI\%https://github.com/JPaulMora/Pyrit\fP
+T}	T{
+Python\-based WPA/WPA2\-PSK attack tool.
+T}
+_
+T{
+pywhisker
+T}	T{
+\fI\%https://github.com/ShutdownRepo/pywhisker\fP
+T}	T{
+PyWhisker is a Python equivalent of the original Whisker made by Elad Shamir and written in C#. This tool allows users to manipulate the msDS\-KeyCredentialLink attribute of a target user/computer to obtain full control over that object. It\(aqs based on Impacket and on a Python equivalent of Michael Grafnetter\(aqs DSInternals called PyDSInternals made by podalirius.
+T}
+_
+T{
+pywsus
+T}	T{
+\fI\%https://github.com/GoSecure/pywsus\fP
+T}	T{
+Python implementation of a WSUS client
+T}
+_
+T{
+radare2
+T}	T{
+\fI\%https://github.com/radareorg/radare2\fP
+T}	T{
+A complete framework for reverse\-engineering and analyzing binaries
+T}
+_
+T{
+rdesktop
+T}	T{
+\fI\%https://github.com/rdesktop/rdesktop\fP
+T}	T{
+rdesktop is a client for Remote Desktop Protocol (RDP) used in a number of Microsoft products including Windows NT Terminal Server / Windows 2000 Server / Windows XP and Windows 2003 Server.
+T}
+_
+T{
+reaver
+T}	T{
+\fI\%https://github.com/t6x/reaver\-wps\-fork\-t6x\fP
+T}	T{
+reaver is a tool for brute\-forcing WPS (Wireless Protected Setup) PINs.
+T}
+_
+T{
+recon\-ng
+T}	T{
+\fI\%https://github.com/lanmaster53/recon\-ng\fP
+T}	T{
+External recon tool.
+T}
+_
+T{
+recondog
+T}	T{
+\fI\%https://github.com/s0md3v/ReconDog\fP
+T}	T{
+a reconnaissance tool for performing information gathering on a target.
+T}
+_
+T{
+redis\-tools
+T}	T{
+\fI\%https://github.com/antirez/redis\-tools\fP
+T}	T{
+redis\-tools is a collection of Redis client utilities including redis\-cli and redis\-benchmark.
+T}
+_
+T{
+remmina
+T}	T{
+\fI\%https://github.com/FreeRDP/Remmina\fP
+T}	T{
+Remote desktop client.
+T}
+_
+T{
+responder
+T}	T{
+\fI\%https://github.com/lgandx/Responder\fP
+T}	T{
+a LLMNR / NBT\-NS and MDNS poisoner.
+T}
+_
+T{
+rlwrap
+T}	T{
+\fI\%https://github.com/hanslub42/rlwrap\fP
+T}	T{
+rlwrap is a small utility that wraps input and output streams of executables / making it possible to edit and re\-run input history
+T}
+_
+T{
+ROADtools
+T}	T{
+\fI\%https://github.com/dirkjanm/ROADtools\fP
+T}	T{
+ROADtools is a framework to interact with Azure AD. It consists of a library (roadlib) with common components / the ROADrecon Azure AD exploration tool and the ROADtools Token eXchange (roadtx) tool.
+T}
+_
+T{
+roastinthemiddle
+T}	T{
+\fI\%https://github.com/Tw1sm/RITM\fP
+T}	T{
+RoastInTheMiddle is a tool to intercept and relay NTLM authentication requests.
+T}
+_
+T{
+robotstester
+T}	T{
+\fI\%https://github.com/p0dalirius/robotstester\fP
+T}	T{
+Utility for testing whether a website\(aqs robots.txt file is correctly configured.
+T}
+_
+T{
+routersploit
+T}	T{
+\fI\%https://github.com/threat9/routersploit\fP
+T}	T{
+Security audit tool for routers.
+T}
+_
+T{
+RsaCracker
+T}	T{
+\fI\%https://github.com/skyf0l/RsaCracker\fP
+T}	T{
+Powerful RSA cracker for CTFs. Supports RSA \- X509 \- OPENSSH in PEM and DER formats.
+T}
+_
+T{
+rsactftool
+T}	T{
+\fI\%https://github.com/RsaCtfTool/RsaCtfTool\fP
+T}	T{
+The rsactftool tool is used for RSA cryptographic operations and analysis.
+T}
+_
+T{
+rsync
+T}	T{
+\fI\%https://packages.debian.org/sid/rsync\fP
+T}	T{
+File synchronization tool for efficiently copying and updating data between local or remote locations
+T}
+_
+T{
+rtl\-433
+T}	T{
+\fI\%https://github.com/merbanan/rtl_433\fP
+T}	T{
+Tool for decoding various wireless protocols/ signals such as those used by weather stations
+T}
+_
+T{
+ruler
+T}	T{
+\fI\%https://github.com/sensepost/ruler\fP
+T}	T{
+Outlook Rules exploitation framework.
+T}
+_
+T{
+rusthound
+T}	T{
+\fI\%https://github.com/OPENCYBER\-FR/RustHound\fP
+T}	T{
+BloodHound ingestor in Rust.
+T}
+_
+T{
+rustscan
+T}	T{
+\fI\%https://github.com/RustScan/RustScan\fP
+T}	T{
+The Modern Port Scanner
+T}
+_
+T{
+samdump2
+T}	T{
+\fI\%https://github.com/azan121468/SAMdump2\fP
+T}	T{
+A tool to dump Windows NT/2k/XP/Vista password hashes from SAM files
+T}
+_
+T{
+scout
+T}	T{
+\fI\%https://github.com/nccgroup/ScoutSuite\fP
+T}	T{
+Scout Suite is an open source multi\-cloud security\-auditing tool which enables security posture assessment of cloud environments.
+T}
+_
+T{
+scrcpy
+T}	T{
+\fI\%https://github.com/Genymobile/scrcpy\fP
+T}	T{
+Display and control your Android device.
+T}
+_
+T{
+searchsploit
+T}	T{
+\fI\%https://gitlab.com/exploit\-database/exploitdb\fP
+T}	T{
+A command line search tool for Exploit\-DB
+T}
+_
+T{
+seclists
+T}	T{
+\fI\%https://github.com/danielmiessler/SecLists\fP
+T}	T{
+A collection of multiple types of lists used during security assessments
+T}
+_
+T{
+semgrep
+T}	T{
+\fI\%https://github.com/returntocorp/semgrep/\fP
+T}	T{
+Static analysis tool that supports multiple languages and can find a variety of vulnerabilities and coding errors.
+T}
+_
+T{
+shadowcoerce
+T}	T{
+\fI\%https://github.com/ShutdownRepo/shadowcoerce\fP
+T}	T{
+Utility for bypassing the Windows Defender antivirus by hiding a process within a legitimate process.
+T}
+_
+T{
+shellerator
+T}	T{
+\fI\%https://github.com/ShutdownRepo/Shellerator\fP
+T}	T{
+a simple command\-line tool for generating shellcode
+T}
+_
+T{
+Sherlock
+T}	T{
+\fI\%https://github.com/sherlock\-project/sherlock\fP
+T}	T{
+Hunt down social media accounts by username across social networks.
+T}
+_
+T{
+shuffledns
+T}	T{
+\fI\%https://github.com/projectdiscovery/shuffledns\fP
+T}	T{
+A fast and customizable DNS resolver that can be used for subdomain enumeration and other tasks.
+T}
+_
+T{
+simplyemail
+T}	T{
+\fI\%https://github.com/SimplySecurity/SimplyEmail\fP
+T}	T{
+a scriptable command line tool for sending emails
+T}
+_
+T{
+sipvicious
+T}	T{
+\fI\%https://github.com/enablesecurity/sipvicious\fP
+T}	T{
+Enumeration and MITM tool for SIP devices
+T}
+_
+T{
+sleuthkit
+T}	T{
+\fI\%https://github.com/sleuthkit/sleuthkit\fP
+T}	T{
+Forensic toolkit to analyze volume and file system data
+T}
+_
+T{
+sliver
+T}	T{
+\fI\%https://github.com/BishopFox/sliver.git\fP
+T}	T{
+Open source / cross\-platform and extensible C2 framework
+T}
+_
+T{
+smali
+T}	T{
+\fI\%https://github.com/JesusFreke/smali\fP
+T}	T{
+A tool to disassemble and assemble Android\(aqs dex files
+T}
+_
+T{
+smartbrute
+T}	T{
+\fI\%https://github.com/ShutdownRepo/SmartBrute\fP
+T}	T{
+The smart password spraying and bruteforcing tool for Active Directory Domain Services.
+T}
+_
+T{
+smbclient
+T}	T{
+\fI\%https://github.com/samba\-team/samba\fP
+T}	T{
+SMBclient is a command\-line utility that allows you to access Windows shared resources
+T}
+_
+T{
+smbmap
+T}	T{
+\fI\%https://github.com/ShawnDEvans/smbmap\fP
+T}	T{
+A tool to enumerate SMB shares and check for null sessions
+T}
+_
+T{
+smtp\-user\-enum
+T}	T{
+\fI\%https://github.com/pentestmonkey/smtp\-user\-enum\fP
+T}	T{
+A tool to enumerate email addresses via SMTP
+T}
+_
+T{
+smuggler
+T}	T{
+\fI\%https://github.com/defparam/smuggler\fP
+T}	T{
+Smuggler is a tool that helps pentesters and red teamers to smuggle data into and out of the network even when there are multiple layers of security in place.
+T}
+_
+T{
+SoapUI
+T}	T{
+\fI\%https://github.com/SmartBear/soapui\fP
+T}	T{
+SoapUI is the world\(aqs leading testing tool for API testing.
+T}
+_
+T{
+spiderfoot
+T}	T{
+\fI\%https://github.com/smicallef/spiderfoot\fP
+T}	T{
+A reconnaissance tool that automatically queries over 100 public data sources
+T}
+_
+T{
+sprayhound
+T}	T{
+\fI\%https://github.com/Hackndo/Sprayhound\fP
+T}	T{
+Active Directory password audit tool.
+T}
+_
+T{
+sqlmap
+T}	T{
+\fI\%https://github.com/sqlmapproject/sqlmap\fP
+T}	T{
+Sqlmap is an open\-source penetration testing tool that automates the process of detecting and exploiting SQL injection flaws
+T}
+_
+T{
+ssh\-audit
+T}	T{
+\fI\%https://github.com/arthepsy/ssh\-audit\fP
+T}	T{
+ssh\-audit is a tool to test SSH server configuration for best practices.
+T}
+_
+T{
+sshuttle
+T}	T{
+\fI\%https://github.com/sshuttle/sshuttle\fP
+T}	T{
+Transparent proxy server that tunnels traffic through an SSH server
+T}
+_
+T{
+sslscan
+T}	T{
+\fI\%https://github.com/rbsec/sslscan\fP
+T}	T{
+a tool for testing SSL/TLS encryption on servers
+T}
+_
+T{
+ssrfmap
+T}	T{
+\fI\%https://github.com/swisskyrepo/SSRFmap\fP
+T}	T{
+a tool for testing SSRF vulnerabilities.
+T}
+_
+T{
+steghide
+T}	T{
+\fI\%https://github.com/StefanoDeVuono/steghide\fP
+T}	T{
+steghide is a steganography program that is able to hide data in various kinds of image and audio files.
+T}
+_
+T{
+stegolsb
+T}	T{
+\fI\%https://github.com/KyTn/STEGOLSB\fP
+T}	T{
+Steganography tool to hide data in BMP images using least significant bit algorithm
+T}
+_
+T{
+stegosuite
+T}	T{
+\fI\%https://github.com/osde8info/stegosuite\fP
+T}	T{
+Stegosuite is a free steganography tool that allows you to hide data in image and audio files.
+T}
+_
+T{
+strace
+T}	T{
+\fI\%https://github.com/strace/strace\fP
+T}	T{
+strace is a debugging utility for Linux that allows you to monitor and diagnose system calls made by a process.
+T}
+_
+T{
+subfinder
+T}	T{
+\fI\%https://github.com/projectdiscovery/subfinder\fP
+T}	T{
+Tool to find subdomains associated with a domain.
+T}
+_
+T{
+sublist3r
+T}	T{
+\fI\%https://github.com/aboul3la/Sublist3r\fP
+T}	T{
+a Python tool designed to enumerate subdomains of websites.
+T}
+_
+T{
+swaks
+T}	T{
+\fI\%https://github.com/jetmore/swaks\fP
+T}	T{
+Swaks is a featureful flexible scriptable transaction\-oriented SMTP test tool.
+T}
+_
+T{
+symfony\-exploits
+T}	T{
+\fI\%https://github.com/ambionics/symfony\-exploits\fP
+T}	T{
+Collection of Symfony exploits and PoCs.
+T}
+_
+T{
+tailscale
+T}	T{
+\fI\%https://github.com/tailscale/tailscale\fP
+T}	T{
+A secure and easy\-to\-use VPN alternative that is designed for teams and businesses.
+T}
+_
+T{
+targetedKerberoast
+T}	T{
+\fI\%https://github.com/ShutdownRepo/targetedKerberoast\fP
+T}	T{
+Kerberoasting against specific accounts
+T}
+_
+T{
+tcpdump
+T}	T{
+\fI\%https://github.com/the\-tcpdump\-group/tcpdump\fP
+T}	T{
+a powerful command\-line packet analyzer for Unix\-like systems
+T}
+_
+T{
+TeamsPhisher
+T}	T{
+\fI\%https://github.com/Octoberfest7/TeamsPhisher\fP
+T}	T{
+TeamsPhisher is a Python3 program that facilitates the delivery of phishing messages and attachments to Microsoft Teams users whose organizations allow external communications.
+T}
+_
+T{
+testdisk
+T}	T{
+\fI\%https://github.com/cgsecurity/testdisk\fP
+T}	T{
+Partition recovery and file undelete utility
+T}
+_
+T{
+testssl
+T}	T{
+\fI\%https://github.com/drwetter/testssl.sh\fP
+T}	T{
+a tool for testing SSL/TLS encryption on servers
+T}
+_
+T{
+theharvester
+T}	T{
+\fI\%https://github.com/laramies/theHarvester\fP
+T}	T{
+Tool for gathering e\-mail accounts / subdomain names / virtual host / open ports / banners / and employee names from different public sources
+T}
+_
+T{
+tig
+T}	T{
+\fI\%https://github.com/jonas/tig.git\fP
+T}	T{
+Tig is an ncurses\-based text\-mode interface for git.
+T}
+_
+T{
+timing
+T}	T{
+\fI\%https://github.com/ffleming/timing_attack\fP
+T}	T{
+Tool to generate a timing profile for a given command.
+T}
+_
+T{
+tls\-map
+T}	T{
+\fI\%https://github.com/sec\-it/tls\-map\fP
+T}	T{
+tls\-map is a library for mapping TLS cipher algorithm names.
+T}
+_
+T{
+tls\-scanner
+T}	T{
+\fI\%https://github.com/tls\-attacker/tls\-scanner\fP
+T}	T{
+a simple script to check the security of a remote TLS/SSL web server
+T}
+_
+T{
+tomcatwardeployer
+T}	T{
+\fI\%https://github.com/mgeeky/tomcatwardeployer\fP
+T}	T{
+Script to deploy war file in Tomcat.
+T}
+_
+T{
+tor
+T}	T{
+\fI\%https://github.com/torproject/tor\fP
+T}	T{
+Anonymity tool that can help protect your privacy and online identity by routing your traffic through a network of servers.
+T}
+_
+T{
+toutatis
+T}	T{
+\fI\%https://github.com/megadose/Toutatis\fP
+T}	T{
+Toutatis is a tool that allows you to extract information from instagrams accounts such as e\-mails / phone numbers and more.
+T}
+_
+T{
+traceroute
+T}	T{
+\fI\%https://github.com/iputils/iputils\fP
+T}	T{
+Traceroute is a command which can show you the path a packet of information takes from your computer to one you specify.
+T}
+_
+T{
+trevorspray
+T}	T{
+\fI\%https://github.com/blacklanternsecurity/TREVORspray\fP
+T}	T{
+TREVORspray is a modular password sprayer with threading SSH proxying loot modules / and more
+T}
+_
+T{
+trid
+T}	T{
+\fI\%https://mark0.net/soft\-trid\-e.html\fP
+T}	T{
+File identifier
+T}
+_
+T{
+trilium
+T}	T{
+\fI\%https://github.com/zadam/trilium\fP
+T}	T{
+Personal knowledge management system.
+T}
+_
+T{
+tshark
+T}	T{
+\fI\%https://github.com/wireshark/wireshark\fP
+T}	T{
+TShark is a terminal version of Wireshark.
+T}
+_
+T{
+uberfile
+T}	T{
+\fI\%https://github.com/ShutdownRepo/Uberfile\fP
+T}	T{
+Uberfile is a simple command\-line tool aimed to help pentesters quickly generate file downloader one\-liners in multiple contexts (wget / curl / powershell / certutil...). This project code is based on my other similar project for one\-liner reverseshell generation Shellerator.
+T}
+_
+T{
+updog
+T}	T{
+\fI\%https://github.com/sc0tfree/updog\fP
+T}	T{
+Simple replacement for Python\(aqs SimpleHTTPServer.
+T}
+_
+T{
+upx
+T}	T{
+\fI\%https://github.com/upx/upx\fP
+T}	T{
+UPX is an advanced executable packer
+T}
+_
+T{
+username\-anarchy
+T}	T{
+\fI\%https://github.com/urbanadventurer/username\-anarchy\fP
+T}	T{
+Tools for generating usernames when penetration testing. Usernames are half the password brute force problem.
+T}
+_
+T{
+volatility2
+T}	T{
+\fI\%https://github.com/volatilityfoundation/volatility\fP
+T}	T{
+Volatile memory extraction utility framework
+T}
+_
+T{
+volatility3
+T}	T{
+\fI\%https://github.com/volatilityfoundation/volatility3\fP
+T}	T{
+Advanced memory forensics framework
+T}
+_
+T{
+vulny\-code\-static\-analysis
+T}	T{
+\fI\%https://github.com/swisskyrepo/Vulny\-Code\-Static\-Analysis\fP
+T}	T{
+Static analysis tool for C code
+T}
+_
+T{
+wabt
+T}	T{
+\fI\%https://github.com/WebAssembly/wabt\fP
+T}	T{
+The WebAssembly Binary Toolkit (WABT) is a suite of tools for WebAssembly (Wasm) including assembler and disassembler / a syntax checker / and a binary format validator.
+T}
+_
+T{
+wafw00f
+T}	T{
+\fI\%https://github.com/EnableSecurity/wafw00f\fP
+T}	T{
+a Python tool that helps to identify and fingerprint web application firewall (WAF) products.
+T}
+_
+T{
+waybackurls
+T}	T{
+\fI\%https://github.com/tomnomnom/waybackurls\fP
+T}	T{
+Fetch all the URLs that the Wayback Machine knows about for a domain.
+T}
+_
+T{
+webclientservicescanner
+T}	T{
+\fI\%https://github.com/Hackndo/webclientservicescanner\fP
+T}	T{
+Scans for web service endpoints
+T}
+_
+T{
+weevely
+T}	T{
+\fI\%https://github.com/epinna/weevely3\fP
+T}	T{
+a webshell designed for post\-exploitation purposes that can be extended over the network at runtime.
+T}
+_
+T{
+wfuzz
+T}	T{
+\fI\%https://github.com/xmendez/wfuzz\fP
+T}	T{
+WFuzz is a web application vulnerability scanner that allows you to find vulnerabilities using a wide range of attack payloads and fuzzing techniques
+T}
+_
+T{
+whatportis
+T}	T{
+\fI\%https://github.com/ncrocfer/whatportis\fP
+T}	T{
+Command\-line tool to lookup port information
+T}
+_
+T{
+whatweb
+T}	T{
+\fI\%https://github.com/urbanadventurer/WhatWeb\fP
+T}	T{
+Next generation web scanner that identifies what websites are running.
+T}
+_
+T{
+whois
+T}	T{
+\fI\%https://packages.debian.org/sid/whois\fP
+T}	T{
+See information about a specific domain name or IP address.
+T}
+_
+T{
+wifite2
+T}	T{
+\fI\%https://github.com/derv82/wifite2\fP
+T}	T{
+Script for auditing wireless networks.
+T}
+_
+T{
+windapsearch\-go
+T}	T{
+\fI\%https://github.com/ropnop/go\-windapsearch/\fP
+T}	T{
+Active Directory enumeration tool.
+T}
+_
+T{
+wireshark
+T}	T{
+\fI\%https://github.com/wireshark/wireshark\fP
+T}	T{
+Wireshark is a network protocol analyzer that lets you see what’s happening on your network at a microscopic level.
+T}
+_
+T{
+wpscan
+T}	T{
+\fI\%https://github.com/wpscanteam/wpscan\fP
+T}	T{
+A tool to enumerate WordPress\-based websites
+T}
+_
+T{
+wuzz
+T}	T{
+\fI\%https://github.com/asciimoo/wuzz\fP
+T}	T{
+a command\-line tool for interacting with HTTP(S) web services
+T}
+_
+T{
+XSpear
+T}	T{
+\fI\%https://github.com/hahwul/XSpear\fP
+T}	T{
+a powerful XSS scanning and exploitation tool.
+T}
+_
+T{
+xsrfprobe
+T}	T{
+\fI\%https://github.com/0xInfection/XSRFProbe\fP
+T}	T{
+a tool for detecting and exploiting Cross\-Site Request Forgery (CSRF) vulnerabilities
+T}
+_
+T{
+xsser
+T}	T{
+\fI\%https://github.com/epsylon/xsser\fP
+T}	T{
+XSS scanner.
+T}
+_
+T{
+xsstrike
+T}	T{
+\fI\%https://github.com/s0md3v/XSStrike\fP
+T}	T{
+a Python tool for detecting and exploiting XSS vulnerabilities.
+T}
+_
+T{
+xtightvncviewer
+T}	T{
+\fI\%https://www.commandlinux.com/man\-page/man1/xtightvncviewer.1.html\fP
+T}	T{
+xtightvncviewer is an open source VNC client software.
+T}
+_
+T{
+Yalis
+T}	T{
+\fI\%https://github.com/EatonChips/yalis\fP
+T}	T{
+Yet Another LinkedIn Scraper
+T}
+_
+T{
+youtubedl
+T}	T{
+\fI\%https://github.com/ytdl\-org/youtube\-dl\fP
+T}	T{
+Download videos from YouTube and other sites.
+T}
+_
+T{
+ysoserial
+T}	T{
+\fI\%https://github.com/frohoff/ysoserial\fP
+T}	T{
+A proof\-of\-concept tool for generating payloads that exploit unsafe Java object deserialization.
+T}
+_
+T{
+yt\-dlp
+T}	T{
+\fI\%https://github.com/yt\-dlp/yt\-dlp\fP
+T}	T{
+A youtube\-dl fork with additional features and fixes
+T}
+_
+T{
+zerologon
+T}	T{
+\fI\%https://github.com/SecuraBV/CVE\-2020\-1472\fP
+T}	T{
+Exploit for the Zerologon vulnerability (CVE\-2020\-1472).
+T}
+_
+T{
+zipalign
+T}	T{
+\fI\%https://developer.android.com/studio/command\-line/zipalign\fP
+T}	T{
+arguably the most important step to optimize your APK file
+T}
+_
+T{
+zsteg
+T}	T{
+\fI\%https://github.com/zed\-0xff/zsteg\fP
+T}	T{
+Detect steganography hidden in PNG and BMP images
+T}
+_
+.TE
 .SS Credentials
 .sp
 Some tools are pre\-configured with the following credentials
@@ -2232,12 +5496,20 @@ _
 .SS My resources
 .sp
 \(dqMy\-resources\(dq brings great features allowing users to make Exegol their own and customize it even further. This feature relies on a simple volume shared between the host and all exegol containers, and an advanced integration in the Exegol images directly.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+The \(dqmy\-resources\(dq feature will do what it\(aqs told to do. If users choose to use that feature to replace files or configuration, those replacements should take place. So if there are some additions to Exegol you\(aqre not getting, it could be because you have a \(dqmy\-resources\(dq setup that replaces it.
+.UNINDENT
+.UNINDENT
+.sp
 To learn more about the volume options, details are available \fI\%here\fP\&.
 .sp
 Below are the features offered by \(dqMy\-resources\(dq, allowing users to extend Exegol beyond what is initially included (\fI\%tools\fP, \fI\%resources\fP).
 .INDENT 0.0
 .IP \(bu 2
-\fI\%Custom tools\fP: users can store add their own custom standalone tools, binaries and scripts in the \(dqmy\-resources\(dq volume. This volume is accessible from all containers at \fB/opt/my\-resources\fP\&.
+\fI\%Custom tools\fP: users can place their own custom standalone tools, binaries and scripts in the \(dqmy\-resources\(dq volume. This volume is accessible from all containers at \fB/opt/my\-resources\fP\&.
 .IP \(bu 2
 \fI\%Supported setups\fP: users can customize their exegol environments automatically and transparently without having to manually setting things up for each and every new Exegol container they create. In this functionality, a pre\-set list of supported custom configuration is set, and will improve with time. It\(aqs the easier and most user\-friendly approach to customizing a few configurations.
 .IP \(bu 2
@@ -2256,15 +5528,19 @@ Below are the features offered by \(dqMy\-resources\(dq, allowing users to exten
 .IP \(bu 2
 \fI\%apt (packages, sources, keys)\fP
 .IP \(bu 2
+\fI\%bloodhound (customqueries, config)\fP
+.IP \(bu 2
+\fI\%firefox (addons)\fP
+.IP \(bu 2
 \fI\%python3 (pip3)\fP
-.IP \(bu 2
-\fI\%zsh (aliases, zshrc, history)\fP
-.IP \(bu 2
-\fI\%vim (vimrc, configs)\fP
 .IP \(bu 2
 \fI\%tmux (conf)\fP
 .IP \(bu 2
-\fI\%firefox (addons)\fP
+\fI\%vim (vimrc, configs)\fP
+.IP \(bu 2
+\fI\%neovim (.config/nvim)\fP
+.IP \(bu 2
+\fI\%zsh (aliases, zshrc, history)\fP
 .UNINDENT
 .IP \(bu 2
 \fI\%User setup\fP
@@ -2290,16 +5566,14 @@ The most simple approach would be to add standalone binaries, but users could al
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # Example for a standalone binary
 cp /path/to/tool ~/.exegol/my\-resources/bin/
 
 # Example for a symbolic link
 git \-C ~/.exegol/my\-resources/ clone \(dqhttps://github.com/someauthor/sometool\(dq
 ln \-s ~/.exegol/my\-resources/sometool/script.py ~/.exegol/my\-resources/bin/script.py
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -2337,6 +5611,47 @@ Importing custom repositories usually requires importing \fBGPG keys\fP as well,
 .IP \(bu 2
 To install \fBAPT packages\fP automatically (after updating the repository including the custom ones), just enter a list of package names in the \fB/opt/my\-resources/setup/apt/packages.list\fP file
 .UNINDENT
+.SS \fBbloodhound\fP (customqueries, config)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.1.0\fP of the \fBad\fP and \fBfull\fP images.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily add one or \fBseveral\fP bloodhound customqueries files, or change its configuration file in any new exegol container.
+.sp
+To automatically:
+.INDENT 0.0
+.IP \(bu 2
+overwrite the \fB~/.config/bloodhound/config.json\fP configuration file, simply create the file \fB/opt/my\-resources/setup/bloodhound/config.json\fP
+.IP \(bu 2
+replace the default exegol customqueries, place one or several valid customqueries files into the folder \fB/opt/my\-resources/setup/bloodhound/customqueries_replacement/\fP\&.
+.IP \(bu 2
+merge with the default exegol customqueries by placing one or several valid customqueries files into the folder \fB/opt/my\-resources/setup/bloodhound/customqueries_merge/\fP
+.UNINDENT
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+To be considered for replacing or merging, the customqueries files must be \fBvalid\fP and bear the \fB\&.json\fP extension. The file names do not matter.
+The output will be saved into the single file \fB~/.config/bloodhound/customqueries.json\fP\&.
+.UNINDENT
+.UNINDENT
+.SS \fBfirefox\fP (addons)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.0.2\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily install arbitrary firefox addons in any new exegol container.
+.sp
+The \fB/opt/my\-resources/setup/firefox/addons.txt\fP file allows the user to list addons to install from online sources. It must be filled with their links in Mozilla\(aqs shop (for example \fI\%https://addons.mozilla.org/fr/firefox/addon/foxyproxy\-standard/\fP ).
+The \fB\&.xpi\fP files in \fB/opt/my\-resources/setup/firefox/addons/\fP folder will be installed as well.
 .SS \fBpython3\fP (pip3)
 .sp
 \fBSEE ALSO:\fP
@@ -2349,7 +5664,7 @@ Available from version \fB3.0.0\fP of any exegol image.
 A system exists to easily install arbitrary PIP3 packages in any new exegol container.
 .sp
 The \fB/opt/my\-resources/setup/python3/requirements.txt\fP file allows the user to list a set of packages to install with constraints just like a classic \fBrequirements.txt\fP file.
-.SS \fBzsh\fP (aliases, zshrc, history)
+.SS \fBtmux\fP (conf)
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
@@ -2358,15 +5673,10 @@ Available from version \fB3.0.0\fP of any exegol image.
 .UNINDENT
 .UNINDENT
 .sp
-To not change the configuration for the proper functioning of exegol but allow the user to add aliases and custom commands to zshrc,
-additional configuration files will be automatically loaded by zsh to take into account the customization of the user .
+Exegol supports overloading its \fBtmux\fP configuration to allow all users to use their personal configuration.
 .INDENT 0.0
 .IP \(bu 2
-\fBaliases\fP: any custom alias can be defined in the \fB/opt/my\-resources/setup/zsh/aliases\fP file. This file is automatically loaded by zsh.
-.IP \(bu 2
-\fBzshrc\fP: it is possible to add commands at the end of the zshrc routine in \fB/opt/my\-resources/setup/zsh/zshrc\fP file.
-.IP \(bu 2
-\fBhistory\fP: it is possible to automatically add history commands at the end of \fB~/.zsh_history\fP from the file \fB/opt/my\-resources/setup/zsh/history\fP\&.
+To automatically overwrite the \fB~/.tmux.conf\fP configuration file, simply create the file \fB/opt/my\-resources/setup/tmux/tmux.conf\fP
 .UNINDENT
 .sp
 \fBTIP:\fP
@@ -2413,7 +5723,25 @@ To automatically overwrite the \fB~/.vimrc\fP configuration file, simply create 
 It is possible to install \fBplugins\fP with \fI\%the APT customization system\fP\&.
 .UNINDENT
 .UNINDENT
-.SS \fBtmux\fP (conf)
+.SS \fBneovim\fP (.config/nvim)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Will be available from version \fB3.1.2\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+Exegol supports overwriting its \fBneovim\fP configuration to allow all users to use their personal configuration.
+* To automatically overwrite the \fB~/.config/nvim/\fP configuration, copy your config in  \fB/opt/my\-resources/setup/nvim/\fP
+.sp
+\fBTIP:\fP
+.INDENT 0.0
+.INDENT 3.5
+It is possible to install \fBplugins dependencies\fP with \fI\%the APT customization system\fP\&.
+.UNINDENT
+.UNINDENT
+.SS \fBzsh\fP (aliases, zshrc, history)
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
@@ -2422,10 +5750,15 @@ Available from version \fB3.0.0\fP of any exegol image.
 .UNINDENT
 .UNINDENT
 .sp
-Exegol supports overloading its \fBtmux\fP configuration to allow all users to use their personal configuration.
+To not change the configuration for the proper functioning of exegol but allow the user to add aliases and custom commands to zshrc,
+additional configuration files will be automatically loaded by zsh to take into account the customization of the user .
 .INDENT 0.0
 .IP \(bu 2
-To automatically overwrite the \fB~/.tmux.conf\fP configuration file, simply create the file \fB/opt/my\-resources/setup/tmux/tmux.conf\fP
+\fBaliases\fP: any custom alias can be defined in the \fB/opt/my\-resources/setup/zsh/aliases\fP file. This file is automatically loaded by zsh.
+.IP \(bu 2
+\fBzshrc\fP: it is possible to add commands at the end of the zshrc routine in \fB/opt/my\-resources/setup/zsh/zshrc\fP file.
+.IP \(bu 2
+\fBhistory\fP: it is possible to automatically add history commands at the end of \fB~/.zsh_history\fP from the file \fB/opt/my\-resources/setup/zsh/history\fP\&.
 .UNINDENT
 .sp
 \fBTIP:\fP
@@ -2434,19 +5767,6 @@ To automatically overwrite the \fB~/.tmux.conf\fP configuration file, simply cre
 It is possible to install \fBplugins\fP with the APT customization system, details \fI\%here\fP\&.
 .UNINDENT
 .UNINDENT
-.SS \fBfirefox\fP (addons)
-.sp
-\fBSEE ALSO:\fP
-.INDENT 0.0
-.INDENT 3.5
-Available from version \fB3.0.2\fP of any exegol image.
-.UNINDENT
-.UNINDENT
-.sp
-A system exists to easily install arbitrary firefox addons in any new exegol container.
-.sp
-The \fB/opt/my\-resources/setup/firefox/addons.txt\fP file allows the user to list addons to install from online sources. It must be filled with their links in Mozilla\(aqs shop (for example \fI\%https://addons.mozilla.org/fr/firefox/addon/foxyproxy\-standard/\fP ).
-The \fB\&.xpi\fP files in \fB/opt/my\-resources/setup/firefox/addons/\fP folder will be installed as well.
 .SS User setup
 .sp
 \fBSEE ALSO:\fP
@@ -2538,7 +5858,7 @@ This part of the documentation is meant for Exegol maintainers.
 .IP \(bu 2
 \fI\%Post build\fP
 .IP \(bu 2
-\fI\%Upload\fP
+\fI\%Manual Upload\fP
 .IP \(bu 2
 \fI\%Post\-Deploy\fP
 .UNINDENT
@@ -2578,6 +5898,8 @@ This part of the documentation is meant for Exegol maintainers.
 .UNINDENT
 .UNINDENT
 .UNINDENT
+.IP \(bu 2
+\fI\%Pull Requests\fP
 .UNINDENT
 .UNINDENT
 .SS Wrapper release
@@ -2601,11 +5923,9 @@ Update current wrapper repo:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 git pull
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -2615,14 +5935,12 @@ Update git submodules and checkout to \fBmain\fP branch for release:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 git \-C exegol\-docker\-build checkout main
 git \-C exegol\-docker\-build pull
 git \-C exegol\-resources checkout main
 git \-C exegol\-resources pull
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 With Exegol
@@ -2630,11 +5948,16 @@ Update to the latest version of the \fBmain\fP branches (checkout if needed, \fB
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 exegol update \-v
-.ft P
-.fi
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+\fBIMPORTANT:\fP
+.INDENT 0.0
+.INDENT 3.5
+Don\(aqt forget to \fBreload and commit\fP any \fBsubmodule update\fP at this step !
 .UNINDENT
 .UNINDENT
 .SS 2. Config reviews
@@ -2656,6 +5979,16 @@ Review README.md
 .UNINDENT
 .SS Tests & build
 .sp
+First, test the code with mypy:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+mypy exegol.py \-\-ignore\-missing\-imports \-\-check\-untyped\-defs
+.EE
+.UNINDENT
+.UNINDENT
+.sp
 You can execute this one\-liner to check the project and build it.
 .sp
 \fBWARNING:\fP
@@ -2674,13 +6007,11 @@ Exegol can only be published through a \fBsource\fP build distribution because o
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 setup.py clean test && \e
    (rm \-rf Exegol.egg\-info && python3 \-m build \-\-sdist) || \e
    echo \(dqSome tests failed, check your code and requirements before publishing!\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS Post build
@@ -2694,7 +6025,16 @@ Publish PR
 .IP \(bu 2
 Wait for review and merge
 .UNINDENT
-.SS Upload
+.SS Manual Upload
+.sp
+\fBIMPORTANT:\fP
+.INDENT 0.0
+.INDENT 3.5
+PyPi packaging and upload is now handle by \fBGitHub action\fP\&. It will be triggered with the creation of the \fBnew tag\fP in the next\-step with the release creation.
+.sp
+\fBThis step is no longer needed.\fP
+.UNINDENT
+.UNINDENT
 .sp
 After validation of the PR, we can upload the new version package to pypi.
 .sp
@@ -2711,11 +6051,9 @@ Check package upload on the test repository (optional)
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 \-m twine upload \-\-repository testpypi dist/* \-\-verbose
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -2725,17 +6063,15 @@ Upload to the production repository
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 python3 \-m twine upload dist/*
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS Post\-Deploy
 .INDENT 0.0
 .IP \(bu 2
-Create new github release with new version tag
+Create new github \fBrelease\fP with \fBnew\fP version tag
 .IP \(bu 2
 Fast\-forward dev branch to the latest master commit
 .IP \(bu 2
@@ -2772,14 +6108,12 @@ Synchronize the \fBdev\fP branch with the latest \fBmain\fP update with a \fBfas
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 git pull \-\-all
 git checkout dev
 git merge \-\-ff\-only main
 git push
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SS New tag
@@ -2790,12 +6124,10 @@ Optionally, the \(dqAnnotated Tag Message\(dq can be set to the PR initial comme
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 git tag \(dqX.Y.Z\(dq
 git push origin \-\-tags
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2820,12 +6152,26 @@ Publish
 .SS CI/CD Pipeline
 .sp
 The Exegol project relies on a continuous integration and continuous deployment (CI/CD) pipeline for multiple scenarios. At the time of writing, Tue 31 Jan 2023, the pipeline is structured as follows:
+wrapper
+The GitHub Actions platform is used on \fI\%the Exegol module\fP\&. Its workflows are used for internal and external pull requests, new releases and testing on every commit. The workflows build, and push Python packages on \fI\%the official PyPI registry\fP, and run tests to make sure everything works as it should.
+images
+The GitHub Actions platform is used on \fI\%the Exegol\-images submodule\fP\&. Its workflows run for internal and external pull requests, new commits, new tags, and allow to:
 .INDENT 0.0
 .IP \(bu 2
-the GitHub Actions platform is used on \fI\%the Exegol\-images submodule\fP\&. Its workflows allow to build and push images on \fI\%the official Dockerhub registry\fP, run tests to make sure the tools are installed properly, run tests to help review pull requests, etc. GitHub Actions workflows are also being developped for packaging and publishing the Python wrapper on PyPI (\fI\%Exegol on PyPI\fP).
+build AMD64 and ARM64 images on self\-hosted runners
 .IP \(bu 2
-no pipeline(s) yet on the Python wrapper, resources, docs, etc. But it\(aqs definitely in the roadmap.
+run tests to make sure the tools are installed properly
+.IP \(bu 2
+automatically export tools list to the documentation
+.IP \(bu 2
+push the images on \fI\%the official Dockerhub registry\fP
 .UNINDENT
+[image: Pipelines (GitHub)]
+[image]
+docs
+The GitHub Actions platform is used for the documentation you\(aqre reading. Its workflows are used to build on every commit and pull request to make sure everything works as it should, but also automatically merge changes between the various branches in order to help with development.
+.sp
+ReadTheDocs then builds the final version on every commit for multiple branches (main, dev, dev\-images, dev\-wrapper) and hosts it online at \fI\%https://exegol.readthedocs.io/\fP\&.
 .SS GitHub Actions
 .sp
 The GitHub Actions pipeline(s) need runners to operate the various jobs configured for each workflow. The Exegol project relies on self\-hosted runners instead of the GitHub\-hosted runners mainly for costing reasons.
@@ -2881,12 +6227,10 @@ Docker can be installed quickly and easily with the following command\-line:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 curl \-fsSL \(dqhttps://get.docker.com/\(dq \-o get\-docker.sh
 sh get\-docker.sh
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -2900,15 +6244,13 @@ To grant yourself these rights, you can use the following command
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # add the sudo group to the user
 sudo usermod \-aG docker $(id \-u \-n)
 
 # \(dqreload\(dq the user groups
 newgrp
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -2918,11 +6260,9 @@ The \fBjq\fP utility is also required and can be installed with the following co
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 apt install jq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2963,11 +6303,9 @@ When configuring the agent as a service, it will be enabled, meaning it will sta
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 sudo systemctl is\-enabled actions.runner.ThePorgs\-Exegol\-images.<runner\-name>.service
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2975,11 +6313,9 @@ In order to start the service, either reboot the runner, or use \fBsystemctl\fP\
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 sudo systemctl start actions.runner.ThePorgs\-Exegol\-images.<runner\-name>.service
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -3010,15 +6346,13 @@ The \fBjq\fP tool can be installed as follows.
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 # install brew
 ruby \-e \(dq$(curl \-fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)\(dq < /dev/null 2> /dev/null
 
 # install jq
 brew install jq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -3026,11 +6360,9 @@ brew install jq
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 xcode\-select \-\-install
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -3083,8 +6415,7 @@ When configuring a macOS agent as a service with \fB\&./svc.sh install\fP, the f
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 Run docker/login\-action@v2
 with:
     username: ***
@@ -3093,8 +6424,7 @@ with:
     logout: true
 Logging into Docker Hub...
 Error: Error saving credentials: error storing credentials \- err: exit status 1, out: \(gaerror storing credentials \- err: exit status 1, out: \(gaUser interaction is not allowed.\(ga\(ga
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -3104,6 +6434,24 @@ In order to avoid that error, the runner was started interactively with \fB\&./r
 When there\(aqs not enough
 .sp
 You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: 62 MB
+.SS Pull Requests
+.sp
+When handling pull requests, maintainers may need to \fI\%synchronize a contributor\(aqs fork with latests changes\fP\&. In command\-line, this can be achieved as follows.
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+git clone \(dqgit@github.com:USER/FORK\(dq \(dqdest_dir\(dq
+cd dest_dir
+git remote add upstream \(dqgit@github.com:ThePorgs/REPO\(dq
+git fetch upstream
+git checkout \(dqTARGET_FORK_BRANCH\(dq
+git merge \-\-no\-edit upstream/\(dqORIGIN_BRANCH\(dq
+# solve conflicts if any
+git push
+.EE
+.UNINDENT
+.UNINDENT
 .SS Sponsors
 [image: Capgemini logo]
 [image]
@@ -3133,19 +6481,6 @@ We thank \fBHackTheBox\fP for continuously supporting the community and for help
 .sp
 .sp
 We thank \fBJetBrains\fP for supporting this community project through its OpenSource support program. More information at \fI\%https://jb.gg/OpenSourceSupport\fP !
-.SS Credits
-.sp
-Credits and thanks go to every infosec addicts that contribute and share but most specifically to
-.INDENT 0.0
-.IP \(bu 2
-\fI\%dramelac_\fP for his incredible help on the whole Exegol project, especially on the wrapper.
-.IP \(bu 2
-\fI\%LamaBzh\fP for working on \fI\%Exegol\-images\fP
-.IP \(bu 2
-\fI\%th1b4ud\fP for the inspiration \fI\%\(dqKali Linux in 3 seconds with Docker\(dq\fP\&.
-.IP \(bu 2
-all behind Docker, Debian, Python, the various requirements to the project, all the tools and resources loaded in Exegol, and all Exegol users for their trust and patience!
-.UNINDENT
 .SH AUTHOR
 Shutdown & Dramelac
 .SH COPYRIGHT

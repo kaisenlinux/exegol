@@ -143,7 +143,7 @@ class UpdateManager:
         if current_branch is None:
             logger.warning("HEAD is detached. Please checkout to an existing branch.")
             current_branch = "unknown"
-        if logger.isEnabledFor(ExeLog.VERBOSE) or current_branch not in ["master", "main"]:
+        if logger.isEnabledFor(ExeLog.VERBOSE):
             available_branches = gitUtils.listBranch()
             # Ask to checkout only if there is more than one branch available
             if len(available_branches) > 1:
@@ -202,7 +202,8 @@ class UpdateManager:
                 module = ExegolModules().getWrapperGit(fast_load=True)
                 if module.isAvailable:
                     isUpToDate = module.isUpToDate()
-                    remote_version = str(module.get_latest_commit())[:8]
+                    last_commit = module.get_latest_commit()
+                    remote_version = "?" if last_commit is None else str(last_commit)[:8]
                     current_version = str(module.get_current_commit())[:8]
                 else:
                     # If Exegol have not been installed from git clone. Auto-check update in this case is only available from mates release
@@ -264,7 +265,7 @@ class UpdateManager:
             module = ExegolModules().getWrapperGit(fast_load=True)
             if module.isAvailable:
                 commit_version = f" [bright_black]\[{str(module.get_current_commit())[:8]}][/bright_black]"
-        return f"[blue]v{ConstantConfig.version}[blue]{commit_version}"
+        return f"[blue]v{ConstantConfig.version}[/blue]{commit_version}"
 
     @classmethod
     def __tagUpdateAvailable(cls, latest_version, current_version=None):
@@ -285,6 +286,13 @@ class UpdateManager:
             if wrapper_data.current_version != current_version:
                 cls.__untagUpdateAvailable(current_version)
             return False
+
+    @classmethod
+    def display_latest_version(cls) -> str:
+        last_version = DataCache().get_wrapper_data().last_version
+        if len(last_version) == 8 and '.' not in last_version:
+            return f"[bright_black]\[{last_version}][/bright_black]"
+        return f"[blue]v{last_version}[/blue]"
 
     @classmethod
     def __untagUpdateAvailable(cls, current_version: Optional[str] = None):

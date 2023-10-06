@@ -125,8 +125,20 @@ class DockerUtils:
                                                     auto_remove=temporary,
                                                     working_dir=model.config.getWorkingDir())
         except APIError as err:
-            logger.error(err.explanation.decode('utf-8') if type(err.explanation) is bytes else err.explanation)
+            message = err.explanation.decode('utf-8').replace('[', '\\[') if type(err.explanation) is bytes else err.explanation
+            message = message.replace('[', '\\[')
+            logger.error(message)
             logger.debug(err)
+            model.rollback()
+            try:
+                container = cls.__client.containers.list(all=True, filters={"name": model.container_name})
+                if container is not None and len(container) > 0:
+                    for c in container:
+                        if c.name == model.container_name:  # Search for exact match
+                            container[0].remove()
+                            logger.debug("Container removed")
+            except Exception:
+                pass
             logger.critical("Error while creating exegol container. Exiting.")
             # Not reachable, critical logging will exit
             return  # type: ignore
@@ -151,6 +163,13 @@ class DockerUtils:
             return  # type: ignore
         # Check if there is at least 1 result. If no container was found, raise ObjectNotFound.
         if container is None or len(container) == 0:
+            # Handle case-insensitive OS
+            if EnvInfo.isWindowsHost() or EnvInfo.isMacHost():
+                # First try to fetch the container as-is (for retroactive support with old container with uppercase characters)
+                # If the user's input didn't match any container, try to force the name in lowercase if not already tried
+                lowered_tag = tag.lower()
+                if lowered_tag != tag:
+                    return cls.getContainer(lowered_tag)
             raise ObjectNotFound
         # Filter results with exact name matching
         for c in container:
@@ -349,7 +368,9 @@ class DockerUtils:
         id_list = set()
         for img in recovery_images:
             # Docker can keep track of 2 images maximum with RepoTag or RepoDigests, after it's hard to track origin without labels, so this recovery option is "best effort"
-            if len(img.attrs.get('RepoTags', [1])) > 0 or (not include_untag and len(img.attrs.get('RepoDigests', [1])) > 0) or img.id in id_list:
+            repo_tags = img.attrs.get('RepoTags')
+            repo_digest = img.attrs.get('RepoDigests')
+            if repo_tags is not None and len(repo_tags) > 0 or (not include_untag and repo_digest is not None and len(repo_digest) > 0) or img.id in id_list:
                 # Skip image from other repo and image already found
                 continue
             if img.labels.get('org.exegol.app', '') == "Exegol":

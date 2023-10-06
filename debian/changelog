@@ -1,3 +1,11 @@
+exegol (4.2.5-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the new upstream release
+  * Update the manpage
+  * Define Kaisen as maintainer
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Fri, 06 Oct 2023 13:26:31 +0100
+
 exegol (4.2.2-2kaisen) kaisen-packages; urgency=medium
 
   * Add python3-docker as dependancy
