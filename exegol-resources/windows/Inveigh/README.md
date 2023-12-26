@@ -15,7 +15,7 @@ On current versions of Windows, the default running UDP services allow port reus
 
 ### Version Descriptions
 * **PowerShell Inveigh** - original version developed over many years. For now at least, this version (1.506) will go without additional updates. Documentation can be found [here](https://github.com/Kevin-Robertson/Inveigh/wiki).
-* **C# Inveigh (aka InveighZero)** - original C# POC code combined with a C# port of most of the Powershell version's code. This version has now been rebuilt for C# and is taking over as the primary version. For now, the InveighZero will continue to be udated with just the latest C# version as a download alternative to avoid AV flagging the Powershell code.
+* **C# Inveigh (aka InveighZero)** - original C# POC code combined with a C# port of most of the Powershell version's code. This version has now been rebuilt for C# and is taking over as the primary version. 
 
 ### Features
 
@@ -38,27 +38,29 @@ Inveigh works with both IPv4 and IPv6 in cases where support for both is provide
 
 ## Cross-Platform Support
 
-Inveigh's SDK style project file is setup for .NET 3.5, 4.5, and 5.0 with 5.0 being the version that also works with Linux and macOS.  
+Inveigh's SDK style project file is setup for .NET 3.5, 4.6.2, and 6.0 with 6.0 being the version that also works with Linux and macOS.  
 
-`<TargetFrameworks>net35;net45;net5.0</TargetFrameworks>`
-
-Windows is still the primary usage target, however I will attempt to support all platforms for new features going forward. For the most part, Inveigh just worked on all 3 platforms once I converted to an SDK project file.
+`<TargetFrameworks>net35;net62;net6.0</TargetFrameworks>`
 
 ### Known Issues
 
 * The packet sniffer is available only on Windows due to differences in the raw socket setups. When compiled for either Linux or macOS, the packet sniffer will just be disabled. Instead, Inveigh's SMB listener can be used if port 445 is open.
 * macOS requires that routes are avalable for joining multicast groups. In my testing, I've had to add routes for DHCPv6 multicast in order to carry out that attack on this platform.  
  `sudo route -nv add -net ff02::1:2 -interface en0`
+ 
+### Execution
 
-### Linux/macOS Compiling 
+`dotnet Inveigh.dll`
 
-* With .NET 5.0 installed on target system  
-`dotnet publish -r linux-x64 -f net5.0 -p:AssemblyName=inveigh`  
-`dotnet publish -r osx-x64 -f net5.0 -p:AssemblyName=inveigh`  
+### Linux/macOS Platform Targeted Builds 
 
-* Without .NET 5.0 installed on target system  
-`dotnet publish --self-contained=true -p:PublishSingleFile=true -r linux-x64 -f net5.0 -p:AssemblyName=inveigh`  
-`dotnet publish --self-contained=true -p:PublishSingleFile=true -r osx-x64 -f net5.0 -p:AssemblyName=inveigh`  
+* With .NET 6.0 installed on target system  
+`dotnet publish -r linux-x64 -f net6.0 -p:AssemblyName=inveigh`  
+`dotnet publish -r osx-x64 -f net6.0 -p:AssemblyName=inveigh`  
+
+* Without .NET 6.0 installed on target system  
+`dotnet publish --self-contained=true -p:PublishSingleFile=true -r linux-x64 -f net6.0 -p:AssemblyName=inveigh`  
+`dotnet publish --self-contained=true -p:PublishSingleFile=true -r osx-x64 -f net6.0 -p:AssemblyName=inveigh`  
 
 ## Usage
 
@@ -135,7 +137,7 @@ Spoofers:
 
   -DNSTTL         Default=30: DNS TTL in seconds.
 
-  -DNSTYPES       Default=A: (A, SOA, SRV) Comma separated list of DNS types to spoof.
+  -DNSTYPES       Default=A: (A, AAAA, SOA, SRV) Comma separated list of DNS types to spoof.
 
   -ICMPv6         Default=Enabled: (Y/N) sending ICMPv6 router advertisements.
 
@@ -145,11 +147,13 @@ Spoofers:
 
   -IgnoreDomains  Default=None: Comma separated list of domains to ignore when spoofing.
 
-  -IgnoreHosts    Default=None: Comma separated list of hostnames to ignore when spoofing.
+
 
   -IgnoreIPs      Default=Local: Comma separated list of source IP addresses to ignore when spoofing.
 
   -IgnoreMACs     Default=Local: Comma separated list of MAC addresses to ignore when DHCPv6 spoofing.
+  
+  -IgnoreQueries  Default=None: Comma separated list of name queries to ignore when spoofing.
 
   -Local          Default=Disabled: (Y/N) performing spoofing attacks against the host system.
 
@@ -177,11 +181,11 @@ Spoofers:
 
   -ReplyToDomains Default=All: Comma separated list of domains to respond to when spoofing.
 
-  -ReplyToHosts   Default=All: Comma separated list of hostnames to respond to when spoofing.
-
   -ReplyToIPs     Default=All: Comma separated list of source IP addresses to respond to when spoofing.
 
   -ReplyToMACs    Default=All: Comma separated list of MAC addresses to respond to when DHCPv6 spoofing.
+  
+  -ReplyToQueries Default=All: Comma separated list of name queries to respond to when spoofing.
 
   -SpooferIP      Default=Autoassign: IP address included in spoofing responses.
 
@@ -492,13 +496,13 @@ GET NTLMV2USERNAMES             | get usernames and source IPs/hostnames for cap
 GET CLEARTEXT                   | get captured cleartext credentials
 GET CLEARTEXTUNIQUE             | get unique captured cleartext credentials
 GET REPLYTODOMAINS              | get ReplyToDomains parameter startup values
-GET REPLYTOHOSTS                | get ReplyToHosts parameter startup values
 GET REPLYTOIPS                  | get ReplyToIPs parameter startup values
 GET REPLYTOMACS                 | get ReplyToMACs parameter startup values
+GET REPLYTOQUERIES              | get ReplyToQueries parameter startup values
 GET IGNOREDOMAINS               | get IgnoreDomains parameter startup values
-GET IGNOREHOSTS                 | get IgnoreHosts parameter startup values
 GET IGNOREIPS                   | get IgnoreIPs parameter startup values
 GET IGNOREMACS                  | get IgnoreMACs parameter startup values
+GET IGNOREQUERIES               | get IgnoreQueries parameter startup values
 SET CONSOLE                     | set Console parameter value
 HISTORY                         | get command history
 RESUME                          | resume real time console output

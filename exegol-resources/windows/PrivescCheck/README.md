@@ -2,60 +2,104 @@
 
 This script aims to __enumerate common Windows configuration issues__ that can be leveraged for local privilege escalation. It also __gathers various information__ that might be useful for __exploitation__ and/or __post-exploitation__.
 
-The purpose of this tool is to help security consultants identify potential weaknesses on Windows machines during penetration tests and Workstation/VDI audits. It is not intended to be used during Red Team engagements although it may still provide you with a lot of useful information.
-
-This tool is heavily inspired from the amazing work that [@harmj0y](https://twitter.com/harmj0y) and [@mattifestation](https://twitter.com/mattifestation) put in [PowerUp](https://github.com/HarmJ0y/PowerUp). The two original authors decided to switch to DotNet and are now working on the great [SeatBelt](https://github.com/GhostPack/Seatbelt) project, which explains why [PowerUp](https://github.com/HarmJ0y/PowerUp) is no longer maintained. Although [SeatBelt](https://github.com/GhostPack/Seatbelt) brings some undeniable benefits, I think that a standalone PowerShell script is still a good way to go for most pentesters, hence the motivation behind the creation of this tool.
-
 You can find more information about PrivescCheck [here](INFORMATION.md).
 
-## Usage
+## Use from a command prompt
 
-### 1. Basic usage
+__Usage #1:__ Basic usage
 
-From a command prompt:
-```
-C:\Temp\>powershell -ep bypass -c ". .\PrivescCheck.ps1; Invoke-PrivescCheck"
-```
-
-From a PowerShell prompt:
-```
-PS C:\Temp\> Set-ExecutionPolicy Bypass -Scope process -Force
-PS C:\Temp\> . .\PrivescCheck.ps1; Invoke-PrivescCheck
+```bat
+powershell -ep bypass -c ". .\PrivescCheck.ps1; Invoke-PrivescCheck"
 ```
 
-From a PowerShell prompt without modifying the execution policy:
-```
-PS C:\Temp\> Get-Content .\PrivescCheck.ps1 | Out-String | IEX
-PS C:\Temp\> Invoke-PrivescCheck
+__Usage #2:__ Extended mode
+
+```bat
+powershell -ep bypass -c ". .\PrivescCheck.ps1; Invoke-PrivescCheck -Extended"
 ```
 
-### 2. Extended mode
+__Usage #3:__ Extended mode + Write a report file (default format is raw text)
 
-By default, the scope is limited to __vulnerability discovery__ but, you can get a lot more information with the `-Extended` option:
-
+```bat
+powershell -ep bypass -c ". .\PrivescCheck.ps1; Invoke-PrivescCheck -Extended -Report PrivescCheck_%COMPUTERNAME%"
 ```
+
+__Usage #4:__ Extended mode + Write report files in other formats
+
+```bat
+powershell -ep bypass -c ". .\PrivescCheck.ps1; Invoke-PrivescCheck -Extended -Report PrivescCheck_%COMPUTERNAME% -Format TXT,CSV,HTML,XML"
+```
+
+## Use from a PowerShell prompt
+
+### 1. Load the script as a module
+
+__Case #1:__ Execution policy is already set to `Bypass`, so simply load the script.
+
+```powershell
+. .\PrivescCheck.ps1
+```
+
+__Case #2:__ Default execution policy is set, so set it to `Bypass` for the current PowerShell process and load the script.
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope process -Force
+. .\PrivescCheck.ps1
+```
+
+__Case #3:__ Execution policy is locked down, so get the file's content and pipe it to `Invoke-Expression`.
+
+```powershell
+Get-Content .\PrivescCheck.ps1 | Out-String | IEX
+```
+
+### 2. Run the script
+
+Then, use the `Invoke-PrivescCheck` cmdlet.
+
+__Usage #1:__ Basic usage
+
+```powershell
+Invoke-PrivescCheck
+```
+
+__Usage #2:__ Extended mode
+
+```powershell
 Invoke-PrivescCheck -Extended
 ```
 
-### 3. Generate report files
+__Usage #3:__ Extended mode + Write a report file (default format is raw text)
 
-You can use the `-Report` and `-Format` options to save the results of the script to files in various formats. Accepted formats are `TXT`, `CSV`, `HTML` and `XML`. If `-Format` is empty, the default format is `TXT`, which is a simple copy of what is printed on the terminal.
-
-The value of `-Report` will be used as the base name for the final report, the extension will be automatically appended depending on the chosen format(s).
-
-```
-Invoke-PrivescCheck -Report PrivescCheck_%COMPUTERNAME%
-Invoke-PrivescCheck -Report PrivescCheck_%COMPUTERNAME% -Format TXT,CSV,HTML,XML
+```powershell
+Invoke-PrivescCheck -Extended -Report "PrivescCheck_$($env:COMPUTERNAME)"
 ```
 
-## Bug reporting. Feature Request. Overall enhancement.
+__Usage #4:__ Extended mode + Write report files in other formats
 
-- You think you identified a bug or a false positive/negative?
-- You think a particular check is missing?
-- You think something could be improved?
+```powershell
+Invoke-PrivescCheck -Extended -Report "PrivescCheck_$($env:COMPUTERNAME)" -Format TXT,CSV,HTML,XML
+```
 
-That's awesome! :slightly_smiling_face: Please let me know by opening an issue and include as much detail as possible.
+## Known issues
 
-Especially if it's a bug, I will need:
-- The Windows version and the PowerShell version.
-- The script output (do not forget to remove sensitive information).
+### Metasploit timeout
+
+If you run this script within a Meterpreter session, you will likely get a "timeout" error. Metasploit has a "response timeout" value, which is set to 15 seconds by default, but this script takes a lot more time to run in most environments.
+
+```console
+meterpreter > load powershell
+Loading extension powershell...Success.
+meterpreter > powershell_import /local/path/to/PrivescCheck.ps1
+[+] File successfully imported. No result was returned.
+meterpreter > powershell_execute "Invoke-PrivescCheck"
+[-] Error running command powershell_execute: Rex::TimeoutError Operation timed out.
+```
+
+It is possible to set a different value thanks to the `-t` option of the `sessions` command ([documentation](https://www.offensive-security.com/metasploit-unleashed/msfconsole-commands/)). In the following example, a timeout of 2 minutes is set for the session with ID `1`.
+
+```console
+msf6 exploit(multi/handler) > sessions -t 120 -i 1
+[*] Starting interaction with 1...
+meterpreter > powershell_execute "Invoke-PrivescCheck"
+```

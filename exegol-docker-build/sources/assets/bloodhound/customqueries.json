@@ -1,8 +1,72 @@
 {
     "queries": [
         {
+            "name": "Find more privileged groups",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (g:Group) WHERE g.objectid =~ '.*-(512|517|518|519|520|521|522|526|527|(?i)S-1-5-32-(544|547|548|549|550|551|552|556|557|580)|(?i)S-1-5-9)$' OR toUpper(g.samaccountname) = 'DNSADMINS' RETURN g"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark more privileged groups as HVT",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (g:Group) WHERE g.objectid =~ '.*-(512|517|518|519|520|521|522|526|527|(?i)S-1-5-32-(544|547|548|549|550|551|552|556|557|580)|(?i)S-1-5-9)$' OR toUpper(g.samaccountname) = 'DNSADMINS' SET g.highvalue=TRUE RETURN g"
+            }]
+        },
+        {
+            "name": "Find low value members of High Value Target Groups (1 hop)",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(m {highvalue: FALSE})-[:MemberOf]->(g:Group {highvalue: TRUE}) RETURN p"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark low value members of High Value Target Groups as HVT (1 hop)",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(o {highvalue: FALSE})-[:MemberOf]->(g:Group {highvalue: TRUE}) SET o.highvalue=TRUE RETURN p"
+            }]
+        },
+        {
+            "name": "Find objects containing names of some tier 0 software (SCCM, Veeam, ...)",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (o) WHERE (o.samaccountname =~ '(?i).*(?:sccm|veeam|boomgar|tivoli|altiris|varonis|vcenter|vsphere|esx).*') RETURN o"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark objects containing names of some tier 0 software (SCCM, Veeam, ...) as HVT",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (o) WHERE (o.samaccountname =~ '(?i).*(?:sccm|veeam|boomgar|tivoli|altiris|varonis|vcenter|vsphere|esx).*') SET o.highvalue=TRUE RETURN o"
+            }]
+        },
+        {
+            "name": "Find low value objects with ACLs on high value objects (1 hop, max 200, Heavy)",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=((a {highvalue: FALSE})-[r]->(b {highvalue: TRUE})) WHERE NOT (type(r) = 'Contains') RETURN p LIMIT 200"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark low value objects with ACLs on high value objects as HVT (1 hop, max 200, Heavy)",
+            "category": "High Value Targets",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=((a {highvalue: FALSE})-[r]->(b {highvalue: TRUE})) WHERE NOT (type(r) = 'Contains') SET a.highvalue=TRUE RETURN p LIMIT 200"
+            }]
+        },
+        {
             "name": "Owned objects",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (m) WHERE m.owned=TRUE RETURN m"
@@ -10,7 +74,7 @@
         },
         {
             "name": "Direct groups of owned users",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User {owned:true}), (g:Group), p=(u)-[:MemberOf]->(g) RETURN p",
@@ -20,7 +84,7 @@
         },
         {
             "name": "Unrolled groups of owned users",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (m:User) WHERE m.owned=TRUE WITH m MATCH p=(m)-[:MemberOf*1..]->(n:Group) RETURN p"
@@ -28,7 +92,7 @@
         },
         {
             "name": "Shortest paths from owned objects to High Value Targets (5 hops)",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=shortestPath((n {owned:true})-[:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|CanRDP|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin|ReadGMSAPassword|HasSIDHistory|CanPSRemote*1..5]->(m {highvalue:true})) WHERE NOT n=m RETURN p",
@@ -37,7 +101,7 @@
         },
         {
             "name": "Most exploitable paths from owned objects to High Value Targets (5 hops)",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=allShortestPaths((n {owned:true})-[:MemberOf|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin|ReadGMSAPassword|HasSIDHistory*1..5]->(m {highvalue:true})) WHERE NOT n=m RETURN p",
@@ -46,7 +110,7 @@
         },
         {
             "name": "Next steps (5 hops) from owned objects",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=shortestPath((c {owned: true})-[*1..5]->(s)) WHERE NOT c = s RETURN p"
@@ -54,15 +118,23 @@
         },
         {
             "name": "Next steps (3 hops) from owned objects",
-            "category": "Tigers love pepper",
+            "category": "Owned Objects",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=shortestPath((c {owned: true})-[*1..3]->(s)) WHERE NOT c = s RETURN p"
             }]
         },
         {
+            "name": "Owned users with permissions against GPOs",
+            "category": "Owned Objects",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(u:User {owned:true})-[r:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink*1..]->(g:GPO) RETURN p"
+            }]
+        },
+        {
             "name": "Connections between different domains/forests",
-            "category": "Tigers love pepper",
+            "category": "Domains/Forests",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (a)-[r]->(b) WHERE NOT a.domain = b.domain RETURN p"
@@ -70,23 +142,35 @@
         },
         {
             "name": "Connections (ACEs only) between different domains/forests",
-            "category": "Tigers love pepper",
+            "category": "Domains/Forests",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (a)-[r]->(b) WHERE NOT a.domain = b.domain AND r.isacl = True RETURN p"
             }]
         },
         {
-            "name": "Owned users with permissions against GPOs",
-            "category": "Tigers love pepper",
+            "name": "Can a user from domain A do anything to any computer in domain B (Warning: VERY Heavy)",
+            "category": "Domains/Forests",
             "queryList": [{
+                "final": false,
+                "title": "Select source domain...",
+                "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name DESC"
+              },
+              {
+                "final": false,
+                "title": "Select destination domain...",
+                "query": "MATCH (n:Domain) RETURN $result + '=>' + n.name ORDER BY n.name DESC"
+              },
+              {
                 "final": true,
-                "query": "MATCH p=(u:User {owned:true})-[r:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink*1..]->(g:GPO) RETURN p"
+                "query": "WITH split($result, \"=>\") as selectedDomains WITH selectedDomains[0] as sourceDomain, selectedDomains[1] as destDomain MATCH (n:User {domain: sourceDomain}) MATCH (m:Computer {domain: destDomain}) MATCH p=allShortestPaths((n)-[r:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|CanRDP|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin*1..]->(m)) WHERE NOT n = m RETURN p",
+                "startNode": "{}",
+                "allowCollapse": false
             }]
         },
         {
             "name": "Kerberoastable users with a path to DA",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User {hasspn:true}) MATCH (g:Group) WHERE g.objectid ENDS WITH '-512' MATCH p = shortestPath( (u)-[*1..]->(g) ) RETURN p"
@@ -94,7 +178,7 @@
         },
         {
             "name": "Kerberoastable users with a path to High Value",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User {hasspn:true}),(n {highvalue:true}),p = shortestPath( (u)-[*1..]->(n) ) RETURN p"
@@ -102,7 +186,7 @@
         },
         {
             "name": " Kerberoastable users and where they are AdminTo",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "OPTIONAL MATCH (u:User) WHERE u.hasspn=true OPTIONAL MATCH (u)-[r:AdminTo]->(c:Computer) RETURN u"
@@ -110,7 +194,7 @@
         },
         {
             "name": "Kerberoastable users who are members of high value groups",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User)-[r:MemberOf*1..]->(g:Group) WHERE g.highvalue=true AND u.hasspn=true RETURN u"
@@ -118,7 +202,7 @@
         },
         {
             "name": "Kerberoastable users with passwords last set > 5 years ago",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User) WHERE n.hasspn=true AND WHERE u.pwdlastset < (datetime().epochseconds - (1825 * 86400)) and NOT u.pwdlastset IN [-1.0, 0.0] RETURN u"
@@ -126,7 +210,7 @@
         },
         {
             "name": "Kerberoastable Users",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User)WHERE n.hasspn=true RETURN n",
@@ -135,7 +219,7 @@
         },
         {
             "name": "AS-REProastable Users",
-            "category": "They hate cinnamon",
+            "category": "Roasting",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User {dontreqpreauth: true}) RETURN u"
@@ -143,31 +227,31 @@
         },
         {
             "name": "Unconstrained Delegations",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
-                "query": "MATCH (c {unconstraineddelegation:true}) return c"
+                "query": "MATCH (c {unconstraineddelegation:true}) RETURN c"
             }]
         },
         {
             "name": "Constrained Delegations (with Protocol Transition)",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
-                "query": "MATCH (c) WHERE NOT c.allowedtodelegate IS NULL AND c.trustedtoauth=true return c"
+                "query": "MATCH (c) WHERE NOT c.allowedtodelegate IS NULL AND c.trustedtoauth=true RETURN c"
             }]
         },
         {
             "name": "Constrained Delegations (without Protocol Transition)",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
-                "query": "MATCH (c) WHERE NOT c.allowedtodelegate IS NULL AND c.trustedtoauth=false return c"
+                "query": "MATCH (c) WHERE NOT c.allowedtodelegate IS NULL AND c.trustedtoauth=false RETURN c"
             }]
         },
         {
             "name": "Resource-Based Constrained Delegations",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(u)-[:AllowedToAct]->(c) RETURN p"
@@ -175,7 +259,7 @@
         },
         {
             "name": "Unconstrained Delegation systems (without domain controllers)",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c1:Computer)-[:MemberOf*1..]->(g:Group) WHERE g.objectid ENDS WITH '-516' WITH COLLECT(c1.name) AS domainControllers MATCH (c2 {unconstraineddelegation:true}) WHERE NOT c2.name IN domainControllers RETURN c2"
@@ -183,7 +267,7 @@
         },
         {
             "name": "(Warning: edits the DB) Mark unconstrained delegation systems as high value targets",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c1:Computer)-[:MemberOf*1..]->(g:Group) WHERE g.objectid ENDS WITH '-516' WITH COLLECT(c1.name) AS domainControllers MATCH (c2 {unconstraineddelegation:true}) WHERE NOT c2.name IN domainControllers SET c2.highvalue = true RETURN c2"
@@ -191,64 +275,188 @@
         },
         {
             "name": "Shortest paths from owned principals to unconstrained delegation systems",
-            "category": "Ready to let the dogs out?",
+            "category": "Kerberos Delegations",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n {owned:true}) MATCH p=shortestPath((n)-[:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin|ReadGMSAPassword|HasSIDHistory|CanPSRemote*1..]->(m:Computer {unconstraineddelegation: true})) WHERE NOT n=m RETURN p"
             }]
         },
         {
+            "name":"Between users (1 hop, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u1:User { enabled: TRUE } )-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink]->(u2:User) WHERE NOT(u1.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between users (3 hops, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u1:User { enabled: TRUE } )-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink*1..3]->(u2:User) WHERE NOT(u1.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between computers (1 hop, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(c1:Computer {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink]->(c2:Computer) WHERE NOT(c1.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between computers (3 hops, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(c1:Computer {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink*1..3]->(c2:Computer) WHERE NOT(c1.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
             "name": "Find computers admin to other computers",
-            "category": "A nerdy hillbilly",
+            "category": "Weak ACLs",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (c1:Computer)-[r1:AdminTo]->(c2:Computer) RETURN p UNION ALL MATCH p = (c3:Computer)-[r2:MemberOf*1..]->(g:Group)-[r3:AdminTo]->(c4:Computer) RETURN p"
             }]
         },
         {
-            "name": "Logged in Admins",
-            "category": "A nerdy hillbilly",
+            "name":"Between enabled users and computers (1 hop, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u:User {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink]->(c:Computer) WHERE NOT(u.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between enabled users and computers (3 hops, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u:User {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink*1..3]->(c:Computer) WHERE NOT(u.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between enabled computers and users (1 hop, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(c:Computer {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink]->(u:User) WHERE NOT(u.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Between enabled computers and users (3 hops, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(c:Computer {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink*1..3]->(u:User) WHERE NOT(u.name STARTS WITH 'MSOL_') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name": "Objects with the AddAllowedToAct or WriteAccountRestrictions right on an enabled computer",
+            "category": "Weak ACLs",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=(a:Computer)-[r:HasSession]->(b:User) WITH a,b,r MATCH p=shortestPath((b)-[:AdminTo|MemberOf*1..]->(a)) RETURN p",
+                "query": "MATCH p=(g {enabled: TRUE})-[:AddAllowedToAct|WriteAccountRestrictions]->(c:Computer {enabled: TRUE}) RETURN p"
+            }]
+        },
+        {
+            "name":"Miscellaneous direct ACLs from enabled objects (1 hop, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u1 {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink|Enroll|ManageCa|ManageCertificates]->(u2) WHERE NOT(u1.name STARTS WITH 'MSOL_') AND NOT(u2.name STARTS WITH 'MSOL_') AND NOT(u1.name CONTAINS 'ADMIN') AND NOT(u2.name CONTAINS 'ADMIN') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name":"Miscellaneous direct ACLs from enabled objects (3 hops, max 200)",
+            "category":"Weak ACLs",
+            "queryList":[
+                {
+                    "final":true,
+                    "query":"MATCH p=(u1 {enabled: TRUE})-[:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AddSelf|WriteSPN|AddKeyCredentialLink|Enroll|ManageCa|ManageCertificates*1..3]->(u2) WHERE NOT(u1.name STARTS WITH 'MSOL_') AND NOT(u2.name STARTS WITH 'MSOL_') AND NOT(u1.name CONTAINS 'ADMIN') AND NOT(u2.name CONTAINS 'ADMIN') RETURN p LIMIT 200"
+                }
+            ]
+        },
+        {
+            "name": "Logged in Admins",
+            "category": "Admins",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(a:Computer {enabled: TRUE})-[r:HasSession]->(b:User {enabled: TRUE}) WITH a,b,r MATCH p=shortestPath((b)-[:AdminTo|MemberOf*1..]->(a)) RETURN p",
                 "allowCollapse": true
             }]
         },
         {
             "name": "Users with local admin rights",
-            "category": "A nerdy hillbilly",
+            "category": "Admins",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=(m:User)-[r:AdminTo]->(n:Computer) RETURN p"
+                "query": "MATCH p=(m:User {enabled: TRUE})-[r:AdminTo]->(n:Computer {enabled: TRUE}) RETURN p"
             }]
         },
         {
-            "name": "Domain admin sessions",
-            "category": "A nerdy hillbilly",
+            "name": "Domain admins sessions",
+            "category": "Admins",
             "queryList": [{
                 "final": true,
-                "query": "MATCH (n:User)-[:MemberOf]->(g:Group) WHERE g.objectid ENDS WITH '-512' MATCH p = (c:Computer)-[:HasSession]->(n) return p"
+                "query": "MATCH (n:User {enabled: TRUE})-[:MemberOf]->(g:Group) WHERE g.objectid ENDS WITH '-512' MATCH p = (c:Computer {enabled: TRUE})-[:HasSession]->(n) RETURN p"
+            }]
+        },
+        {
+            "name": "Privileged users sessions",
+            "category": "Admins",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (n:User {enabled: TRUE})-[:MemberOf*1..]->(g:Group {highvalue: TRUE}) MATCH p = (c:Computer {enabled: TRUE})-[:HasSession]->(n) RETURN p"
             }]
         },
         {
             "name": "Users with adminCount, not sensitive for delegation, not members of Protected Users",
-            "category": "A nerdy hillbilly",
+            "category": "Admins",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u)-[:MemberOf*1..]->(g:Group) WHERE g.objectid =~ \"(?i)S-1-5-.*-525\" WITH COLLECT (u.name) as protectedUsers MATCH p=(u2:User)-[:MemberOf*1..3]->(g2:Group) WHERE u2.admincount=true AND u2.sensitive=false AND NOT u2.name IN protectedUsers RETURN p"
             }]
         },
         {
-            "name": "Objects with the AddAllowedToAct or WriteAccountRestrictions right on a computer",
-            "category": "A nerdy hillbilly",
+            "name": "Enabled Domain/Enterprise Administrators, not sensitive for delegation and not members of Protected Users",
+            "category": "Admins",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=(g)-[:AddAllowedToAct|WriteAccountRestrictions]->(c:Computer) RETURN p"
+                "query": "MATCH (u:User {enabled: TRUE, admincount: TRUE})-[:MemberOf*1..]->(g:Group) WHERE g.objectid =~ '.*-525$' WITH COLLECT(u.objectid) as protectedUsers MATCH p=(u2:User {enabled: TRUE, admincount: TRUE, sensitive: FALSE})-[:MemberOf*1..]->(g2:Group) WHERE NOT u2.objectid IN protectedUsers AND g2.objectid =~ '.*-(512|519|(?i)S-1-5-32-544)$' RETURN p"
+            }]
+        },
+        {
+            "name": "Enabled users, members of high value groups, not sensitive for delegation and not members of Protected Users (Heavy)",
+            "category": "Admins",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (u:User {enabled: TRUE, admincount: TRUE})-[:MemberOf*1..]->(g:Group) WHERE g.objectid =~ '.*-525$' WITH COLLECT (u.objectid) as protectedUsers MATCH p=(u2:User {enabled: TRUE, sensitive: FALSE})-[:MemberOf*1..]->(g2:Group {highvalue: TRUE}) WHERE NOT u2.objectid IN protectedUsers RETURN p"
             }]
         },
         {
             "name": "Groups that contain the word 'admin'",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "Match (n:Group) WHERE n.name CONTAINS 'ADMIN' RETURN n"
@@ -256,7 +464,7 @@
         },
         {
             "name": "Groups that can change user passwords",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(m:Group)-[r:ForceChangePassword]->(n:User) RETURN DISTINCT m[.]name,  COUNT(m[.]name) ORDER BY COUNT(m[.]name) DESC"
@@ -264,7 +472,7 @@
         },
         {
             "name": "Groups of High Value Targets",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(n:User)-[r:MemberOf*1..]->(m:Group {highvalue:true}) RETURN p"
@@ -272,7 +480,7 @@
         },
         {
             "name": "Non Admin Groups with High Value Privileges",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(g:Group)-[r:Owns|:WriteDacl|:GenericAll|:WriteOwner|:ExecuteDCOM|:GenericWrite|:AllowedToDelegate|:ForceChangePassword]->(n:Computer) WHERE NOT g.name CONTAINS 'ADMIN' RETURN p",
@@ -281,7 +489,7 @@
         },
         {
             "name": "Groups with Computer and User Objects",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer)-[r:MemberOf*1..]->(groupsWithComps:Group) WITH groupsWithComps MATCH (u:User)-[r:MemberOf*1..]->(groupsWithComps) RETURN DISTINCT(groupsWithComps) as groupsWithCompsAndUsers",
@@ -291,7 +499,7 @@
         },
         {
             "name": "Groups that can reset passwords (Warning: Heavy)",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(m:Group)-[r:ForceChangePassword]->(n:User) RETURN p"
@@ -299,7 +507,7 @@
         },
         {
             "name": "Groups that have local admin rights (Warning: Heavy)",
-            "category": "A one-man wolf pack",
+            "category": "Groups",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(m:Group)-[r:AdminTo]->(n:Computer) RETURN p"
@@ -307,7 +515,7 @@
         },
         {
             "name": "Users never logged on and account still active",
-            "category": "There are skittles in there!",
+            "category": "Users",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User) WHERE n.lastlogontimestamp=-1.0 AND n.enabled=TRUE RETURN n "
@@ -315,7 +523,7 @@
         },
         {
             "name": "Users logged in the last 90 days",
-            "category": "There are skittles in there!",
+            "category": "Users",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User) WHERE u.lastlogon < (datetime().epochseconds - (90 * 86400)) and NOT u.lastlogon IN [-1.0, 0.0] RETURN u"
@@ -323,7 +531,7 @@
         },
         {
             "name": "Users with passwords last set in the last 90 days",
-            "category": "There are skittles in there!",
+            "category": "Users",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (u:User) WHERE u.pwdlastset < (datetime().epochseconds - (90 * 86400)) and NOT u.pwdlastset IN [-1.0, 0.0] RETURN u"
@@ -331,7 +539,7 @@
         },
         {
             "name": "Find if unprivileged users have rights to add members into groups",
-            "category": "There are skittles in there!",
+            "category": "Users",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User {admincount:False}) MATCH p=allShortestPaths((n)-[r:AddMember*1..]->(m:Group)) RETURN p"
@@ -339,52 +547,55 @@
         },
         {
             "name": "Find all users a part of the VPN group",
-            "category": "There are skittles in there!",
+            "category": "Users",
             "queryList": [{
                 "final": true,
-                "query": "Match p=(u:User)-[:MemberOf]->(g:Group) WHERE toUPPER (g.name) CONTAINS 'VPN' return p"
+                "query": "Match p=(u:User)-[:MemberOf]->(g:Group) WHERE toUPPER (g.name) CONTAINS 'VPN' RETURN p"
             }]
         },
         {
             "name": "View all GPOs",
-            "category": "There are skittles in there!",
+            "category": "GPOs",
             "queryList": [{
                 "final": true,
-                "query": "Match (n:GPO) RETURN n"
+                "query": "MATCH (g:GPO) RETURN g"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark all GPOs as High Value Target",
+            "category": "GPOs",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH (g:GPO) SET g.highvalue=TRUE RETURN g"
+            }]
+        },
+        {
+            "name": "Find if any low value object has interesting permissions against a GPO (1 hop)",
+            "category": "GPOs",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(o {highvalue: FALSE})-[:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink]->(g:GPO) RETURN p"
+            }]
+        },
+        {
+            "name": "(Warning: edits the DB) Mark any low value object with interesting permissions against a GPO as HVT (1 hop)",
+            "category": "GPOs",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(o {highvalue: FALSE})-[:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink]->(g:GPO) SET o.highvalue=TRUE RETURN p"
             }]
         },
         {
             "name": "Find if any domain user has interesting permissions against a GPO (Warning: Heavy)",
-            "category": "There are skittles in there!",
+            "category": "GPOs",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(u:User)-[r:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink*1..]->(g:GPO) RETURN p"
             }]
         },
         {
-            "name": "Can a user from domain ‘A ‘ do anything to any computer in domain ‘B’ (Warning: VERY Heavy)",
-            "category": "There are skittles in there!",
-            "queryList": [{
-                    "final": false,
-                    "title": "Select source domain...",
-                    "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name DESC"
-                },
-                {
-                    "final": false,
-                    "title": "Select destination domain...",
-                    "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name DESC"
-                },
-                {
-                    "final": true,
-                    "query": "MATCH (n:User {domain: {result}}) MATCH (m:Computer {domain: {}}) MATCH p=allShortestPaths((n)-[r:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|CanRDP|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin*1..]->(m)) RETURN p",
-                    "startNode": "{}",
-                    "allowCollapse": false
-                }
-            ]
-        },
-        {
             "name": "Find all computers running with Windows XP",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS 'XP' RETURN c"
@@ -392,7 +603,7 @@
         },
         {
             "name": "Find all computers running with Windows 2000",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS '2000' RETURN c"
@@ -400,7 +611,7 @@
         },
         {
             "name": "Find all computers running with Windows 2003",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS '2003' RETURN c"
@@ -408,7 +619,7 @@
         },
         {
             "name": "Find all computers running with Windows 2008",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS '2008' RETURN c"
@@ -416,7 +627,7 @@
         },
         {
             "name": "Find all computers running with Windows Vista",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS 'VISTA' RETURN c"
@@ -424,7 +635,7 @@
         },
         {
             "name": "Find all computers running with Windows 7",
-            "category": "It’s not illegal. It’s frowned upon",
+            "category": "Outdated OS",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (c:Computer) WHERE toUpper(c.operatingsystem) CONTAINS '7' RETURN c"
@@ -432,7 +643,7 @@
         },
         {
             "name": "Top Ten Users with Most Sessions",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)<-[r:HasSession]-(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH n, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)-[r:HasSession]->(n) RETURN p",
@@ -441,7 +652,7 @@
         },
         {
             "name": "Top Ten Computers with Most Sessions",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)<-[r:HasSession]-(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH m, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)-[r:HasSession]->(n) RETURN p",
@@ -450,7 +661,7 @@
         },
         {
             "name": "Top Ten Users with Most Local Admin Rights",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)-[r:AdminTo]->(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH n, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)<-[r:AdminTo]-(n) RETURN p",
@@ -459,7 +670,7 @@
         },
         {
             "name": "Top Ten Computers with Most Admins and their admins",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)-[r:AdminTo]->(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH m, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)<-[r:AdminTo]-(n) RETURN p",
@@ -468,7 +679,7 @@
         },
         {
             "name": "Top Ten Computers with Most Admins",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)-[r:AdminTo]->(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH m, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)<-[r:AdminTo]-(n) RETURN m",
@@ -477,16 +688,16 @@
         },
         {
             "name": "(Warning: edits the DB) Mark Top Ten Computers with Most Admins as HVT",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:User),(m:Computer), (n)-[r:AdminTo]->(m) WHERE NOT n.name STARTS WITH 'ANONYMOUS LOGON' AND NOT n.name='' WITH m, count(r) as rel_count order by rel_count desc LIMIT 10 MATCH p=(m)<-[r:AdminTo]-(n) SET m.highvalue = true RETURN m",
                 "allowCollapse": true
             }]
         },
-                {
+        {
             "name": "Top 20 nodes with most first degree object controls",
-            "category": "Not at the table Carlos!",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(u)-[r1]->(n) WHERE r1.isacl = true WITH u, count(r1) AS count_ctrl ORDER BY count_ctrl DESC LIMIT 20 RETURN u",
@@ -494,8 +705,8 @@
             }]
         },
                 {
-            "name": "Top ten nodes with most group delegated object controls",
-            "category": "Not at the table Carlos!",
+            "name": "Top Ten nodes with most group delegated object controls",
+            "category": "Top Ten",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(u)-[r1:MemberOf*1..]->(g:Group)-[r2]->(n) WHERE r2.isacl=true WITH u, count(r2) AS count_ctrl ORDER BY count_ctrl DESC LIMIT 20 RETURN u",
@@ -504,24 +715,24 @@
         },
         {
             "name": "Find machines Domain Users can RDP into",
-            "category": "We can’t find Doug",
+            "category": "RDP",
             "queryList": [{
                 "final": true,
-                "query": "match p=(g:Group)-[:CanRDP]->(c:Computer) where g.objectid ENDS WITH '-513' return p"
+                "query": "MATCH p=(g:Group)-[:CanRDP]->(c:Computer) where g.objectid ENDS WITH '-513' RETURN p"
             }]
         },
         {
             "name": "Find Servers Domain Users can RDP To",
-            "category": "We can’t find Doug",
+            "category": "RDP",
             "queryList": [{
                 "final": true,
-                "query": "match p=(g:Group)-[:CanRDP]->(c:Computer) where g.name STARTS WITH 'DOMAIN USERS' AND c.operatingsystem CONTAINS 'Server' return p",
+                "query": "MATCH p=(g:Group)-[:CanRDP]->(c:Computer) where g.name STARTS WITH 'DOMAIN USERS' AND c.operatingsystem CONTAINS 'Server' RETURN p",
                 "allowCollapse": true
             }]
         },
         {
             "name": "Find what groups can RDP",
-            "category": "We can’t find Doug",
+            "category": "RDP",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(m:Group)-[r:CanRDP]->(n:Computer) RETURN p"
@@ -529,7 +740,7 @@
         },
         {
             "name": "Return All Azure Users that are part of the ‘Global Administrator’ Role",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p =(n)-[r:AZGlobalAdmin*1..]->(m) RETURN p"
@@ -537,7 +748,7 @@
         },
         {
             "name": "Return All On-Prem users with edges to Azure",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH  p=(m:User)-[r:AZResetPassword|AZOwns|AZUserAccessAdministrator|AZContributor|AZAddMembers|AZGlobalAdmin|AZVMContributor|AZOwnsAZAvereContributor]->(n) WHERE m.objectid CONTAINS 'S-1-5-21' RETURN p"
@@ -545,7 +756,7 @@
         },
         {
             "name": "Find all paths to an Azure VM",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (n)-[r]->(g:AZVM) RETURN p"
@@ -553,7 +764,7 @@
         },
         {
             "name": "Find all paths to an Azure KeyVault",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (n)-[r]->(g:AZKeyVault) RETURN p"
@@ -561,7 +772,7 @@
         },
         {
             "name": "Return All Azure Users and their Groups",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p=(m:AZUser)-[r:MemberOf]->(n) WHERE NOT m.objectid CONTAINS 'S-1-5' RETURN p"
@@ -569,7 +780,7 @@
         },
         {
             "name": "Return All Azure AD Groups that are synchronized with On-Premise AD",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH (n:Group) WHERE n.objectid CONTAINS 'S-1-5' AND n.azsyncid IS NOT NULL RETURN n"
@@ -577,7 +788,7 @@
         },
         {
             "name": "Find all Privileged Service Principals",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (g:AZServicePrincipal)-[r]->(n) RETURN p"
@@ -585,7 +796,7 @@
         },
         {
             "name": "Find all Owners of Azure Applications",
-            "category": "It's called a satchel",
+            "category": "Azure",
             "queryList": [{
                 "final": true,
                 "query": "MATCH p = (n)-[r:AZOwns]->(g:AZApp) RETURN p"
@@ -616,6 +827,14 @@
             }]
         },
         {
+            "name": "Find objects with the ManageCa or ManageCertificates right on Certificate Authorities",
+            "category": "Certificates",
+            "queryList": [{
+                "final": true,
+                "query": "MATCH p=(o)-[:ManageCa|ManageCertificates]->(c:GPO {type: 'Enrollment Service'}) RETURN p"
+            }]
+        },
+        {
             "name": "Show Enrollment Rights for Certificate Template",
             "category": "Certificates",
             "queryList": [{
@@ -625,7 +844,7 @@
               },
               {
                 "final": true,
-                "query": "MATCH p=(g)-[:Enroll|AutoEnroll]->(n:GPO {name:$result}) WHERE n.type = 'Certificate Template' return p",
+                "query": "MATCH p=(g)-[:Enroll|AutoEnroll]->(n:GPO {name:$result}) WHERE n.type = 'Certificate Template' RETURN p",
                 "allowCollapse": false
             }]
         },
@@ -639,7 +858,7 @@
               },
               {
                 "final": true,
-                "query": "MATCH p=(g)-[:ManageCa|ManageCertificates|Auditor|Operator|Read|Enroll]->(n:GPO {name:$result}) return p",
+                "query": "MATCH p=(g)-[:ManageCa|ManageCertificates|Auditor|Operator|Read|Enroll]->(n:GPO {name:$result}) RETURN p",
                 "allowCollapse": false
             }]
         },
@@ -656,7 +875,7 @@
             "category": "AD CS Domain Escalation",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enrollee Supplies Subject` = true and n.`Client Authentication` = true and n.`Enabled` = true return p"
+                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enrollee Supplies Subject` = true and n.`Client Authentication` = true and n.`Enabled` = true RETURN p"
             }]
         },
         {
@@ -672,7 +891,7 @@
             "category": "AD CS Domain Escalation",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enabled` = true and (n.`Extended Key Usage` = [] or 'Any Purpose' IN n.`Extended Key Usage`) return p"
+                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enabled` = true and (n.`Extended Key Usage` = [] or 'Any Purpose' IN n.`Extended Key Usage`) RETURN p"
             }]
         },
         {
@@ -688,7 +907,7 @@
             "category": "AD CS Domain Escalation",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enabled` = true and (n.`Extended Key Usage` = [] or 'Any Purpose' IN n.`Extended Key Usage` or 'Certificate Request Agent' IN n.`Extended Key Usage`) return p"
+                "query": "MATCH p=allShortestPaths((g {owned:true})-[*1..]->(n:GPO)) WHERE  g<>n and n.type = 'Certificate Template' and n.`Enabled` = true and (n.`Extended Key Usage` = [] or 'Any Purpose' IN n.`Extended Key Usage` or 'Certificate Request Agent' IN n.`Extended Key Usage`) RETURN p"
             }]
         },
         {
@@ -704,7 +923,7 @@
             "category": "AD CS Domain Escalation",
             "queryList": [{
                 "final": true,
-                "query": "MATCH p=allShortestPaths((g {owned:true})-[r*1..]->(n:GPO)) WHERE g<>n and n.type = 'Certificate Template' and n.Enabled = true and NONE(x in relationships(p) WHERE type(x) = 'Enroll' or type(x) = 'AutoEnroll') return p"
+                "query": "MATCH p=allShortestPaths((g {owned:true})-[r*1..]->(n:GPO)) WHERE g<>n and n.type = 'Certificate Template' and n.Enabled = true and NONE(x in relationships(p) WHERE type(x) = 'Enroll' or type(x) = 'AutoEnroll') RETURN p"
             }]
         },
         {
@@ -740,34 +959,64 @@
             }]
         },
         {
-			"name": "Find users that can RDP into something",
+            "name": "Find Unsecured Certificate Templates - Domain Escalation (ESC9)",
+            "category": "AD CS Domain Escalation",
+            "queryList": [
+                {
+                "final": true,
+                "query": "MATCH (n:GPO) WHERE n.type = 'Certificate Template' and n.`Enrollee Supplies Subject` = true and n.`Client Authentication` = true and n.`Enabled` = true  RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Find Unsecured Certificate Templates - PKI (ESC9)",
+            "category": "AD CS Domain Escalation",
+            "queryList": [
+                {
+                "final": true,
+                "query": "MATCH (n:GPO) WHERE n.type = 'Certificate Template' and 'NoSecurityExtension' in n.`Enrollment Flag` and n.`Enabled` = true  RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Shortest Paths to Unsecured Certificate Templates from Owned Principals (ESC9)",
+            "category": "AD CS Domain Escalation",
+            "queryList": [
+                {
+                "final": true,
+                "query": "MATCH p=allShortestPaths((g {owned:true})-[r*1..]->(n:GPO)) WHERE n.type = 'Certificate Template' and g<>n and 'NoSecurityExtension' in n.`Enrollment Flag` and n.`Enabled` = true and NONE(rel in r WHERE type(rel) in ['EnabledBy','Read','ManageCa','ManageCertificates']) RETURN p"
+                }
+            ]
+        },
+        {
+			"name": "Find users with a plaintext attribute that can RDP into something",
 			"category": "PlainText Password Queries",
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintext=True MATCH p1=(u1)-[:CanRDP*1..]->(c:Computer) RETURN u1",
+					"query": "MATCH (u1:User) WHERE u1.plaintext=True MATCH p1=(u1)-[:CanRDP*1..]->(c:Computer) RETURN u1",
 					"allowCollapse": true
 				}
 			]
 		},
 		{
-			"name": "Find users that belong to high value groups",
+			"name": "Find users with a plaintext attribute that belong to high value groups",
 			"category": "PlainText Password Queries",
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintext=True MATCH p=(u1:User)-[r:MemberOf*1..]->(m:Group {highvalue:true}) RETURN u1",
+					"query": "MATCH (u1:User) WHERE u1.plaintext=True MATCH p=(u1:User)-[r:MemberOf*1..]->(m:Group {highvalue:true}) RETURN u1",
 					"allowCollapse": true
 				}
 			]
 		},
 		{
-			"name": "Find kerberoastable users",
+			"name": "Find users with a plaintext attribute that are kerberoastable",
 			"category": "PlainText Password Queries",
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintext=True AND u1.hasspn=True RETURN u1",
+					"query": "MATCH (u1:User) WHERE u1.plaintext=True AND u1.hasspn=True RETURN u1",
 					"allowCollapse": true
 				}
 			]
@@ -789,7 +1038,7 @@
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintextpassword =~ \"([Ww]inter.*|[sS]pring.*|[sS]ummer.*|[fF]all.*)\" match p=(u1:User)-[r:AdminTo]->(n:Computer) RETURN p",
+					"query": "MATCH (u1:User) WHERE u1.plaintextpassword =~ \"([Ww]inter.*|[sS]pring.*|[sS]ummer.*|[fF]all.*)\" MATCH p=(u1:User)-[r:AdminTo]->(n:Computer) RETURN p",
 					"allowCollapse": true
 				}
 			]
@@ -800,7 +1049,7 @@
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintextpassword =~ \"([Ww]inter.*|[sS]pring.*|[sS]ummer.*|[fF]all.*)\" MATCH p=shortestPath((u1:User)-[*1..]->(n {highvalue:true})) WHERE  u1<>n return u1 LIMIT 25",
+					"query": "MATCH (u1:User) WHERE u1.plaintextpassword =~ \"([Ww]inter.*|[sS]pring.*|[sS]ummer.*|[fF]all.*)\" MATCH p=shortestPath((u1:User)-[*1..]->(n {highvalue:true})) WHERE u1<>n RETURN u1 LIMIT 25",
 					"allowCollapse": true
 				}
 			]
@@ -822,7 +1071,7 @@
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintextpassword =~ \"(.*[pP][aA@][sS$][sS$][wW][oO0][rR][dD].*)\" match p=(u1:User)-[r:AdminTo]->(n:Computer) RETURN p",
+					"query": "MATCH (u1:User) WHERE u1.plaintextpassword =~ \"(.*[pP][aA@][sS$][sS$][wW][oO0][rR][dD].*)\" MATCH p=(u1:User)-[r:AdminTo]->(n:Computer) RETURN p",
 					"allowCollapse": true
 				}
 			]
@@ -833,10 +1082,95 @@
 			"queryList": [
 				{
 					"final": true,
-					"query": "match (u1:User) WHERE u1.plaintextpassword =~ \"(.*[pP][aA@][sS$][sS$][wW][oO0][rR][dD].*)\"  MATCH p=shortestPath((u1:User)-[*1..]->(n {highvalue:true})) WHERE  u1<>n return u1 LIMIT 25",
+					"query": "MATCH (u1:User) WHERE u1.plaintextpassword =~ \"(.*[pP][aA@][sS$][sS$][wW][oO0][rR][dD].*)\"  MATCH p=shortestPath((u1:User)-[*1..]->(n {highvalue:true})) WHERE  u1<>n RETURN u1 LIMIT 25",
 					"allowCollapse": true
 				}
 			]
-		}
+		},
+        {
+            "name": "Add indexes to the database",
+            "category": "Indexes",
+            "queryList": [{
+                    "final": false,
+                    "title": "Add index on the property Base SamAccountName",
+                    "query": "CREATE INDEX BaseSamAccountNameIdx IF NOT EXISTS FOR (b:Base) on (b.samaccountname)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Computer SamAccountName",
+                    "query": "CREATE INDEX ComputerSamAccountNameIdx IF NOT EXISTS FOR (c:Computer) on (c.samaccountname)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User SamAccountName",
+                    "query": "CREATE INDEX UserSamAccountNameIdx IF NOT EXISTS FOR (u:User) on (u.samaccountname)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Computer SamAccountName",
+                    "query": "CREATE INDEX ComputerOwnedIdx IF NOT EXISTS FOR (c:Computer) on (c.owned)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User Owned",
+                    "query": "CREATE INDEX UserOwnedIdx IF NOT EXISTS FOR (u:User) on (u.owned)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Group Owned",
+                    "query": "CREATE INDEX GroupOwnedIdx IF NOT EXISTS FOR (g:Group) on (g.owned)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property GPO Owned",
+                    "query": "CREATE INDEX GPOOwnedIdx IF NOT EXISTS FOR (g:GPO) on (g.owned)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Computer Highvalue",
+                    "query": "CREATE INDEX ComputerHighValueIdx IF NOT EXISTS FOR (c:Computer) on (c.highvalue)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User Highvalue",
+                    "query": "CREATE INDEX UserHighValueIdx IF NOT EXISTS FOR (u:User) on (u.highvalue)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Group Highvalue",
+                    "query": "CREATE INDEX GroupHighValueIdx IF NOT EXISTS FOR (g:Group) on (g.highvalue)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property GPO Highvalue",
+                    "query": "CREATE INDEX GPOHighValueIdx IF NOT EXISTS FOR (g:GPO) on (g.highvalue)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User Sensitive",
+                    "query": "CREATE INDEX UserSensitiveIdx IF NOT EXISTS FOR (u:User) on (u.sensitive)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User Admincount",
+                    "query": "CREATE INDEX UserAdminCountIdx IF NOT EXISTS FOR (u:User) on (u.admincount)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property Computer Enabled",
+                    "query": "CREATE INDEX ComputerEnabledIdx IF NOT EXISTS FOR (c:Computer) on (c.enabled)"
+                },
+                {
+                    "final": false,
+                    "title": "Add index on the property User Enabled",
+                    "query": "CREATE INDEX UserEnabledIdx IF NOT EXISTS FOR (u:User) on (u.enabled)"
+                },
+                {
+                    "final": true,
+                    "title": "Add index on the property GPO Enabled",
+                    "query": "CREATE INDEX GPOEnabledIdx IF NOT EXISTS FOR (g:GPO) on (g.enabled)"
+                }
+            ]
+        }
     ]
 }

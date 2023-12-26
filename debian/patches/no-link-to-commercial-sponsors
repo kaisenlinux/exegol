@@ -1,7 +1,7 @@
-Author: Mehdi Lecomte - Labrute! <labrute@kaisenlinux.org>
+Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.2.1.orig/exegol/manager/ExegolManager.py
-+++ exegol-4.2.1/exegol/manager/ExegolManager.py
+--- exegol-4.3.0.orig/exegol/manager/ExegolManager.py
++++ exegol-4.3.0/exegol/manager/ExegolManager.py
 @@ -235,8 +235,8 @@ class ExegolManager:
      def print_sponsors(cls):
          """Show exegol sponsors"""
@@ -11,5 +11,5 @@ Author: Mehdi Lecomte - Labrute! <labrute@kaisenlinux.org>
 +            """We thank [blue]Capgemini[/blue] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
 +        logger.success("""We thank [green]HackTheBox[/green] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
  
- 
      @classmethod
+     def __loadOrInstallImage(cls,

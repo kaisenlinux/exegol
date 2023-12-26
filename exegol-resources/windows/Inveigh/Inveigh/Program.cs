@@ -74,10 +74,10 @@ namespace Inveigh
         public static string[] argIgnoreAgents = { "Firefox" };
         public static string[] argIgnoreDomains;
         public static string[] argIgnoreIPs;
-        public static string[] argIgnoreHosts;
+        public static string[] argIgnoreQueries;
         public static string[] argIgnoreMACs;
         public static string[] argReplyToDomains;
-        public static string[] argReplyToHosts;
+        public static string[] argReplyToQueries;
         public static string[] argReplyToIPs;
         public static string[] argReplyToMACs;
         public static string argSpooferIP = "";        
@@ -174,7 +174,7 @@ namespace Inveigh
         public static string netbiosDomain = Environment.UserDomainName;
         public static string dnsDomain = "";    
         public static ulong smb2Session = 5548434740922023936; // todo check
-        public static string version = "2.0.4";
+        public static string version = "2.0.10";
 
         static void Main(string[] arguments)
         {
@@ -185,6 +185,7 @@ namespace Inveigh
                 enabledWindows = false;
             }
 #endif
+            bool allValid = true;
 
             if (arguments.Length > 0)
             {
@@ -354,11 +355,6 @@ namespace Inveigh
                                 argIgnoreDomains = arguments[entry.index + 1].ToUpper().Split(',');
                                 break;
 
-                            case "-IGNOREHOSTS":
-                            case "/IGNOREHOSTS":
-                                argIgnoreHosts = arguments[entry.index + 1].ToUpper().Split(',');
-                                break;
-
                             case "-IGNOREIPS":
                             case "/IGNOREIPS":
                                 argIgnoreIPs = arguments[entry.index + 1].ToUpper().Split(',');
@@ -367,6 +363,11 @@ namespace Inveigh
                             case "-IGNOREMACS":
                             case "/IGNOREMACS":
                                 argIgnoreMACs = arguments[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "").Split(',');
+                                break;
+
+                            case "-IGNOREQUERIES":
+                            case "/IGNOREQUERIES":
+                                argIgnoreQueries = arguments[entry.index + 1].ToUpper().Split(',');
                                 break;
 
                             case "-INSPECT":
@@ -544,11 +545,6 @@ namespace Inveigh
                                 argReplyToDomains = arguments[entry.index + 1].ToUpper().Split(',');
                                 break;
 
-                            case "-REPLYTOHOSTS":
-                            case "/REPLYTOHOSTS":
-                                argReplyToHosts = arguments[entry.index + 1].ToUpper().Split(',');
-                                break;
-
                             case "-REPLYTOIPS":
                             case "/REPLYTOIPS":
                                 argReplyToIPs = arguments[entry.index + 1].ToUpper().Split(',');
@@ -557,7 +553,12 @@ namespace Inveigh
                             case "-REPLYTOMACS":
                             case "/REPLYTOMACS":
                                 argReplyToMACs = arguments[entry.index + 1].ToUpper().Replace(":", "").Replace("-", "").Split(',');
-                                break;                                                   
+                                break;
+
+                            case "-REPLYTOQUERIES":
+                            case "/REPLYTOQUERIES":
+                                argReplyToQueries = arguments[entry.index + 1].ToUpper().Split(',');
+                                break;
 
                             case "-WEBDAV":
                             case "/WEBDAV":
@@ -584,7 +585,7 @@ namespace Inveigh
                                 if (arguments.Length > 1)
                                     argHelp = arguments[entry.index + 1].ToUpper();
                                 Output.GetHelp(argHelp);
-                                Environment.Exit(0);
+                                allValid &= false;
                                 break;
 
                             default:
@@ -606,42 +607,46 @@ namespace Inveigh
                             Console.WriteLine("{0} error - {1}", argument, ex.Message);
                         }
 
-                        Environment.Exit(0);
+                        allValid &= false;
                     }
 
                 }
 
             }
 
-            Arguments.ValidateArguments();
-            Arguments.ParseArguments();
-            Control.ImportSession();
-            Output.StartupOutput();
-            Control.StartThreads();
-            commandHistoryList.Add("");
+            allValid &= Arguments.ValidateArguments();
 
-            while (isRunning)
+            if (allValid)
             {
+                Arguments.ParseArguments();
+                Control.ImportSession();
+                Output.StartupOutput();
+                Control.StartThreads();
+                commandHistoryList.Add("");
 
-                try
+                while (isRunning)
                 {
-                    Output.OutputLoop();
 
-                    if (isRunning)
+                    try
                     {
-                        Shell.ConsoleLoop();
+                        Output.OutputLoop();
+
+                        if (isRunning)
+                        {
+                            Shell.ConsoleLoop();
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(outputList.Count);
+                        outputList.Add(String.Format("[-] [{0}] Console error detected - {1}", Output.Timestamp(), ex.ToString()));
                     }
 
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(outputList.Count);
-                    outputList.Add(String.Format("[-] [{0}] Console error detected - {1}", Output.Timestamp(), ex.ToString()));                 
                 }
 
             }
 
-            Environment.Exit(0);
         }
 
     }

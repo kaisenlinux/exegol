@@ -1,9 +1,9 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.2.5.orig/exegol/manager/ExegolManager.py
-+++ exegol-4.2.5/exegol/manager/ExegolManager.py
+--- exegol-4.3.0.orig/exegol/manager/ExegolManager.py
++++ exegol-4.3.0/exegol/manager/ExegolManager.py
 @@ -224,12 +224,12 @@ class ExegolManager:
-         logger.debug(f"Shell type: {EnvInfo.getShellType()}")
+         logger.debug(f"Shell type: {EnvInfo.getShellType().value}")
          if not UpdateManager.isUpdateTag() and UserConfig().auto_check_updates:
              UpdateManager.checkForWrapperUpdate()
 -        if UpdateManager.isUpdateTag():
