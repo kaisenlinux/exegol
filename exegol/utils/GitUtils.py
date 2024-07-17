@@ -48,7 +48,7 @@ class GitUtils:
                 raise PermissionError(test_git_dir.owner())
         except ReferenceError:
             if self.__git_name == "wrapper":
-                logger.warning("Exegol has [red]not[/red] been installed via git clone. Skipping wrapper auto-update operation.")
+                #logger.warning("Exegol has [red]not[/red] been installed via git clone. Skipping wrapper auto-update operation.")
                 if ConstantConfig.pip_installed:
                     logger.info("If you have installed Exegol with pip, check for an update with the command "
                                 "[green]pip3 install exegol --upgrade[/green]")
@@ -162,7 +162,7 @@ class GitUtils:
                 logger.warning(f"Branch name is not correct: {branch.name}")
                 result.append(branch.name)
             else:
-                result.append(branch_parts[1])
+                result.append('/'.join(branch_parts[1:]))
         return result
 
     def safeCheck(self) -> bool:

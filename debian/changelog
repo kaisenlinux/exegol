@@ -1,3 +1,12 @@
+exegol (4.3.4-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the new upstream release
+  * Update the manpage
+  * Bump the Standards-Version field to 4.7.2
+  * Add the python3-importlib-metadata package as depends
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Wed, 17 Jul 2024 23:23:07 +0200
+
 exegol (4.3.1-1kaisen) kaisen-packages; urgency=medium
 
   * Import the new upstream release

@@ -7,7 +7,7 @@ Build-Depends:
  debhelper-compat (= 13),
  python3,
  dh-python,
-Standards-Version: 4.6.2
+Standards-Version: 4.7.2
 Homepage: https://github.com/ThePorgs/Exegol
 Vcs-Browser: https://gitlab.com/kaisenlinux/packages/exegol
 Vcs-Git: https://gitlab.com/kaisenlinux/packages/exegol.git
@@ -16,6 +16,8 @@ Package: exegol
 Architecture: amd64 arm64
 Depends:
  ${misc:Depends},
+ ${shlibs:Depends},
+ ${python3:Depends},
  docker.io (>= 6.0.0),
  python3-docker,
  python3-requests (>= 2.28.0),
@@ -23,6 +25,7 @@ Depends:
  python3-git (>= 3.1.27),
  python3-yaml (>= 6.0),
  python3-argcomplete (>= 2.0.0),
+ python3-importlib-metadata,
 Suggests: exegol-docs
 Description: Fully featured and community-driven hacking environment
  Exegol is a community-driven hacking environment, this project allows its users to easily deploy environments that are separated from the host, that could be dedicated for some Pentest engagements tools

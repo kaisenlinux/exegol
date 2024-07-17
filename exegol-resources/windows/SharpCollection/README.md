@@ -4,17 +4,19 @@ Nightly builds of common C# offensive tools, fresh from their respective master 
 Is your favorite tool missing? Feel free to open an issue or DM me on twitter [@Flangvik](https://twitter.com/Flangvik)    
 **Please note that Cobalt Strike's execute-assembly only accepts binaries compiled with the "Any CPU" configuration.**
 
+# OpSec
+
+Should I blindly deploy any of these binaries during real-life engagements?    
+**F*ck no**, always look through anything that you deploy on a client machine or network. Eg https://github.com/dnSpy/dnSpy   
+**Deploying anything blindly from this repo should be reserved for Lab environments, VM's , HackTheBox, detection mapping, and so forth.**
+
 # Azure DevOps? 
 Each night at 03:00 AM, the Azure DevOps pipeline checks for new commits to all repositories master branch. Branches with changes will be automatically fetched and compiled with different framework targets as well as architectures, before being pushed to this repo. 
 
 The pipeline can be found here:
 https://dev.azure.com/FlangvikDev/SharpRelease
 
-# OpSec
 
-Should I blindly deploy any of these binaries during real-life engagements?    
-**F*ck no**, always look through anything that you deploy on a client machine or network. Eg https://github.com/dnSpy/dnSpy   
-Deploying anything blindly from this repo should be reserved for Lab environment, VM's , HTB, detection mapping, and so forth. 
 
 
 # Available builds
@@ -37,6 +39,7 @@ Deploying anything blindly from this repo should be reserved for Lab environment
 | KrbRelayUp | :x: | :x: |  :heavy_check_mark:|
 | InveighZero | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark:|
 | LockLess | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Moriarty | :x: | :heavy_check_mark: | :heavy_check_mark: |
 | PassTheCert | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | PurpleSharp | :x: | :heavy_check_mark: | :heavy_check_mark: |
 | Rubeus | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
@@ -46,6 +49,7 @@ Deploying anything blindly from this repo should be reserved for Lab environment
 | scout | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
 | SearchOutlook | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
 | Seatbelt | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| ShadowSpray |  :x: | :x: |  :heavy_check_mark:|
 | Sharp-SMBExec |  :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark:|
 | SharpAllowedToAct |  :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark:|
 | SharpAppLocker | :x: | :heavy_check_mark: | :heavy_check_mark: |
@@ -65,6 +69,7 @@ Deploying anything blindly from this repo should be reserved for Lab environment
 | SharpExec | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | SharPersist | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | SharpFiles | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
+| SharpFinder | | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
 | SharpGPOAbuse | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
 | SharpHandler |  :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark:|
 | SharpHose | :x: | :heavy_check_mark: |  :heavy_check_mark: |
@@ -88,6 +93,7 @@ Deploying anything blindly from this repo should be reserved for Lab environment
 | SharpSniper | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: | 
 | SharpSQLPwn | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: | 
 | SharpTask | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| SharpTokenFinder |  :x: | :heavy_check_mark: |  :heavy_check_mark:| 
 | SharpUp | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 | SharpView | :x: | :heavy_check_mark: |  :heavy_check_mark:|
 | SharpWMI | :heavy_check_mark: | :heavy_check_mark: |  :heavy_check_mark: |
@@ -126,6 +132,7 @@ title
 * [KrbRelay](https://github.com/cube0x0/KrbRelay) - C# Framework for Kerberos relaying @cube0x0
 * [KrbRelayUp](https://github.com/Dec0ne/KrbRelayUp) - universal no-fix local privilege escalation in windows domain environments where LDAP signing is not enforced @dec0ne
 * [LockLess](https://github.com/GhostPack/LockLess) - Allows for the copying of locked files. @GhostPack
+* [Moriarty](https://github.com/BC-SECURITY/Moriarty) - Enumerate missing KBs, detect various vulnerabilities, and suggest potential exploits for Privilege Escalation in Windows
 * [PassTheCert](https://github.com/AlmondOffSec/PassTheCert) - Proof-of-Concept tool to authenticate to an LDAP/S server with a certificate through Schannel. @AlmondOffSec
 * [PurpleSharp](https://github.com/mvelazc0/PurpleSharp) - C# adversary simulation tool that executes adversary techniques with the purpose of generating attack telemetry in monitored Windows environments. @mvelazc0
 * [Rubeus](https://github.com/GhostPack/Rubeus) -  C# toolset for raw Kerberos interaction and abuses. @GhostPack
@@ -135,6 +142,7 @@ title
 * [scout](https://github.com/jaredhaight/scout) - A .NET assembly for performing recon against hosts on a network . @jaredhaight
 * [SearchOutlook](https://github.com/RedLectroid/SearchOutlook) - C# tool to search through a running instance of Outlook for keywords @RedLectroid
 * [Seatbelt](https://github.com/GhostPack/Seatbelt) - Performs a number of security oriented host-survey "safety checks". @GhostPack
+* [ShadowSpray](https://github.com/Dec0ne/ShadowSpray) - A tool to spray Shadow Credentials across an entire domain in hopes of abusing long forgotten GenericWrite/GenericAll DACLs over other objects in the domain.
 * [Sharp-SMBExec](https://github.com/checkymander/Sharp-SMBExec) -  A native C# conversion of Kevin Robertsons Invoke-SMBExec powershell script @checkymander
 * [SharpAllowedToAct](https://github.com/pkb1s/SharpAllowedToAct) -  C# implementation of a computer object takeover through Resource-Based Constrained Delegation (msDS-AllowedToActOnBehalfOfOtherIdentity) @pkb1s
 * [SharpAppLocker](https://github.com/Flangvik/SharpAppLocker) - C# port of the Get-AppLockerPolicy PS cmdlet with extended features @Flangvik
@@ -154,6 +162,7 @@ title
 * [SharPersist](https://github.com/fireeye/SharPersist) - C# persistence toolkit. 
 * [SharpExec](https://github.com/anthemtotheego/SharpExec) - SharpExec is an offensive security C# tool designed to aid with lateral movement. @anthemtotheego
 * [SharpFiles](https://github.com/fullmetalcache/SharpFiles) - C# tool to search for files based on SharpShares output. @fullmetalcache
+* [SharpFinder](https://github.com/s0lst1c3/SharpFinder) - Searches for files matching specific criteria on readable shares within the domain
 * [SharpGPOAbuse](https://github.com/FSecureLABS/SharpGPOAbuse) - SharpGPOAbuse is a .NET application written in C# that can be used to take advantage of a user's edit rights on a Group Policy Object (GPO). @FSecureLABS
 * [SharpHandler](https://github.com/jfmaes/SharpHandler) -  C# tool for stealing/duping handles to LSASS @Jean_Maes_1994
 * [SharpHose](https://github.com/ustayready/SharpHose) - Asynchronous Password Spraying Tool in C# for Windows Environments . @ustayready
@@ -178,6 +187,7 @@ title
 * [SharpSniper](https://github.com/HunnicCyber/SharpSniper) - SharpSniper is a simple tool to find the IP address of these users so that you can target their box. @hunniccyber
 * [SharpSQLPwn](https://github.com/lefayjey/SharpSQLPwn) - C# tool to identify and exploit weaknesses within MSSQL instances in Active Directory environments. @lefayjey
 * [SharpTask](https://github.com/jnqpblc/SharpTask) - C# tool to interact with the Task Scheduler service api. @jnqpblc
+* [SharpTokenFinder](https://github.com/HuskyHacks/SharpTokenFinder) - C# implementation of TokenFinder. Steal M365 access tokens from Office Desktop apps
 * [SharpUp](https://github.com/GhostPack/SharpUp) - C# port of various PowerUp functionality. @GhostPack
 * [SharpView](https://github.com/tevora-threat/SharpView) - C# implementation of harmj0y's PowerView. @tevora-threat
 * [SharpWMI](https://github.com/GhostPack/SharpWMI) -  C# implementation of various WMI functionality. @GhostPack

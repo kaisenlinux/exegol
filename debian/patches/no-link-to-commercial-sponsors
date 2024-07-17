@@ -1,15 +1,15 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.3.0.orig/exegol/manager/ExegolManager.py
-+++ exegol-4.3.0/exegol/manager/ExegolManager.py
-@@ -235,8 +235,8 @@ class ExegolManager:
+--- exegol-4.3.4.orig/exegol/manager/ExegolManager.py
++++ exegol-4.3.4/exegol/manager/ExegolManager.py
+@@ -229,8 +229,8 @@ class ExegolManager:
+     @classmethod
      def print_sponsors(cls):
          """Show exegol sponsors"""
-         logger.success(
--            """We thank [link=https://www.capgemini.com/fr-fr/carrieres/offres-emploi/][blue]Capgemini[/blue][/link] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
--        logger.success("""We thank [link=https://www.hackthebox.com/][green]HackTheBox[/green][/link] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
-+            """We thank [blue]Capgemini[/blue] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
-+        logger.success("""We thank [green]HackTheBox[/green] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
+-        #logger.success("""We thank [link=https://www.capgemini.com/fr-fr/carrieres/offres-emploi/][blue]Capgemini[/blue][/link] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
+-        #logger.success("""We thank [link=https://www.hackthebox.com/][green]HackTheBox[/green][/link] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
++        #logger.success("""We thank [blue]Capgemini[/blue][/link] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
++        #logger.success("""We thank [green]HackTheBox[/green][/link] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
+         pass
  
      @classmethod
-     def __loadOrInstallImage(cls,
