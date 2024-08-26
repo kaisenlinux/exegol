@@ -1,5 +1,128 @@
 # Changelog
 
+## 2024-06-29
+
+### Added
+
+- Check for permissions of folders located at the root of a 'fixed' drive.
+
+## 2024-06-26
+
+### Changed
+
+- Complete refactoring of the helper function Get-ModifiablePath.
+
+## 2024-06-25
+
+### Added
+
+- Check for COM servers with a missing module.
+
+### Changed
+
+- Reintroduce the leaked handle check.
+- Handle service image path as a command line to prevent false positives when checking file permissions.
+
+## 2024-06-24
+
+### Added
+
+- Check for COM registry permissions.
+- Helper function for resolving module paths.
+- Check for COM module file permissions.
+- Check for COM ghost DLLs.
+
+## 2024-06-22
+
+### Added
+
+- Check for user privileges granted through GPOs.
+
+### Changed
+
+- LAPS check performed only if machine is domain-joined.
+- Domain membership tested using the Windows API NetWkstaGetInfo rather than the registry.
+- Asset files used when "building" the script can now be cached.
+- Check list saved in separate file and embedded in script at build time.
+
+## 2024-06-20
+
+### Fixed
+
+- Improper sorting of NAA credential occurrences resulting in data loss.
+
+## 2024-06-11
+
+### Added
+
+- SMB server and client configuration check (SMBv1, signing)
+
+## 2024-06-10
+
+### Added
+
+- List Windows Defender Exploit Guard ASR rules.
+
+### Changed
+
+- Defender exclusions can now be obtained through event logs as well.
+
+## 2024-06-02
+
+### Removed
+
+- Last startup time using tick count.
+- Redundant startup application info check
+- Redundant hotfix info check
+- Redundant service unquoted path info check
+
+## 2024-06-01
+
+### Added
+
+- Check have an addition attribute named "Risky", that allows them to be disabled when there is a high risk of triggering EDR.
+- Registry key paths and values are now returned in the output of the Point and Print check.
+
+### Changed
+
+- Checks now have a "Type" (Base, Extended, Audit, Experimental), rather than multiple boolean flags.
+- Rework the README, and provide additional information regarding check types.
+- Rework the output of the MSI Custom Actions check to make it more readable.
+
+### Fixed
+
+- Prevent system folders from being returned when obtaining a list of installed applications.
+
+## 2024-05-28
+
+### Added
+
+- Check for PowerShell execution policy enforced with GPO.
+
+## 2024-05-27
+
+### Added
+
+- Check for SCCM cache folders.
+- Check for hard coded credentials in the SCCM cache folders.
+- Check for proxy auto config URL (proxy.pac)
+
+### Removed
+
+- The previous version of the SCCM cache folder check was pretty much useless, so it was removed.
+
+## 2024-05-24
+
+### Added
+
+- Check to report whether an AppLocker policy is enforced.
+
+## 2024-05-23
+
+### Fixed
+
+- False negative in WSUS check when Windows Update features are turned off.
+
 ## 2024-03-11
 
 ### Added
@@ -129,7 +252,7 @@
 
 ### Removed
 
-- Removed the check "types" ("info"/"vuln") as this information was redundant with the severity. 
+- Removed the check "types" ("info"/"vuln") as this information was redundant with the severity.
 
 ## 2023-08-13
 
@@ -151,7 +274,7 @@
 
 ### Fixed
 
-- Fixed a regression causing false negatives in `Invoke-ServicesUnquotedPathCheck` (see issue #48).
+- Fixed a regression causing false negatives in `Invoke-ServiceUnquotedPathCheck` (see issue #48).
 
 ## 2023-07-10
 
@@ -206,7 +329,7 @@
 
 ### Added
 
-- Services > Invoke-ThirdPartyDriversCheck, for enumerating third-party drivers.
+- Services > Invoke-ThirdPartyDriverCheck, for enumerating third-party drivers.
 
 ## 2023-02-18
 
@@ -264,14 +387,14 @@
 
 ### Changed
 
-- Second try to supporting deny-only SIDs when checking DACLs (Get-AclModificationRights).
+- Second try to supporting deny-only SIDs when checking DACLs (Get-AclModificationRight).
 
 ## 2022-08-07
 
 ### Changed
 
-- DACL checking is now done in a dedicated cmdlet (Get-AclModificationRights) which can currently handle objects of types "File", "Directory" and "Registry Key".
-- The Get-ModifiablePath and Get-ModifiableRegistryPath cmdlets now use the generic Get-AclModificationRights cmdlet.
+- DACL checking is now done in a dedicated cmdlet (Get-AclModificationRight) which can currently handle objects of types "File", "Directory" and "Registry Key".
+- The Get-ModifiablePath and Get-ModifiableRegistryPath cmdlets now use the generic Get-AclModificationRight cmdlet.
 - Deny ACEs are now taken into account when checking DACLs.
 
 ## 2022-06-08
@@ -310,7 +433,7 @@
 
 ### Changed
 
-- Network > Invoke-WlanProfilesCheck, this check now detects potential issues in 802.1x Wi-Fi profiles
+- Network > Invoke-WlanProfileCheck, this check now detects potential issues in 802.1x Wi-Fi profiles
 
 ## 2022-03-10
 
@@ -329,7 +452,7 @@
 
 ### Added
 
-- Misc > Invoke-UserSessionListCheck
+- Misc > Invoke-UserSessionCheck
 
 ## 2022-02-13
 
@@ -341,19 +464,19 @@
 
 ### Added
 
-- Misc > Invoke-DefenderExclusionsCheck
+- Misc > Invoke-DefenderExclusionCheck
 
 ## 2021-09-13
 
 ### Added
 
-- Config > Invoke-DriverCoInstallersCheck (@SAERXCIT)
+- Config > Invoke-DriverCoInstallerCheck (@SAERXCIT)
 
 ## 2021-08-17
 
 ### Added
 
-- Creds > Invoke-SensitiveHiveShadowCopyCheck (@SAERXCIT)
+- Creds > Invoke-HiveFileShadowCopyPermissionCheck (@SAERXCIT)
 
 ## 2021-07-23
 
@@ -371,13 +494,13 @@
 
 ### Added
 
-- Misc > Invoke-NamedPipePermissionsCheck (experimental)
+- Misc > Invoke-NamedPipePermissionCheck (experimental)
 
 ## 2021-06-18
 
 ### Added
 
-- Network > Invoke-NetworkAdaptersCheck
+- Network > Invoke-NetworkAdapterCheck
 
 ## 2021-06-16
 
@@ -389,7 +512,7 @@
 
 ### Added
 
-- User > Invoke-UserRestrictedSidsCheck in case of WRITE RESTRICTED Tokens
+- User > Invoke-UserRestrictedSidCheck in case of WRITE RESTRICTED Tokens
 
 ### Changed
 
@@ -423,13 +546,13 @@
 
 ### Added
 
-- Services > Invoke-SCMPermissionsCheck
+- Services > Invoke-ServiceControlManagerPermissionCheck
 
 ## 2020-10-29
 
 ### Added
 
-- Scheduled Tasks > Invoke-ScheduledTasksUnquotedPathCheck
+- Scheduled Tasks > Invoke-ScheduledTaskUnquotedPathCheck
 
 ### Changed
 
@@ -488,7 +611,7 @@
 
 - Fixed a false positive: 'C:' resolves to the current directory
 - Fixed a false positive: scheduled tasks running as the current user
-- Hardening > Invoke-BitlockerCheck
+- Hardening > Invoke-BitLockerCheck
 
 ## 2020-07-17
 
@@ -502,52 +625,52 @@
 
 - Helper > Convert-SidToName
 - Misc > Invoke-HotfixCheck
-- Applications > Invoke-ProgramDataCheck
+- Applications > Invoke-ProgramDataPermissionCheck
 
 ## 2020-04-09
 
 ### Added
 
-- DLL Hijacking > Invoke-HijackableDllsCheck
+- DLL Hijacking > Invoke-HijackableDllCheck
 - Applications > Invoke-ScheduledTasksCheck
 
 ## 2020-04-08
 
 ### Added
 
-- Misc > Invoke-UsersHomeFolderCheck
-- Programs > Invoke-ApplicationsOnStartupCheck
-- Registry > Invoke-WsusConfigCheck
-- User > Invoke-UserEnvCheck
-- Updated Credentials > Invoke-CredentialFilesCheck
+- Misc > Invoke-UserHomeFolderCheck
+- Programs > Invoke-StartupApplicationPermissionCheck
+- Registry > Invoke-WsusConfigurationCheck
+- User > Invoke-UserEnvironmentCheck
+- Updated Credentials > Invoke-CredentialFileCheck
 
 ## 2020-03-21
 
 ### Added
 
-- Handled exception in "Network > Invoke-WlanProfilesCheck" when dealing with servers
+- Handled exception in "Network > Invoke-WlanProfileCheck" when dealing with servers
 
 ## 2020-03-12
 
 ### Added
 
-- Network > Invoke-WlanProfilesCheck
+- Network > Invoke-WlanProfileCheck
 
 ## 2020-02-14
 
 ### Added
 
-- Credentials > Invoke-VaultListCheck
+- Credentials > Invoke-VaultListCredentialCheck
 
 ### Changed
 
-- Renamed Credentials > Invoke-CredentialManagerCheck -> Invoke-VaultCredCheck
+- Renamed Credentials > Invoke-CredentialManagerCheck -> Invoke-VaultCredentialCheck
 
 ## 2020-02-09
 
 ### Added
 
-- Credentials > Invoke-GPPPasswordCheck
+- Credentials > Invoke-GPPCredentialCheck
 
 ## 2020-01-30
 
@@ -565,7 +688,7 @@
 
 ### Added
 
-- Fixed bug User > Invoke-UserGroupsCheck (don't translate SIDs like "S-1-5.*")
+- Fixed bug User > Invoke-UserGroupCheck (don't translate SIDs like "S-1-5.*")
 
 ## 2020-01-17
 
@@ -577,7 +700,7 @@
 - Helper > Get-LsaRunAsPPLStatus
 - Registry > Invoke-LsaProtectionsCheck
 - Helper > Get-UnattendSensitiveData
-- Credentials > Invoke-UnattendFilesCheck
+- Credentials > Invoke-UnattendFileCredentialCheck
 
 ### Changed
 
@@ -589,30 +712,30 @@
 
 - Moved "Invoke-PrivescCheck.ps1" from "Pentest-Tools" to a dedicated repo.
 - User > Invoke-UserCheck
-- User > Invoke-UserGroupsCheck
-- User > Invoke-UserPrivilegesCheck
-- Services > Invoke-InstalledServicesCheck
-- Services > Invoke-ServicesPermissionsCheck
-- Services > Invoke-ServicesPermissionsRegistryCheck
-- Services > Invoke-ServicesImagePermissionsCheck
-- Services > Invoke-ServicesUnquotedPathCheck
+- User > Invoke-UserGroupCheck
+- User > Invoke-UserPrivilegeCheck
+- Services > Invoke-InstalledServiceCheck
+- Services > Invoke-ServicePermissionCheck
+- Services > Invoke-ServiceRegistryPermissionCheck
+- Services > Invoke-ServiceImagePermissionCheck
+- Services > Invoke-ServiceUnquotedPathCheck
 - Dll Hijacking > Invoke-DllHijackingCheck
 - Sensitive Files > Invoke-SamBackupFilesCheck
-- Programs > Invoke-InstalledProgramsCheck
-- Programs > Invoke-ModifiableProgramsCheck
+- Programs > Invoke-InstalledApplicationCheck
+- Programs > Invoke-InstalledApplicationPermissionCheck
 - Programs > Invoke-RunningProcessCheck
-- Credentials > Invoke-WinlogonCheck
-- Credentials > Invoke-CredentialFilesCheck
-- Registry > Invoke-UacCheck
+- Credentials > Invoke-WinLogonCredentialCheck
+- Credentials > Invoke-CredentialFileCheck
+- Registry > Invoke-UserAccountControlCheck
 - Registry > Invoke-LapsCheck
 - Registry > Invoke-PowershellTranscriptionCheck
 - Registry > Invoke-RegistryAlwaysInstallElevatedCheck
-- Network > Invoke-TcpEndpointsCheck
-- Network > Invoke-UdpEndpointsCheck
+- Network > Invoke-TcpEndpointCheck
+- Network > Invoke-UdpEndpointCheck
 - Misc > Invoke-WindowsUpdateCheck
-- Misc > Invoke-SystemInfoCheck
+- Misc > Invoke-SystemInformationCheck
 - Misc > Invoke-LocalAdminGroupCheck
 - Misc > Invoke-MachineRoleCheck
 - Misc > Invoke-SystemStartupHistoryCheck
 - Misc > Invoke-SystemStartupCheck
-- Misc > Invoke-SystemDrivesCheck
+- Misc > Invoke-SystemDriveCheck

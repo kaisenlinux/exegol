@@ -31,16 +31,17 @@ function Get-ServiceControlManagerDacl {
     https://docs.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     $SERVICES_ACTIVE_DATABASE = "ServicesActive"
-    $ServiceManagerHandle = $Advapi32::OpenSCManager($null, $SERVICES_ACTIVE_DATABASE, $ServiceControlManagerAccessRightsEnum::GenericRead)
+    $ServiceManagerHandle = $script:Advapi32::OpenSCManager($null, $SERVICES_ACTIVE_DATABASE, $script:ServiceControlManagerAccessRightEnum::GenericRead)
     $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
     if ($ServiceManagerHandle) {
 
         $SizeNeeded = 0
-        $null = $Advapi32::QueryServiceObjectSecurity($ServiceManagerHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, @(), 0, [Ref] $SizeNeeded)
+        $null = $script:Advapi32::QueryServiceObjectSecurity($ServiceManagerHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, @(), 0, [Ref] $SizeNeeded)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
         # 122 == The data area passed to a system call is too small
@@ -50,7 +51,7 @@ function Get-ServiceControlManagerDacl {
 
             $BinarySecurityDescriptor = New-Object Byte[]($SizeNeeded)
 
-            $Success = $Advapi32::QueryServiceObjectSecurity($ServiceManagerHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, $BinarySecurityDescriptor, $BinarySecurityDescriptor.Count, [Ref] $SizeNeeded)
+            $Success = $script:Advapi32::QueryServiceObjectSecurity($ServiceManagerHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, $BinarySecurityDescriptor, $BinarySecurityDescriptor.Count, [Ref] $SizeNeeded)
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
             if ($Success) {
@@ -61,7 +62,7 @@ function Get-ServiceControlManagerDacl {
 
                 if ($null -eq $Dacl) {
                     $Result = New-Object -TypeName PSObject
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value $ServiceControlManagerAccessRightsEnum::AllAccess
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value $script:ServiceControlManagerAccessRightEnum::AllAccess
                     # $Result | Add-Member -MemberType "NoteProperty" -Name "AccessMask" -Value AccessRights.value__
                     $Result | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value "S-1-1-0"
                     $Result | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value "AccessAllowed"
@@ -69,7 +70,7 @@ function Get-ServiceControlManagerDacl {
                 }
                 else {
                     $Dacl | ForEach-Object {
-                        Add-Member -InputObject $_ -MemberType NoteProperty -Name AccessRights -Value ($_.AccessMask -as $ServiceControlManagerAccessRightsEnum) -PassThru
+                        Add-Member -InputObject $_ -MemberType NoteProperty -Name AccessRights -Value ($_.AccessMask -as $script:ServiceControlManagerAccessRightEnum) -PassThru
                     }
                 }
             }
@@ -79,7 +80,7 @@ function Get-ServiceControlManagerDacl {
             Write-Verbose ([ComponentModel.Win32Exception] $LastError)
         }
 
-        $null = $Advapi32::CloseServiceHandle($ServiceManagerHandle)
+        $null = $script:Advapi32::CloseServiceHandle($ServiceManagerHandle)
     }
     else {
         Write-Verbose ([ComponentModel.Win32Exception] $LastError)
@@ -113,10 +114,11 @@ function Get-ServiceFromRegistry {
     RegistryPath : HKLM\SYSTEM\CurrentControlSet\Services\Spooler
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
-        [String]$Name
+        [String] $Name
     )
 
     $RegKeyServices = "HKLM\SYSTEM\CurrentControlSet\Services"
@@ -129,8 +131,8 @@ function Get-ServiceFromRegistry {
     $Result | Add-Member -MemberType "NoteProperty" -Name "DisplayName" -Value ([System.Environment]::ExpandEnvironmentVariables($RegItem.DisplayName))
     $Result | Add-Member -MemberType "NoteProperty" -Name "User" -Value $RegItem.ObjectName
     $Result | Add-Member -MemberType "NoteProperty" -Name "ImagePath" -Value $RegItem.ImagePath
-    $Result | Add-Member -MemberType "NoteProperty" -Name "StartMode" -Value ($RegItem.Start -as $ServiceStartTypeEnum)
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value ($RegItem.Type -as $ServiceTypeEnum)
+    $Result | Add-Member -MemberType "NoteProperty" -Name "StartMode" -Value ($RegItem.Start -as $script:ServiceStartTypeEnum)
+    $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value ($RegItem.Type -as $script:ServiceTypeEnum)
     $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryKey" -Value $RegKeyServices
     $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryPath" -Value $RegKey
     $Result
@@ -139,9 +141,10 @@ function Get-ServiceFromRegistry {
 function Test-IsKnownService {
 
     [OutputType([Boolean])]
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
-        [Object]$Service
+        [Object] $Service
     )
 
     $SeparationCharacterSets = @('"', "'", ' ', "`"'", '" ', "' ", "`"' ")
@@ -211,11 +214,11 @@ function Get-ServiceList {
         InteractiveProcess = 256
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
         [ValidateSet(0,1,2,3)]
-        [Int]
-        $FilterLevel
+        [Int] $FilterLevel
     )
 
     begin {
@@ -223,41 +226,41 @@ function Get-ServiceList {
     }
 
     process {
-        if ($CachedServiceList.Count -eq 0) {
+        if ($script:CachedServiceList.Count -eq 0) {
 
             # If the cached service list hasn't been initialized yet, enumerate all services and populate the
             # cache.
-    
+
             $ServicesRegPath = "HKLM\SYSTEM\CurrentControlSet\Services"
             $RegAllServices = Get-ChildItem -Path "Registry::$($ServicesRegPath)" -ErrorAction SilentlyContinue
-    
-            $RegAllServices | ForEach-Object { [void]$CachedServiceList.Add((Get-ServiceFromRegistry -Name $_.PSChildName)) }
+
+            $RegAllServices | ForEach-Object { [void] $script:CachedServiceList.Add((Get-ServiceFromRegistry -Name $_.PSChildName)) }
         }
-    
-        foreach ($ServiceItem in $CachedServiceList) {
-    
+
+        foreach ($ServiceItem in $script:CachedServiceList) {
+
             # FilterLevel = 0 - Add the service to the list and go to the next one
             if ($FilterLevel -eq 0) { $ServiceItem; continue }
-    
+
             if ($ServiceItem.ImagePath -and (-not [String]::IsNullOrEmpty($ServiceItem.ImagePath.trim()))) {
-    
+
                 # FilterLevel = 1 - Add the service to the list of its ImagePath is not empty
                 if ($FilterLevel -le 1) { $ServiceItem; continue }
-    
+
                 # Ignore services with no explicit type
                 if ($null -eq $ServiceItem.Type) {
                     Write-Warning "Service $($ServiceItem.Name) has no type"
                     continue
                 }
-    
-                $TypeMask = $ServiceTypeEnum::Win32OwnProcess -bor $ServiceTypeEnum::Win32ShareProcess -bor $ServiceTypeEnum::InteractiveProcess
+
+                $TypeMask = $script:ServiceTypeEnum::Win32OwnProcess -bor $script:ServiceTypeEnum::Win32ShareProcess -bor $script:ServiceTypeEnum::InteractiveProcess
                 if (($ServiceItem.Type -band $TypeMask) -gt 0) {
-    
+
                     # FilterLevel = 2 - Add the service to the list if it's not a driver
                     if ($FilterLevel -le 2) { $ServiceItem; continue }
-    
+
                     if (-not (Test-IsKnownService -Service $ServiceItem)) {
-    
+
                         # FilterLevel = 3 - Add the service if it's not a built-in Windows service
                         if ($FilterLevel -le 3) { $ServiceItem; continue }
                     }
@@ -290,7 +293,7 @@ function Add-ServiceDacl {
     .EXAMPLE
     PS C:\> Get-Service | Add-ServiceDacl
 
-    Add Dacls for every service the current user can read.
+    Add DACLs for every service the current user can read.
 
     .EXAMPLE
     PS C:\> Get-Service -Name VMTools | Add-ServiceDacl
@@ -309,10 +312,10 @@ function Add-ServiceDacl {
         [Parameter(Position=0, Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
         [Alias('ServiceName')]
         [ValidateNotNullOrEmpty()]
-        [String[]]$Name
+        [String[]] $Name
     )
 
-    BEGIN {
+    begin {
         filter Local:Get-ServiceReadControlHandle {
             [OutputType([IntPtr])]
             param (
@@ -329,7 +332,7 @@ function Add-ServiceDacl {
         }
     }
 
-    PROCESS {
+    process {
         foreach ($ServiceName in $Name) {
 
             $IndividualService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue -ErrorVariable GetServiceError
@@ -345,14 +348,14 @@ function Add-ServiceDacl {
                 if ($ServiceHandle -and ($ServiceHandle -ne [IntPtr]::Zero)) {
                     $SizeNeeded = 0
 
-                    $Result = $Advapi32::QueryServiceObjectSecurity($ServiceHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, @(), 0, [Ref] $SizeNeeded)
+                    $Result = $script:Advapi32::QueryServiceObjectSecurity($ServiceHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, @(), 0, [Ref] $SizeNeeded)
                     $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
                     # 122 == The data area passed to a system call is too small
                     if ((-not $Result) -and ($LastError -eq 122) -and ($SizeNeeded -gt 0)) {
                         $BinarySecurityDescriptor = New-Object Byte[]($SizeNeeded)
 
-                        $Result = $Advapi32::QueryServiceObjectSecurity($ServiceHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, $BinarySecurityDescriptor, $BinarySecurityDescriptor.Count, [Ref] $SizeNeeded)
+                        $Result = $script:Advapi32::QueryServiceObjectSecurity($ServiceHandle, [Security.AccessControl.SecurityInfos]::DiscretionaryAcl, $BinarySecurityDescriptor, $BinarySecurityDescriptor.Count, [Ref] $SizeNeeded)
                         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
                         if ($Result) {
@@ -364,7 +367,7 @@ function Add-ServiceDacl {
                             # Check for NULL DACL first
                             if ($nul -eq $RawDacl) {
                                 $Ace = New-Object -TypeName PSObject
-                                $Ace | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value $ServiceAccessRightsEnum::GenericAll
+                                $Ace | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value $script:ServiceAccessRightEnum::GenericAll
                                 # $Ace | Add-Member -MemberType "NoteProperty" -Name "AccessMask" -Value AccessRights.value__
                                 $Ace | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value (Convert-SidStringToSid -Sid "S-1-1-0")
                                 $Ace | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value "AccessAllowed"
@@ -372,7 +375,7 @@ function Add-ServiceDacl {
                             }
                             else {
                                 $Dacl = $RawDacl | ForEach-Object {
-                                    Add-Member -InputObject $_ -MemberType NoteProperty -Name AccessRights -Value ($_.AccessMask -as $ServiceAccessRightsEnum) -PassThru
+                                    Add-Member -InputObject $_ -MemberType NoteProperty -Name AccessRights -Value ($_.AccessMask -as $script:ServiceAccessRightEnum) -PassThru
                                 }
                             }
 
@@ -380,7 +383,7 @@ function Add-ServiceDacl {
                         }
                     }
 
-                    $null = $Advapi32::CloseServiceHandle($ServiceHandle)
+                    $null = $script:Advapi32::CloseServiceHandle($ServiceHandle)
                 }
             }
         }
@@ -428,8 +431,7 @@ function Test-ServiceDaclPermission {
     .LINK
     https://rohnspowershellblog.wordpress.com/2013/03/19/viewing-service-acls/
     #>
-    [OutputType('ServiceProcess.ServiceController')]
-    param (
+    [OutputType('ServiceProcess.ServiceController')] param(
         [Parameter(Position=0, Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
         [Alias('ServiceName')]
         [String[]]
@@ -445,7 +447,7 @@ function Test-ServiceDaclPermission {
         $PermissionSet = 'ChangeConfig'
     )
 
-    BEGIN {
+    begin {
         $AccessMask = @{
             'QueryConfig'           = [UInt32]'0x00000001'
             'ChangeConfig'          = [UInt32]'0x00000002'
@@ -487,10 +489,10 @@ function Test-ServiceDaclPermission {
             }
         }
 
-        $CurrentUserSids = Get-CurrentUserSids
+        $CurrentUserSids = Get-CurrentUserSid
     }
 
-    PROCESS {
+    process {
 
         foreach ($IndividualService in $Name) {
 
@@ -558,10 +560,10 @@ function Test-ServiceDaclPermission {
 }
 
 function Resolve-DriverImagePath {
-    
+
     [CmdletBinding()]
     param (
-        [Object]$Service
+        [Object] $Service
     )
 
     if ($Service.ImagePath -match "^\\SystemRoot\\") {
@@ -580,11 +582,10 @@ function Resolve-DriverImagePath {
 
 function Get-DriverList {
 
-    [CmdletBinding()] param(
-        
-    )
+    [CmdletBinding()]
+    param()
 
-    if ($CachedDriverList.Count -eq 0) {
+    if ($script:CachedDriverList.Count -eq 0) {
 
         # If the cached driver list hasn't been initialized yet, enumerate all drivers,
         # resolve their paths and populate the cache.
@@ -600,18 +601,19 @@ function Get-DriverList {
 
             $Service | Add-Member -MemberType "NoteProperty" -Name "ImagePathResolved" -Value $ImagePath
 
-            [void]$CachedDriverList.Add($Service)
+            [void] $script:CachedDriverList.Add($Service)
         }
     }
 
-    $CachedDriverList | ForEach-Object { $_ }
+    $script:CachedDriverList | ForEach-Object { $_ }
 }
 
-function Get-VulnerableDriverHashes {
+function Get-VulnerableDriverHash {
 
-    [CmdletBinding()] param ()
+    [CmdletBinding()]
+    param ()
 
-    $VulnerableDriverList = $VulnerableDrivers | ConvertFrom-Csv -Delimiter ";"
+    $VulnerableDriverList = $script:VulnerableDrivers | ConvertFrom-Csv -Delimiter ";"
     if ($null -eq $VulnerableDriverList) { Write-Warning "Failed to get list of vulnerable drivers."; return }
 
     $VulnerableDriverList | ForEach-Object {
@@ -625,18 +627,19 @@ function Get-VulnerableDriverHashes {
 
 function Find-VulnerableDriver {
 
-    [CmdletBinding()] param (
+    [CmdletBinding()]
+    param (
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
         [Object] $Service
     )
 
-    BEGIN {
+    begin {
         Write-Verbose "Initializing list of vulnerable driver hashes..."
-        $VulnerableDriverHashes = Get-VulnerableDriverHashes
+        $VulnerableDriverHashes = Get-VulnerableDriverHash
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
 
-    PROCESS {
+    process {
 
         $ResultHash = ""
         $ResultUrl = ""
@@ -682,9 +685,10 @@ function Find-VulnerableDriver {
             }
 
             if (-not [String]::IsNullOrEmpty($ResultHash)) {
-                $Service | Add-Member -MemberType "NoteProperty" -Name "FileHash" -Value $ResultHash
-                $Service | Add-Member -MemberType "NoteProperty" -Name "Url" -Value $ResultUrl
-                $Service
+                $Result = $Service.PSObject.Copy()
+                $Result | Add-Member -MemberType "NoteProperty" -Name "FileHash" -Value $ResultHash
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Url" -Value $ResultUrl
+                $Result
                 break
             }
         }

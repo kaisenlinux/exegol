@@ -1,14 +1,15 @@
 function Convert-CredentialBlobToString {
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Position = 1, Mandatory=$true)]
-        [Object]$RawObject # CREDENTIAL
+        [Object] $RawObject # CREDENTIAL
     )
 
     if (-not ($RawObject.CredentialBlobSize -eq 0)) {
 
         $TestFlags = 2 # IS_TEXT_UNICODE_STATISTICS
-        $IsUnicode = $Advapi32::IsTextUnicode($RawObject.CredentialBlob, $RawObject.CredentialBlobSize, [ref]$TestFlags)
+        $IsUnicode = $script:Advapi32::IsTextUnicode($RawObject.CredentialBlob, $RawObject.CredentialBlobSize, [ref] $TestFlags)
 
         if ($IsUnicode) {
             Write-Verbose "Encoding of input text is UNICODE"
@@ -73,15 +74,17 @@ function Get-UnattendSensitiveData {
     /!\ UNICODE encoding!
     #>
 
-    [CmdletBinding()]Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
-        [String]$Path
+        [String] $Path
     )
 
     function Get-DecodedPassword {
 
-        [CmdletBinding()]Param(
-            [Object]$XmlNode
+        [CmdletBinding()]
+        param(
+            [Object] $XmlNode
         )
 
         if ($XmlNode.GetType().Name -eq "string") {
@@ -161,7 +164,7 @@ function Get-UnattendSensitiveData {
     }
 }
 
-function Get-VaultCreds {
+function Get-VaultCredential {
     <#
     .SYNOPSIS
     Helper - Enumerates Windows Credentials
@@ -173,7 +176,7 @@ function Get-VaultCreds {
     If True, only entries with a readable (i.e. non-empty) password are returned.
 
     .EXAMPLE
-    PS C:\> Get-VaultCreds -Filtered
+    PS C:\> Get-VaultCredential -Filtered
 
     TargetName : LegacyGeneric:target=https://github.com/
     UserName   : user@example.com
@@ -181,17 +184,18 @@ function Get-VaultCreds {
     Type       : 1 - GENERIC
     Persist    : 2 - LOCAL_MACHINE
     Flags      : 0
-    Credential : dBa2F06TTsrvSeLbyoW8
+    Credential : ***
     #>
 
-    [CmdletBinding()] Param(
-        [Switch]$Filtered = $false
+    [CmdletBinding()]
+    param(
+        [Switch] $Filtered = $false
     )
 
     # CRED_ENUMERATE_ALL_CREDENTIALS = 0x1
     $Count = 0;
     $CredentialsPtr = [IntPtr]::Zero
-    $Success = $Advapi32::CredEnumerate([IntPtr]::Zero, 1, [ref]$Count, [ref]$CredentialsPtr)
+    $Success = $script:Advapi32::CredEnumerate([IntPtr]::Zero, 1, [ref] $Count, [ref] $CredentialsPtr)
     $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
     if ($Success) {
@@ -206,7 +210,7 @@ function Get-VaultCreds {
 
             $CredentialPtrOffset = [IntPtr] ($CredentialsPtr.ToInt64() + [IntPtr]::Size * $i)
             $CredentialPtr = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($CredentialPtrOffset)
-            $Cred = [System.Runtime.InteropServices.Marshal]::PtrToStructure($CredentialPtr, [type] $CREDENTIAL)
+            $Cred = [System.Runtime.InteropServices.Marshal]::PtrToStructure($CredentialPtr, [type] $script:CREDENTIAL)
             $CredStr = Convert-CredentialBlobToString $Cred
 
             if ((-not $Filtered) -or ($Filtered -and (-not [String]::IsNullOrEmpty($CredStr)))) {
@@ -215,15 +219,15 @@ function Get-VaultCreds {
                 $Result | Add-Member -MemberType "NoteProperty" -Name "TargetName" -Value $Cred.TargetName
                 $Result | Add-Member -MemberType "NoteProperty" -Name "UserName" -Value $Cred.UserName
                 $Result | Add-Member -MemberType "NoteProperty" -Name "Comment" -Value $Cred.Comment
-                $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value "$($Cred.Type -as $CRED_TYPE)"
-                $Result | Add-Member -MemberType "NoteProperty" -Name "Persist" -Value "$($Cred.Persist -as $CRED_PERSIST)"
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value "$($Cred.Type -as $script:CRED_TYPE)"
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Persist" -Value "$($Cred.Persist -as $script:CRED_PERSIST)"
                 $Result | Add-Member -MemberType "NoteProperty" -Name "Flags" -Value "0x$($Cred.Flags.ToString('X8'))"
                 $Result | Add-Member -MemberType "NoteProperty" -Name "Credential" -Value $CredStr
                 $Result
             }
         }
 
-        $Advapi32::CredFree($CredentialsPtr)
+        $script:Advapi32::CredFree($CredentialsPtr)
     }
     else {
         # If there is no saved credentials, CredEnumerate sets the last error to ERROR_NOT_FOUND but this
@@ -235,13 +239,15 @@ function Get-VaultCreds {
 
 function Get-VaultList {
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Switch]
         $Filtered = $false
     )
 
     function Get-VaultNameFromGuid {
-        [CmdletBinding()] Param(
+        [CmdletBinding()]
+        param(
             [Guid] $VaultGuid
         )
 
@@ -262,16 +268,20 @@ function Get-VaultList {
     # Highly inspired from "Get-VaultCredential.ps1", credit goes to Matthew Graeber
     # https://github.com/EmpireProject/Empire/blob/master/data/module_source/credentials/Get-VaultCredential.ps1
     function Get-VaultItemElementValue {
-        [CmdletBinding()] Param(
-            [IntPtr]
-            $VaultItemElementPtr
+        [OutputType([Boolean])]
+        [OutputType([Int16])]
+        [OutputType([Int32])]
+        [OutputType([String])]
+        [CmdletBinding()]
+        param(
+            [IntPtr] $VaultItemElementPtr
         )
 
         if ($VaultItemElementPtr -eq [IntPtr]::Zero) {
             return
         }
 
-        $VaultItemDataHeader = [Runtime.InteropServices.Marshal]::PtrToStructure($VaultItemElementPtr, [type] $VAULT_ITEM_DATA_HEADER)
+        $VaultItemDataHeader = [Runtime.InteropServices.Marshal]::PtrToStructure($VaultItemElementPtr, [type] $script:VAULT_ITEM_DATA_HEADER)
         $VaultItemDataValuePtr = [IntPtr] ($VaultItemElementPtr.ToInt64() + 16)
 
         switch ($VaultItemDataHeader.Type) {
@@ -353,7 +363,7 @@ function Get-VaultList {
 
     $VaultsCount = 0
     $VaultGuids = [IntPtr]::Zero
-    $Result = $Vaultcli::VaultEnumerateVaults(0, [ref]$VaultsCount, [ref]$VaultGuids)
+    $Result = $script:Vaultcli::VaultEnumerateVaults(0, [ref] $VaultsCount, [ref] $VaultGuids)
 
     if ($Result -eq 0) {
 
@@ -368,7 +378,7 @@ function Get-VaultList {
             Write-Verbose "Vault: $($VaultGuid) - $($VaultName)"
 
             $VaultHandle = [IntPtr]::Zero
-            $Result = $Vaultcli::VaultOpenVault($VaultGuidPtr, 0, [ref]$VaultHandle)
+            $Result = $script:Vaultcli::VaultOpenVault($VaultGuidPtr, 0, [ref] $VaultHandle)
 
             if ($Result -eq 0) {
 
@@ -376,7 +386,7 @@ function Get-VaultList {
 
                 $VaultItemsCount = 0
                 $ItemsPtr = [IntPtr]::Zero
-                $Result = $Vaultcli::VaultEnumerateItems($VaultHandle, 0x0200, [ref]$VaultItemsCount, [ref]$ItemsPtr)
+                $Result = $script:Vaultcli::VaultEnumerateItems($VaultHandle, 0x0200, [ref] $VaultItemsCount, [ref] $ItemsPtr)
 
                 $VaultItemPtr = $ItemsPtr
 
@@ -392,11 +402,11 @@ function Get-VaultList {
 
                             if ($OSVersion.Major -le 6 -and $OSVersion.Minor -le 1) {
                                 # Windows 7
-                                $VaultItemType = [type] $VAULT_ITEM_7
+                                $VaultItemType = [type] $script:VAULT_ITEM_7
                             }
                             else {
                                 # Windows 8+
-                                $VaultItemType = [type] $VAULT_ITEM_8
+                                $VaultItemType = [type] $script:VAULT_ITEM_8
                             }
 
                             $VaultItem = [Runtime.InteropServices.Marshal]::PtrToStructure($VaultItemPtr, [type] $VaultItemType)
@@ -404,12 +414,12 @@ function Get-VaultList {
                             if ($OSVersion.Major -le 6 -and $OSVersion.Minor -le 1) {
                                 # Windows 7
                                 $PasswordItemPtr = [IntPtr]::Zero
-                                $Result = $Vaultcli::VaultGetItem7($VaultHandle, [ref]$VaultItem.SchemaId, $VaultItem.Resource, $VaultItem.Identity, [IntPtr]::Zero, 0, [ref]$PasswordItemPtr)
+                                $Result = $script:Vaultcli::VaultGetItem7($VaultHandle, [ref] $VaultItem.SchemaId, $VaultItem.Resource, $VaultItem.Identity, [IntPtr]::Zero, 0, [ref] $PasswordItemPtr)
                             }
                             else {
                                 # Windows 8+
                                 $PasswordItemPtr = [IntPtr]::Zero
-                                $Result = $Vaultcli::VaultGetItem8($VaultHandle, [ref]$VaultItem.SchemaId, $VaultItem.Resource, $VaultItem.Identity, $VaultItem.PackageSid, [IntPtr]::Zero, 0, [ref]$PasswordItemPtr)
+                                $Result = $script:Vaultcli::VaultGetItem8($VaultHandle, [ref] $VaultItem.SchemaId, $VaultItem.Resource, $VaultItem.Identity, $VaultItem.PackageSid, [IntPtr]::Zero, 0, [ref] $PasswordItemPtr)
                             }
 
                             if ($Result -eq 0) {
@@ -417,7 +427,7 @@ function Get-VaultList {
                                 Write-Verbose "VaultGetItem() OK - ItemPtr: 0x$($PasswordItemPtr.ToString('X8'))"
                                 $PasswordItem = [Runtime.InteropServices.Marshal]::PtrToStructure($PasswordItemPtr, [Type] $VaultItemType)
                                 $Password = Get-VaultItemElementValue -VaultItemElementPtr $PasswordItem.Authenticator
-                                $Vaultcli::VaultFree($PasswordItemPtr) | Out-Null
+                                $script:Vaultcli::VaultFree($PasswordItemPtr) | Out-Null
 
                             }
                             else {
@@ -446,7 +456,7 @@ function Get-VaultList {
                     Write-Verbose "VaultEnumerateItems() failed - Err: 0x$($Result.ToString('X8'))"
                 }
 
-                $Vaultcli::VaultCloseVault([ref]$VaultHandle) | Out-Null
+                $script:Vaultcli::VaultCloseVault([ref] $VaultHandle) | Out-Null
             }
             else {
                 Write-Verbose "VaultOpenVault() failed - Err: 0x$($Result.ToString('X8'))"
@@ -458,7 +468,7 @@ function Get-VaultList {
     }
 }
 
-function Get-ShadowCopies {
+function Get-ShadowCopy {
     <#
     .SYNOPSIS
     Helper - Enumerates Shadow Copies
@@ -471,7 +481,7 @@ function Get-ShadowCopies {
     Inspired from https://github.com/cube0x0/CVE-2021-36934 and https://gist.github.com/brianreitz/feb4e14bd45dd2e4394c225b17df5741.
 
     .EXAMPLE
-    PS C:\>  Get-ShadowCopies | fl
+    PS C:\>  Get-ShadowCopy | fl
 
     Volume : HarddiskVolumeShadowCopy1
     Path   : \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1
@@ -480,17 +490,18 @@ function Get-ShadowCopies {
     Path   : \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy2
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     $ObjectName = "\Device"
-    $ObjectNameBuffer = [Activator]::CreateInstance($UNICODE_STRING)
-    $Ntdll::RtlInitUnicodeString([ref]$ObjectNameBuffer, $ObjectName) | Out-Null
+    $ObjectNameBuffer = [Activator]::CreateInstance($script:UNICODE_STRING)
+    $script:Ntdll::RtlInitUnicodeString([ref] $ObjectNameBuffer, $ObjectName) | Out-Null
 
-    $ObjectAttributes = [Activator]::CreateInstance($OBJECT_ATTRIBUTES)
-    $ObjectAttributes.Length = $OBJECT_ATTRIBUTES::GetSize()
+    $ObjectAttributes = [Activator]::CreateInstance($script:OBJECT_ATTRIBUTES)
+    $ObjectAttributes.Length = $script:OBJECT_ATTRIBUTES::GetSize()
     $ObjectAttributes.RootDirectory = [IntPtr]::Zero
     $ObjectAttributes.Attributes = $OBJ_ATTRIBUTE::OBJ_CASE_INSENSITIVE
-    $ObjectAttributes.ObjectName = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($UNICODE_STRING::GetSize())
+    $ObjectAttributes.ObjectName = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($script:UNICODE_STRING::GetSize())
     [System.Runtime.InteropServices.Marshal]::StructureToPtr($ObjectNameBuffer, $ObjectAttributes.ObjectName, $true)
 
     $ObjectAttributes.SecurityDescriptor = [IntPtr]::Zero
@@ -498,10 +509,10 @@ function Get-ShadowCopies {
 
     $ObjectHandle = [IntPtr]::Zero
 
-    $Status = $Ntdll::NtOpenDirectoryObject([ref]$ObjectHandle, 3, [ref]$ObjectAttributes)
+    $Status = $script:Ntdll::NtOpenDirectoryObject([ref] $ObjectHandle, 3, [ref] $ObjectAttributes)
 
     if ($Status -ne 0) {
-        $LastError = $Ntdll::RtlNtStatusToDosError($Status)
+        $LastError = $script:Ntdll::RtlNtStatusToDosError($Status)
         Write-Verbose "NtOpenDirectoryObject - $([ComponentModel.Win32Exception] $LastError)"
         [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ObjectAttributes.ObjectName) | Out-Null
         return
@@ -517,11 +528,11 @@ function Get-ShadowCopies {
 
     while ($true) {
 
-        $Status = $Ntdll::NtQueryDirectoryObject($ObjectHandle, $Buffer, $BufferSize, $true, $Context -eq 0, [ref]$Context, [ref]$Length)
+        $Status = $script:Ntdll::NtQueryDirectoryObject($ObjectHandle, $Buffer, $BufferSize, $true, $Context -eq 0, [ref] $Context, [ref] $Length)
 
         if ($Status -ne 0) { break }
 
-        $ObjectDirectoryInformation = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Buffer, [type] $OBJECT_DIRECTORY_INFORMATION)
+        $ObjectDirectoryInformation = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Buffer, [type] $script:OBJECT_DIRECTORY_INFORMATION)
         $TypeName = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ObjectDirectoryInformation.TypeName.Buffer)
         $Name = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ObjectDirectoryInformation.Name.Buffer)
 
@@ -536,35 +547,35 @@ function Get-ShadowCopies {
     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($Buffer) | Out-Null
 }
 
-function Find-WmiCcmNaaCredentials {
+function Find-WmiCcmNaaCredential {
     <#
     .SYNOPSIS
     Search for NAA credentials in the WMI database.
 
     Author: @itm4n
     License: BSD 3-Clause
-    
+
     .DESCRIPTION
     This cmdlet attempts to find SCCM Network Access Account credential blobs in the raw WMI data file 'OBJECTS.DATA'.
-    
+
     .PARAMETER Path
     The path of the WMI data file to parse. If null, the default system path is used.
-    
+
     .EXAMPLE
-    PS C:\> Find-WmiCcmNaaCredentials | Format-List
+    PS C:\> Find-WmiCcmNaaCredential | Format-List
 
     NetworkAccessUsername : <PolicySecret Version="1"><![CDATA[0601000001000000D08...]]></PolicySecret>
     NetworkAccessPassword : <PolicySecret Version="1"><![CDATA[0601000001000000D08...]]></PolicySecret>
-    
+
     .NOTES
     https://posts.specterops.io/the-phantom-credentials-of-sccm-why-the-naa-wont-die-332ac7aa1ab9
     #>
 
     [CmdletBinding()]
-    param (
+    param(
         [string] $Path
     )
-    
+
     begin {
         $SanityCheck = $true
 
@@ -583,9 +594,9 @@ function Find-WmiCcmNaaCredentials {
 
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
-    
+
     process {
-        
+
         if (-not $SanityCheck) { return }
 
         $Candidates = Select-String -Path $Path -Pattern "$($BasePattern)`0`0$($PolicyPatternBegin)"
@@ -598,7 +609,7 @@ function Find-WmiCcmNaaCredentials {
             $Line = $Candidate.Line
             $Offset = $Line.IndexOf($BasePattern) + $BasePattern.Length + 2
             $Line = $Line.SubString($Offset, $Line.Length - $Offset)
-            
+
             # Find all occurrences of the XML start tag. For each one, find the XML end tag
             # and extract a substring containing the PolicySecret entry.
             $Offset = 0
@@ -632,5 +643,101 @@ function Find-WmiCcmNaaCredentials {
 
     end {
         Restore-Wow64FileSystemRedirection -OldValue $FsRedirectionValue
+    }
+}
+
+function Find-SccmCacheFileCredential {
+    <#
+    .SYNOPSIS
+    Helper - Find potentially hard coded credentials in SCCM cache files.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This function first retrieves a list of potentially interesting files from the SCCM cache folders, and tries to find potentially hard coded credentials or secrets. For binary files, it simply determines whether there is a potential match, without returning anything to avoid messing up with the terminal output. For text files (incl. scripts), it returns all matching results.
+    #>
+
+    [CmdletBinding()]
+    param()
+
+    begin {
+        $Keywords = @( "password", "SecureString", "secret", "pwd", "token", "username" )
+        $CredentialSearchPattern = "($($Keywords -join '|'))"
+
+        function Get-MatchedKeyword {
+            param([string] $InputMatched)
+            $KeywordMatched = $null
+            foreach ($Keyword in $Keywords) {
+                $KeywordMatch = $InputMatched | Select-String -Pattern $Keyword
+                if ($null -ne $KeywordMatch) {
+                    $KeywordMatched = $Keyword
+                    break
+                }
+            }
+            return $KeywordMatched
+        }
+    }
+
+    process {
+
+        $SccmCacheFolders = Get-SccmCacheFoldersFromRegistry
+
+        foreach ($SccmCacheFolder in $SccmCacheFolders) {
+
+            if ([string]::IsNullOrEmpty($SccmCacheFolder.Path)) { continue }
+
+            $SccmCacheFiles = Get-SccmCacheFile -Path $SccmCacheFolder.Path
+
+            foreach ($SccmCacheFile in $SccmCacheFiles) {
+
+                if ([string]::IsNullOrEmpty($SccmCacheFile.Path)) { continue }
+
+                $FileItem = Get-Item -Path $SccmCacheFile.Path -ErrorAction SilentlyContinue
+                if ($null -eq $FileItem) { continue }
+
+                if ($SccmCacheFile.Type -eq "Binary") {
+
+                    # For binary files, just check whether the target file matches at least
+                    # once, without returning anything.
+
+                    # Ignore files that are larger than 100 MB to avoid spending too much
+                    # time on the search.
+
+                    if ($FileItem.Length -gt 100000000) {
+                        Write-Warning "File '$($SccmCacheFile.Path) is too big, ignoring."
+                        continue
+                    }
+
+                    $TempMatch = Get-Content -Path $SccmCacheFile.Path | Select-String -Pattern $CredentialSearchPattern
+                    if ($null -ne $TempMatch) {
+
+                        $Result = $SccmCacheFile.PSObject.Copy()
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Match" -Value "(binary file matches)"
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Keyword" -Value (Get-MatchedKeyword -InputMatched $TempMatch.Line)
+                        $Result
+                    }
+                }
+                elseif (($SccmCacheFile.Type -eq "Script") -or ($SccmCacheFile.Type -eq "Text")) {
+
+                    # For script files and misc text files, return all matches of the pattern.
+
+                    $TempMatch = Get-Content -Path $SccmCacheFile.Path | Select-String -Pattern $CredentialSearchPattern -AllMatches
+                    if ($null -ne $TempMatch) {
+                        Write-Verbose "File '$($SccmCacheFile.Path)' matches pattern."
+                        foreach ($Match in $TempMatch) {
+
+                            $Result = $SccmCacheFile.PSObject.Copy()
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "Match" -Value "Line $($Match.LineNumber): $($Match.Line.Trim())"
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "Keyword" -Value (Get-MatchedKeyword -InputMatched $TempMatch.Line)
+                            $Result
+                        }
+                    }
+                }
+                else {
+                    throw "Unhandled file type: $($SccmCacheFile.Type)"
+                }
+            }
+        }
     }
 }

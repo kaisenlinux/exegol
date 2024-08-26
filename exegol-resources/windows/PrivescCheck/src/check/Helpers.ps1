@@ -4,20 +4,22 @@ function Test-IsRunningInConsole {
 
 function Convert-FiletimeToDatetime {
     [OutputType([DateTime])]
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Position = 1, Mandatory=$true)]
         [Object] # FILETIME
         $Filetime
     )
 
-    [Int64]$Time = $Filetime.LowDateTime + $Filetime.HighDateTime * 0x100000000
+    [Int64] $Time = $Filetime.LowDateTime + $Filetime.HighDateTime * 0x100000000
     [DateTime]::FromFileTimeUtc($Time)
 }
 
 function Convert-SidStringToSid {
 
-    [CmdletBinding()] Param(
-        [String]$Sid
+    [CmdletBinding()]
+    param(
+        [String] $Sid
     )
 
     try {
@@ -51,8 +53,9 @@ function Convert-SidToName {
     #>
 
     [OutputType([String])]
-    [CmdletBinding()] Param(
-        [String]$Sid
+    [CmdletBinding()]
+    param(
+        [String] $Sid
     )
 
     try {
@@ -86,8 +89,9 @@ function Convert-DateToString {
     #>
 
     [OutputType([String])]
-    [CmdletBinding()] Param(
-        [System.DateTime]$Date
+    [CmdletBinding()]
+    param(
+        [System.DateTime] $Date
     )
 
     if ($null -ne $Date) {
@@ -99,7 +103,8 @@ function Convert-DateToString {
 
 function Get-WindowsVersion {
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     $RegKey = "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
     $RegItem = Get-ItemProperty -Path "Registry::$($RegKey)" -ErrorAction SilentlyContinue
@@ -130,9 +135,11 @@ function Get-WindowsVersion {
 
 function Test-IsMicrosoftFile {
 
-    [CmdletBinding()] Param(
+    [OutputType([Boolean])]
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
-        [Object]$File
+        [Object] $File
     )
 
     if ($File.VersionInfo.LegalCopyright -like "*Microsoft Corporation*") {
@@ -143,29 +150,31 @@ function Test-IsMicrosoftFile {
 }
 
 function Test-CommonApplicationFile {
-    
+
+    [OutputType([Boolean])]
     [CmdletBinding()]
-    param (
+    param(
         [ValidateNotNullOrEmpty()]
         [string] $Path
     )
-    
+
     process {
-        $global:CommonApplicationExtensions -contains ([System.IO.Path]::GetExtension($Path)).Replace('.', '')
+        $script:CommonApplicationExtensions -contains ([System.IO.Path]::GetExtension($Path)).Replace('.', '')
     }
 }
 
 function Test-IsSystemFolder {
 
+    [OutputType([Boolean])]
     [CmdletBinding()]
-    param (
+    param(
         [string] $Path
     )
-    
+
     begin {
         $SystemPaths = @()
     }
-    
+
     process {
         # Initialize system path list
         if ($SystemPaths.Count -eq 0) {
@@ -183,60 +192,62 @@ function Test-IsSystemFolder {
     }
 }
 
-function Get-CurrentUserSids {
+function Get-CurrentUserSid {
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
-    if ($null -eq $global:CachedCurrentUserSids) {
+    if ($null -eq $script:CachedCurrentUserSids) {
         $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $global:CachedCurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
-        $global:CachedCurrentUserSids += $UserIdentity.User.Value
+        $script:CachedCurrentUserSids = $UserIdentity.Groups | Select-Object -ExpandProperty Value
+        $script:CachedCurrentUserSids += $UserIdentity.User.Value
     }
 
-    $global:CachedCurrentUserSids
+    $script:CachedCurrentUserSids
 }
 
-function Get-CurrentUserDenySids {
+function Get-CurrentUserDenySid {
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
-    if ($null -eq $global:CachedCurrentUserDenySids) {
-        $global:CachedCurrentUserDenySids = [string[]](Get-TokenInformationGroups -InformationClass Groups | Where-Object { $_.Attributes.Equals("UseForDenyOnly") } | Select-Object -ExpandProperty SID)
-        if ($null -eq $global:CachedCurrentUserDenySids) {
-            $global:CachedCurrentUserDenySids = @()
+    if ($null -eq $script:CachedCurrentUserDenySids) {
+        $script:CachedCurrentUserDenySids = [string[]](Get-TokenInformationGroup -InformationClass Groups | Where-Object { $_.Attributes.Equals("UseForDenyOnly") } | Select-Object -ExpandProperty SID)
+        if ($null -eq $script:CachedCurrentUserDenySids) {
+            $script:CachedCurrentUserDenySids = @()
         }
     }
 
-    $global:CachedCurrentUserDenySids
+    $script:CachedCurrentUserDenySids
 }
 
-function Get-AclModificationRights {
+function Get-AclModificationRight {
     <#
     .SYNOPSIS
     Helper - Enumerates modification rights the current user has on an object.
 
     Author: @itm4n
     License: BSD 3-Clause
-    
+
     .DESCRIPTION
     This cmdlet retrieves the ACL of an object and returns the ACEs that grant modification permissions to the current user. It should be noted that, in case of deny ACEs, restricted rights are removed from the permission list of the ACEs.
-    
+
     .PARAMETER Path
     The full path of a securable object.
-    
+
     .PARAMETER Type
     The target object type (e.g. "File").
-    
+
     .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\foo123.txt -Type File
-    
+    PS C:\> Get-AclModificationRight -Path C:\Temp\foo123.txt -Type File
+
     ModifiablePath    : C:\Temp\foo123.txt
     IdentityReference : NT AUTHORITY\Authenticated Users
     Permissions       : Delete, WriteAttributes, Synchronize, ReadControl, ReadData, AppendData, WriteExtendedAttributes,
                         ReadAttributes, WriteData, ReadExtendedAttributes, Execute
 
     .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\deny-delete.txt -Type File
+    PS C:\> Get-AclModificationRight -Path C:\Temp\deny-delete.txt -Type File
 
     ModifiablePath    : C:\Temp\deny-delete.txt
     IdentityReference : NT AUTHORITY\Authenticated Users
@@ -244,14 +255,15 @@ function Get-AclModificationRights {
                         ReadAttributes, WriteData, ReadExtendedAttributes, Execute
 
     .EXAMPLE
-    PS C:\> Get-AclModificationRights -Path C:\Temp\deny-write.txt -Type File
+    PS C:\> Get-AclModificationRight -Path C:\Temp\deny-write.txt -Type File
 
     ModifiablePath    : C:\Temp\deny-write.txt
     IdentityReference : NT AUTHORITY\Authenticated Users
     Permissions       : Delete, Synchronize, ReadControl, ReadData, ReadAttributes, ReadExtendedAttributes, Execute
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [String]
         $Path,
 
@@ -260,7 +272,7 @@ function Get-AclModificationRights {
         $Type
     )
 
-    BEGIN {
+    begin {
         $TypeFile = "File"
         $TypeDirectory = "Directory"
         $TypeRegistryKey = "RegistryKey"
@@ -349,14 +361,14 @@ function Get-AclModificationRights {
             $TypeRegistryKey = @('SetValue', 'CreateSubKey', 'Delete', 'WriteDAC', 'WriteOwner')
         }
 
-        $CurrentUserSids = Get-CurrentUserSids
-        $CurrentUserDenySids = Get-CurrentUserDenySids
+        $CurrentUserSids = Get-CurrentUserSid
+        $CurrentUserDenySids = Get-CurrentUserDenySid
 
         $ResolvedIdentities = @{}
 
         function Convert-NameToSid {
 
-            Param([String]$Name)
+            param([String] $Name)
 
             if (($Name -match '^S-1-5.*') -or ($Name -match '^S-1-15-.*')) { $Name; return }
 
@@ -373,14 +385,14 @@ function Get-AclModificationRights {
         }
     }
 
-    PROCESS {
+    process {
 
         try {
-    
+
             # First things first, try to get the ACL of the object given its path.
             $Acl = Get-Acl -Path $Path -ErrorAction SilentlyContinue -ErrorVariable GetAclError
             if ($GetAclError) { return }
-    
+
             # If no ACL is returned, it means that the object has a "null" DACL, in which case everyone is
             # granted full access to the object. We can therefore simply return a "virtual" ACE that grants
             # Everyone the "FullControl" right and exit.
@@ -392,10 +404,10 @@ function Get-AclModificationRights {
                 $Result
                 return
             }
-            
+
             $DenyAces = [Object[]]($Acl | Select-Object -ExpandProperty Access | Where-Object { $_.AccessControlType -match "Deny" })
             $AllowAces = [Object[]]($Acl | Select-Object -ExpandProperty Access | Where-Object { $_.AccessControlType -match "Allow" })
-    
+
             # Here we simply get the access mask, access list name and list of access rights that are
             # specific to the object type we are dealing with.
             $TypeAccessMask = $AccessMask[$Type]
@@ -407,25 +419,25 @@ function Get-AclModificationRights {
             $RestrictedRights = @()
             if ($DenyAces) { # Need to make sure it not null because of PSv2
                 foreach ($DenyAce in $DenyAces) {
-    
+
                     # Ignore "InheritOnly" ACEs because they only apply to child objects, not to the object itself
                     # (e.g.: a file in a directory or a sub-key of a registry key).
                     if ($DenyAce.PropagationFlags -band ([System.Security.AccessControl.PropagationFlags]"InheritOnly").value__) { continue }
-        
+
                     # Convert the ACE's identity reference name to its SID. If the SID is not in the list
-                    # of deny-only SIDs of the current Token, ignore it. If the SID does not match the 
+                    # of deny-only SIDs of the current Token, ignore it. If the SID does not match the
                     # current user SID or the SID of any of its groups, ignore it as well.
                     # Note: deny-only SIDs are only used to check access-denied ACEs.
                     # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-attributes-in-an-access-token
                     $IdentityReferenceSid = Convert-NameToSid -Name $DenyAce.IdentityReference
                     if ($CurrentUserDenySids -notcontains $IdentityReferenceSid) { continue }
                     if ($CurrentUserSids -notcontains $IdentityReferenceSid) { continue }
-    
+
                     $Restrictions = $TypeAccessMask.Keys | Where-Object { $DenyAce.$TypeAccessRights.value__ -band $_ } | ForEach-Object { $TypeAccessMask[$_] }
-                    $RestrictedRights += [String[]]$Restrictions
+                    $RestrictedRights += [String[]] $Restrictions
                 }
             }
-            
+
             # Need to make sure it not null because of PSv2
             if ($AllowAces) {
                 foreach ($AllowAce in $AllowAces) {
@@ -437,24 +449,24 @@ function Get-AclModificationRights {
                     # Here, we simply extract the permissions granted by the current ACE
                     $Permissions = New-Object System.Collections.ArrayList
                     $TypeAccessMask.Keys | Where-Object { $AllowAce.$TypeAccessRights.value__ -band $_ } | ForEach-Object { $null = $Permissions.Add($TypeAccessMask[$_]) }
-        
+
                     # ... and we remove any right that would be restricted due to deny ACEs.
                     if ($RestrictedRights) {
                         foreach ($RestrictedRight in $RestrictedRights) {
                             $null = $Permissions.Remove($RestrictedRight)
                         }
                     }
-    
+
                     # Here, we filter out ACEs that do not apply to the current user by checking whether the ACE's
                     # identity reference is in the current user's SID list.
                     $IdentityReferenceSid = Convert-NameToSid -Name $AllowAce.IdentityReference
                     if ($CurrentUserSids -notcontains $IdentityReferenceSid) { continue }
-    
-                    # We compare the list of permissions (minus the potential restrictions) againts a list of
+
+                    # We compare the list of permissions (minus the potential restrictions) against a list of
                     # predefined modification rights. If there is no match, we ignore the ACE.
                     $Comparison = Compare-Object -ReferenceObject $Permissions -DifferenceObject $TypeModificationRights -IncludeEqual -ExcludeDifferent
                     if (-not $Comparison) { continue }
-    
+
                     $Result = New-Object -TypeName PSObject
                     $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $Path
                     $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $AllowAce.IdentityReference
@@ -472,174 +484,70 @@ function Get-AclModificationRights {
 function Get-ModifiablePath {
     <#
     .SYNOPSIS
-    Parses a passed string containing multiple possible file/folder paths and returns the file paths where the current user has modification rights.
+    Helper - Get modification rights the current user has on a file or folder.
 
-    Author: @harmj0y
+    Author: @itm4n
     License: BSD 3-Clause
 
     .DESCRIPTION
-    Takes a complex path specification of an initial file/folder path with possible configuration files, 'tokenizes' the string in a number of possible ways, and enumerates the ACLs for each path that currently exists on the system. Any path that the current user has modification rights on is returned in a custom object that contains the modifiable path, associated permission set, and the IdentityReference with the specified rights. The SID of the current user and any group he/she are a part of are used as the comparison set against the parsed path DACLs.
-
-    @itm4n: I made some small changes to the original code in order to prevent false positives as much as possible.
+    This cmdlet takes the path of a file or folder as an input, and returns any modification right the current user has on the object. If the supplied path doesn't exist, this cmdlet attempts to find the first existing parent folder, and returns any modification right the current user has on it.
 
     .PARAMETER Path
-    The string path to parse for modifiable files. Required
-
-    .PARAMETER LiteralPaths
-    Switch. Treat all paths as literal (i.e. don't do 'tokenization').
-
-    .EXAMPLE
-    PS C:\> '"C:\Temp\blah.exe" -f "C:\Temp\config.ini"' | Get-ModifiablePath
-
-    Path                       Permissions                IdentityReference
-    ----                       -----------                -----------------
-    C:\Temp\blah.exe           {ReadAttributes, ReadCo... NT AUTHORITY\Authentic...
-    C:\Temp\config.ini         {ReadAttributes, ReadCo... NT AUTHORITY\Authentic...
-
-    .EXAMPLE
-    PS C:\> Get-ChildItem C:\Vuln\ -Recurse | Get-ModifiablePath
-
-    Path                       Permissions                IdentityReference
-    ----                       -----------                -----------------
-    C:\Vuln\blah.bat           {ReadAttributes, ReadCo... NT AUTHORITY\Authentic...
-    C:\Vuln\config.ini         {ReadAttributes, ReadCo... NT AUTHORITY\Authentic...
-    ...
+    The path of the file or folder to check.
     #>
 
     [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-        [Alias('FullName')]
-        [String[]]
-        $Path,
-
-        [Switch]
-        $LiteralPaths
+    param (
+        [Parameter(Mandatory=$true)]
+        [String] $Path
     )
 
-    BEGIN {
-
-        function Get-FirstExistingParentFolder {
-
-            Param(
-                [String]$Path
-            )
-
-            try {
-                $ParentPath = Split-Path $Path -Parent
-                if ($ParentPath -and $(Test-Path -Path $ParentPath -ErrorAction SilentlyContinue)) {
-                    Resolve-Path -Path $ParentPath | Select-Object -ExpandProperty "Path"
-                }
-                else {
-                    Get-FirstExistingParentFolder -Path $ParentPath
-                }
-            }
-            catch {
-                $null = $_
-            }
-        }
+    begin {
+        $CheckedPaths = @()
     }
 
-    PROCESS {
+    process {
+        $CandidatePaths = @()
 
-        foreach ($TargetPath in $Path) {
+        if (Test-Path -Path $Path -ErrorAction SilentlyContinue) {
+            $CandidatePaths += $Path
+            # If the path corresponds to a file, we want to check its parent directory as
+            # well. There are cases where the target file is configured with secure
+            # permissions but a user can still add files in the same folder. In such case,
+            # a DLL proxying attack is still possible.
+            if ($(Get-Item -Path $Path -Force) -is [System.IO.FileInfo]) {
+                $CandidatePaths += Get-FirstExistingParentFolderPath -Path $Path
+            }
+        }
+        else {
+            # If the path doesn't correspond to an existing file or directory, find the
+            # first existing parent directory (if such directory exists) and add it to
+            # the list of candidate paths.
+            $CandidatePaths += Get-FirstExistingParentFolderPath -Path $Path
+        }
 
-            $CandidatePaths = @()
+        foreach ($CandidatePath in $CandidatePaths) {
 
-            # possible separator character combinations
-            $SeparationCharacterSets = @('"', "'", ' ', "`"'", '" ', "' ", "`"' ")
+            if ([String]::IsNullOrEmpty($CandidatePath)) { continue }
+            if ($CheckedPaths -contains $CandidatePath) { continue }
 
-            if ($PSBoundParameters['LiteralPaths']) {
+            $CandidateItem = Get-Item -Path $CandidatePath -Force -ErrorAction SilentlyContinue
+            if (-not $CandidateItem) {
+                $CheckedPaths += $CandidatePath
+                continue
+            }
 
-                $TempPath = $([System.Environment]::ExpandEnvironmentVariables($TargetPath))
-                
-                if (Test-Path -Path $TempPath -ErrorAction SilentlyContinue) {
-
-                    $ResolvedPath = Resolve-Path -Path $TempPath | Select-Object -ExpandProperty Path
-                    $CandidatePaths += $ResolvedPath
-
-                    # If the path corresponds to a file, we want to check its parent directory as well. There are cases
-                    # where the target file is configured with secure permissions but a user can still add files in the
-                    # same folder. In such case, a DLL proxying attack is still possible.
-                    if ($(Get-Item -Path $ResolvedPath -Force) -is [System.IO.FileInfo]) {
-                        $CandidatePaths += Get-FirstExistingParentFolder -Path $ResolvedPath
-                    }
-                }
-                else {
-
-                    # If the path doesn't correspond to an existing file or directory, find the first existing parent
-                    # directory (if such directory exists) and add it to the list of candidate paths.
-                    $CandidatePaths += Get-FirstExistingParentFolder -Path $TempPath
-                }
+            $ModifiablePath = $null
+            if ($CandidateItem -is [System.IO.DirectoryInfo]) {
+                $ModifiablePath = Get-AclModificationRight -Path $CandidateItem.FullName -Type Directory
             }
             else {
-
-                $TargetPath = $([System.Environment]::ExpandEnvironmentVariables($TargetPath)).Trim()
-
-                foreach ($SeparationCharacterSet in $SeparationCharacterSets) {
-
-                    $TargetPath.Split($SeparationCharacterSet) | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.trim())) } | ForEach-Object {
-
-                        if (-not ($_ -match "^[A-Z]:`$")) {
-
-                            if ($SeparationCharacterSet -notmatch ' ') {
-
-                                $TempPath = $([System.Environment]::ExpandEnvironmentVariables($_)).Trim()
-
-                                # If the candidate path is something like '/svc', skip it because it will be interpreted as
-                                # 'C:\svc'. It should filter out a lot of false postives. There is also a small chance that
-                                # it will exclude actual vulnerable paths in some very particular cases where a path such
-                                # as '/Temp/Something' is used as an argument. This seems very unlikely though.
-                                if ((-not ($TempPath -Like "/*")) -and (-not ($TempPath -match "^[A-Z]:`$"))) {
-
-                                    if (-not [String]::IsNullOrEmpty($TempPath)) {
-
-                                        # Does the object exist? Be it a file or a directory.
-                                        if (Test-Path -Path $TempPath -ErrorAction SilentlyContinue) {
-
-                                            $ResolvedPath = Resolve-Path -Path $TempPath | Select-Object -ExpandProperty Path
-                                            $CandidatePaths += $ResolvedPath
-
-                                            # If the path corresponds to a file, we want to check its parent directory as well. There are cases
-                                            # where the target file is configured with secure permissions but a user can still add files in the
-                                            # same folder. In such case, a DLL proxying attack is still possible.
-                                            if ($(Get-Item -Path $ResolvedPath -Force) -is [System.IO.FileInfo]) {
-                                                $CandidatePaths += Get-FirstExistingParentFolder -Path $ResolvedPath
-                                            }
-                                        }
-                                        else {
-
-                                            # If the path doesn't correspond to an existing file or directory, find the first existing parent
-                                            # directory (if such directory exists) and add it to the list of candidate paths.
-                                            $CandidatePaths += Get-FirstExistingParentFolder -Path $TempPath
-                                        }
-                                    }
-                                }
-                            }
-                            else {
-                                # if the separator contains a space
-                                $CandidatePaths += Resolve-Path -Path $([System.Environment]::ExpandEnvironmentVariables($_)) -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path | ForEach-Object {$_.Trim()} | Where-Object { (-not [String]::IsNullOrEmpty($_)) -and (Test-Path -Path $_) }
-                            }
-                        }
-                        else {
-                            Write-Verbose "DEBUG: Got a drive letter as a path: $_"
-                        }
-                    }
-                }
+                $ModifiablePath = Get-AclModificationRight -Path $CandidateItem.FullName -Type File
             }
 
-            foreach ($CandidatePath in $($CandidatePaths | Sort-Object -Unique)) {
+            if ($ModifiablePath) { $ModifiablePath; break }
 
-                $CandidateItem = Get-Item -Path $CandidatePath -Force -ErrorAction SilentlyContinue
-                if (-not $CandidateItem) { continue }
-
-                if ($CandidateItem -is [System.IO.DirectoryInfo]) {
-                    Get-AclModificationRights -Path $CandidateItem.FullName -Type Directory
-                }
-                else {
-                    Get-AclModificationRights -Path $CandidateItem.FullName -Type File
-                }
-            }
+            $CheckedPaths += $CandidatePath
         }
     }
 }
@@ -647,10 +555,11 @@ function Get-ModifiablePath {
 function Get-UnquotedPath {
 
     [OutputType([String])]
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
-        [String]$Path,
-        [Switch]$Spaces = $false
+        [String] $Path,
+        [Switch] $Spaces = $false
     )
 
     # Check Check if the path starts with a " or '
@@ -683,22 +592,23 @@ function Get-ExploitableUnquotedPath {
     A path (or a command line for example)
     #>
 
-    [CmdletBinding()] Param(
-        [String]$Path
+    [CmdletBinding()]
+    param(
+        [String] $Path
     )
 
-    BEGIN {
+    begin {
         $PermissionsAddFile = @("AddFile", "DeleteChild", "WriteDAC", "WriteOwner")
     }
 
-    PROCESS {
+    process {
 
         $UnquotedPath = Get-UnquotedPath -Path $Path -Spaces
 
         if ([String]::IsNullOrEmpty($UnquotedPath)) { return }
-    
+
         Write-Verbose "Found an unquoted path that contains spaces: $($UnquotedPath)"
-    
+
         # Split path and build candidates paths
         $SplitPathArray = $UnquotedPath.Split(' ')
         $ConcatPathArray = @()
@@ -707,18 +617,18 @@ function Get-ExploitableUnquotedPath {
         }
 
         $CheckedPaths = @()
-        
+
         foreach ($ConcatPath in $ConcatPathArray) {
-    
+
             # We exclude the binary path itself
             if ($ConcatPath -like $UnquotedPath) { continue }
 
             # Get parent folder. Split-Path does not handle errors nicely so catch exceptions
             # and continue on failure.
             try { $BinFolder = Split-Path -Path $ConcatPath -Parent -ErrorAction SilentlyContinue } catch { continue }
-    
+
             # Split-Path failed without throwing an exception, so ignore and continue.
-            if ( $null -eq $BinFolder) { continue }
+            if ([String]::IsNullOrEmpty($BinFolder)) { continue }
 
             # If the current path was already checked, ignore it and continue.
             if ($CheckedPaths -contains $BinFolder) { continue }
@@ -727,12 +637,13 @@ function Get-ExploitableUnquotedPath {
             if ( -not (Test-Path -Path $BinFolder -ErrorAction SilentlyContinue) ) { continue }
 
             # The parent folder exists, check if it is modifiable.
-            $ModifiablePaths = $BinFolder | Get-ModifiablePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+            $ModifiablePaths = Get-ModifiablePath -Path $BinFolder | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
 
             $CheckedPaths += $BinFolder
 
+            if ($null -eq $ModifiablePaths) { continue }
             foreach ($ModifiablePath in $ModifiablePaths) {
-    
+
                 # To exploit an unquoted path we need to create a file, so make sure that the
                 # permissions returned by Get-ModifiablePath really allow us to do that.
                 foreach ($Permission in $ModifiablePath.Permissions) {
@@ -747,7 +658,7 @@ function Get-ExploitableUnquotedPath {
                 }
             }
         }
-    }    
+    }
 }
 
 function Get-ModifiableRegistryPath {
@@ -773,37 +684,40 @@ function Get-ModifiableRegistryPath {
     #>
 
     [CmdletBinding()]
-    Param(
+    param(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-        [String[]]$Path
+        [String[]] $Path
     )
 
-    BEGIN { }
-
-    PROCESS {
-
+    process {
         $Path | ForEach-Object {
             $RegPath = "Registry::$($_)"
             $OrigPath = $_
-            Get-AclModificationRights -Path $RegPath -Type RegistryKey | ForEach-Object { $_.ModifiablePath = $OrigPath; $_ }
+            Get-AclModificationRight -Path $RegPath -Type RegistryKey | ForEach-Object { $_.ModifiablePath = $OrigPath; $_ }
         }
     }
 }
 
-function Get-ADDomain {
-
-    [CmdletBinding()] Param()
-
-    $RegKey = "HKLM\System\CurrentControlSet\Services\Tcpip\Parameters"
-    $RegValue = "Domain"
-    (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
-}
-
 function Test-IsDomainJoined {
 
-    [CmdletBinding()] Param()
+    [OutputType([Boolean])]
+    [CmdletBinding()]
+    param()
 
-    return (-not [string]::IsNullOrEmpty($(Get-ADDomain)))
+    $WorkstationInfo = Get-NetWkstaInfo
+    if ($null -eq $WorkstationInfo) {
+        Write-Warning "Test-IsDomainJoined - Failed to get workstation information."
+        return $false
+    }
+
+    if ([string]::IsNullOrEmpty($WorkstationInfo.LanGroup)) {
+        Write-Warning "Test-IsDomainJoined - Attribute 'LanGroup' is null."
+        return $false
+    }
+
+    Write-Verbose "Test-IsDomainJoined - LAN group: $($WorkstationInfo.LanGroup)"
+
+    return $WorkstationInfo.LanGroup -ne "WORKGROUP"
 }
 
 function Get-FileHashHex {
@@ -814,16 +728,16 @@ function Get-FileHashHex {
     Author: @itm4n
     Credit: @jaredcatkinson
     License: BSD 3-Clause
-    
+
     .DESCRIPTION
     This cmdlet is a simplified version of 'Get-FileHash', which is not available in PSv2.
-    
+
     .PARAMETER FilePath
     The path of the file for which we want to compute the hash.
-    
+
     .PARAMETER Algorithm
     A hash algorithm: md5, sha1, or sha256
-    
+
     .EXAMPLE
     PS C:\> Get-FileHashHex -FilePath "C:\Windows\System32\drivers\RTCore64.sys"
     01aa278b07b58dc46c84bd0b1b5c8e9ee4e62ea0bf7a695862444af32e87f1fd
@@ -831,9 +745,9 @@ function Get-FileHashHex {
     PS C:\> Get-FileHashHex -FilePath "C:\Windows\System32\drivers\RTCore64.sys" -Algorithm sha1
     f6f11ad2cd2b0cf95ed42324876bee1d83e01775
 
-    PS C:\> Get-FileHashHex -FilePath "C:\Windows\System32\drivers\RTCore64.sys" -Algorithm md5 
+    PS C:\> Get-FileHashHex -FilePath "C:\Windows\System32\drivers\RTCore64.sys" -Algorithm md5
     2d8e4f38b36c334d0a32a7324832501d
-    
+
     .NOTES
     Credit goes to https://github.com/jaredcatkinson for the code.
 
@@ -841,7 +755,8 @@ function Get-FileHashHex {
     https://gist.github.com/jaredcatkinson/7d561b553a04501238f8e4f061f112b7
     #>#
 
-    [CmdletBinding()] param (
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
         [string] $FilePath,
@@ -861,7 +776,7 @@ function Get-FileHashHex {
     }
 }
 
-function Get-InstalledPrograms {
+function Get-InstalledProgram {
     <#
     .SYNOPSIS
     Helper - Enumerates the installed applications
@@ -876,7 +791,7 @@ function Get-InstalledPrograms {
     If True, only non-default applications are returned. Otherwise, all the applications are returned. The filter is base on a list of known applications which are known to be installed by default (e.g.: "Windows Defender").
 
     .EXAMPLE
-    PS C:\> Get-InstalledPrograms -Filtered
+    PS C:\> Get-InstalledProgram -Filtered
 
     Mode                LastWriteTime     Length Name
     ----                -------------     ------ ----
@@ -884,8 +799,9 @@ function Get-InstalledPrograms {
     d----        29/11/2019     10:51            Wireshark
     #>
 
-    [CmdletBinding()] Param(
-        [Switch]$Filtered = $false
+    [CmdletBinding()]
+    param(
+        [switch] $Filtered = $false
     )
 
     $IgnoredPrograms = @("Common Files", "Internet Explorer", "ModifiableWindowsApps", "PackageManagement", "Windows Defender", "Windows Defender Advanced Threat Protection", "Windows Mail", "Windows Media Player", "Windows Multimedia Platform", "Windows NT", "Windows Photo Viewer", "Windows Portable Devices", "Windows Security", "WindowsPowerShell", "Microsoft.NET", "Windows Portable Devices", "dotnet", "MSBuild", "Intel", "Reference Assemblies")
@@ -898,7 +814,7 @@ function Get-InstalledPrograms {
 
     $Items = Get-ChildItem -Path $PathProgram32,$PathProgram64 -ErrorAction SilentlyContinue
     if ($Items) {
-        [void]$InstalledPrograms.AddRange($Items)
+        [void] $InstalledPrograms.AddRange($Items)
     }
 
     $RegInstalledPrograms = Get-ChildItem -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
@@ -922,14 +838,100 @@ function Get-InstalledPrograms {
 
                 if (-not ($FileObject -is [System.IO.DirectoryInfo])) { continue }
 
-                [void]$InstalledPrograms.Add([Object]$FileObject)
+                [void] $InstalledPrograms.Add([Object] $FileObject)
             }
         }
     }
 
-    $InstalledPrograms | Sort-Object -Property FullName -Unique | ForEach-Object {
-        if ((-not $Filtered) -or ($Filtered -and (-not ($IgnoredPrograms -contains $_.Name)))) {
-            $_ | Select-Object -Property Name,FullName
+    foreach ($InstalledProgram in $($InstalledPrograms | Sort-Object -Property "FullName" -Unique)) {
+        if ([string]::IsNullOrEmpty($InstalledProgram.FullName)) { continue }
+        if (Test-IsSystemFolder -Path $InstalledProgram.FullName) { continue }
+        if ($Filtered -and ($IgnoredPrograms -contains $InstalledProgram.Name)) { continue }
+        $InstalledProgram | Select-Object -Property Name,FullName
+    }
+}
+
+function Resolve-CommandLine {
+
+    [OutputType([String[]])]
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [String] $CommandLine
+    )
+
+    process {
+        $CommandLineResolved = [System.Environment]::ExpandEnvironmentVariables($CommandLine)
+
+        # Is it a quoted path, i.e. a string surrounded by quotes, without quotes inside?
+        # -> regex = ^"([^"])+"$
+        if ($CommandLineResolved -match "^`"([^`"])+`"`$") {
+            # This is a file path, return input after trimming double quotes
+            return [String[]] $CommandLineResolved.Trim('"')
         }
+
+        # Is it an unquoted path, without spaces?
+        # -> regex = ^[^",^ ,^\t]+$
+        if ($CommandLineResolved -match "^[^`",^ ,^\t]+`$") {
+            # This a file path, return input as is.
+            return [String[]] $CommandLineResolved
+        }
+
+        # Is it a command line in which the path of the executable is quoted?
+        # -> regex = ^".+[ ,\t].*$
+        if ($CommandLineResolved -match "^`".+\s.+" -and $CommandLineResolved) {
+            return [String[]] (ConvertTo-ArgumentList -CommandLine $CommandLineResolved)
+        }
+
+        $Arguments = [String[]] (ConvertTo-ArgumentList -CommandLine $CommandLineResolved)
+        if ($Arguments.Length -eq 0) {
+            Write-Warning "Resolve-CommandLine failed for input: $($CommandLine)"
+            return $null
+        }
+
+        if (-not [System.IO.Path]::IsPathRooted($Arguments[0])) {
+            $PathResolved = Resolve-ModulePath -Name $Arguments[0]
+            if (-not [String]::IsNullOrEmpty($PathResolved)) { $Arguments[0] = $PathResolved }
+        }
+
+        if (Test-Path -Path $Arguments[0] -ErrorAction SilentlyContinue) {
+            # If arg0 is a valid file path, command line parsing worked, we can stop there.
+            return $Arguments
+        }
+
+        for ($i = $Arguments.Length - 1; $i -ge 0; $i--) {
+            $PathToAnalyze = $Arguments[0..$i] -join " "
+            if (Test-Path -Path $PathToAnalyze -ErrorAction SilentlyContinue) {
+                $Result = @()
+                $Result += $PathToAnalyze
+                if ($i -lt ($Arguments.Length - 1)) {
+                    $Result += $Arguments[$($i + 1)..$($Arguments.Length - 1)]
+                }
+                return [String[]] $Result
+            }
+        }
+
+        Write-Warning "Resolve-CommandLine failed for input: $($CommandLine)"
+    }
+}
+
+function Get-FirstExistingParentFolderPath {
+
+    [CmdletBinding()]
+    param (
+        [String] $Path
+    )
+
+    try {
+        $ParentPath = Split-Path $Path -Parent
+        if ($ParentPath -and $(Test-Path -Path $ParentPath -ErrorAction SilentlyContinue)) {
+            Resolve-Path -Path $ParentPath | Select-Object -ExpandProperty "Path"
+        }
+        else {
+            Get-FirstExistingParentFolderPath -Path $ParentPath
+        }
+    }
+    catch {
+        $null = $_
     }
 }

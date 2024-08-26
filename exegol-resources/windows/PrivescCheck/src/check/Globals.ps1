@@ -1,13 +1,15 @@
-$global:CachedServiceList = New-Object -TypeName System.Collections.ArrayList
-$global:CachedDriverList = New-Object -TypeName System.Collections.ArrayList
-$global:CachedHotFixList = New-Object -TypeName System.Collections.ArrayList
-$global:CachedScheduledTaskList = New-Object -TypeName System.Collections.ArrayList
-$global:CachedCurrentUserSids = $null
-$global:CachedCurrentUserDenySids = $null
-$global:ResultArrayList = New-Object -TypeName System.Collections.ArrayList
-$global:KeywordsOfInterest = @( "key", "passw", "secret", "pwd", "creds", "credential", "api" )
-$global:CommonApplicationExtensions = @( "bat", "exe", "dll", "ps1", "reg", "vbe", "vbs" )
-$global:DangerousDefaultFileExtensionAssociations = @"
+$script:CachedServiceList = New-Object -TypeName System.Collections.ArrayList
+$script:CachedDriverList = New-Object -TypeName System.Collections.ArrayList
+$script:CachedHotFixList = New-Object -TypeName System.Collections.ArrayList
+$script:CachedScheduledTaskList = New-Object -TypeName System.Collections.ArrayList
+$script:CachedRegisteredComList = New-Object -TypeName System.Collections.ArrayList
+$script:CachedCurrentUserSids = $null
+$script:CachedCurrentUserDenySids = $null
+$script:ResultArrayList = New-Object -TypeName System.Collections.ArrayList
+$script:KeywordsOfInterest = @( "key", "passw", "secret", "pwd", "creds", "credential", "api" )
+$script:CommonApplicationExtensions = @( "bat", "cmd", "exe", "dll", "msi", "ps1", "reg", "vbe", "vbs" )
+$script:ExploitablePrivileges = @( "SeAssignPrimaryTokenPrivilege", "SeImpersonatePrivilege", "SeCreateTokenPrivilege", "SeDebugPrivilege", "SeLoadDriverPrivilege", "SeRestorePrivilege", "SeTakeOwnershipPrivilege", "SeTcbPrivilege", "SeBackupPrivilege", "SeManageVolumePrivilege", "SeRelabelPrivilege" )
+$script:DangerousDefaultFileExtensionAssociations = @"
 ".application","C:\Windows\System32\dfshim.dll"
 ".appref-ms","C:\Windows\System32\dfshim.dll"
 ".bat","%1"
@@ -43,6 +45,7 @@ $global:DangerousDefaultFileExtensionAssociations = @"
 ".WSF","C:\Windows\System32\WScript.exe"
 ".WSH","C:\Windows\System32\WScript.exe"
 "@
-$global:VulnerableDrivers = @"
+$script:VulnerableDrivers = @"
 VULNERABLE_DRIVERS
 "@
+$script:CheckCsvBlob = "CHECK_CSV_BLOB"

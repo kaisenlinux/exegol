@@ -10,55 +10,43 @@ function Get-ScheduledTaskList {
     Connect to the task scheduler service and retrieve a list of all the scheduled tasks that are visible to the current user.
 
     .EXAMPLE
-    PS C:\> Get-ScheduledTaskList | Select-Object -last 3
-
-    TaskName           : UpdateLibrary
-    TaskPath           : \Microsoft\Windows\Windows Media Sharing\UpdateLibrary
-    TaskFile           : C:\Windows\System32\Tasks\Microsoft\Windows\Windows Media Sharing\UpdateLibrary
-    RunAs              : NT AUTHORITY\Authenticated Users
-    Command            : "%ProgramFiles%\Windows Media Player\wmpnscfg.exe"
-    CurrentUserIsOwner : False
-
-    TaskName           : Scheduled Start
-    TaskPath           : \Microsoft\Windows\WindowsUpdate\Scheduled Start
-    TaskFile           : C:\Windows\System32\Tasks\Microsoft\Windows\WindowsUpdate\Scheduled Start
-    RunAs              : NT AUTHORITY\SYSTEM
-    Command            : C:\Windows\system32\sc.exe start wuauserv
-    CurrentUserIsOwner : False
-
+    PS C:\> Get-ScheduledTaskList
+    ...
     TaskName           : XblGameSaveTask
     TaskPath           : \Microsoft\XblGameSave\XblGameSaveTask
     TaskFile           : C:\Windows\System32\Tasks\Microsoft\XblGameSave\XblGameSaveTask
     RunAs              : NT AUTHORITY\SYSTEM
     Command            : %windir%\System32\XblGameSaveTask.exe standby
     CurrentUserIsOwner : False
+    ...
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
-    function Get-ScheduledTasks {
+    function Get-ScheduledTaskCustom {
 
-        Param (
+        param (
             [object] $Service,
             [string] $TaskPath
         )
 
         ($CurrentFolder = $Service.GetFolder($TaskPath)).GetTasks(0)
         $CurrentFolder.GetFolders(0) | ForEach-Object {
-            Get-ScheduledTasks -Service $Service -TaskPath $(Join-Path -Path $TaskPath -ChildPath $_.Name )
+            Get-ScheduledTaskCustom -Service $Service -TaskPath $(Join-Path -Path $TaskPath -ChildPath $_.Name )
         }
     }
 
     try {
 
-        if ($CachedScheduledTaskList.Count -eq 0) {
+        if ($script:CachedScheduledTaskList.Count -eq 0) {
 
             # If the cache is empty, enumerate scheduled tasks and populate the cache.
 
             $ScheduleService = New-Object -ComObject("Schedule.Service")
             $ScheduleService.Connect()
 
-            Get-ScheduledTasks -Service $ScheduleService -TaskPath "\" | ForEach-Object {
+            Get-ScheduledTaskCustom -Service $ScheduleService -TaskPath "\" | ForEach-Object {
 
                 if ($_.Enabled) {
 
@@ -66,7 +54,7 @@ function Get-ScheduledTaskList {
                     $TaskPath = $_.Path
                     $TaskFile = Join-Path -Path $(Join-Path -Path $env:windir -ChildPath "System32\Tasks") -ChildPath $TaskPath
 
-                    [xml]$TaskXml = $_.Xml
+                    [xml] $TaskXml = $_.Xml
 
                     $Principal = $TaskXml.GetElementsByTagName("Principal")
                     $CurrentUserIsOwner = $false
@@ -99,10 +87,10 @@ function Get-ScheduledTaskList {
                         $TaskArguments = $_ | Select-Object -ExpandProperty "Arguments" -ErrorAction SilentlyContinue
 
                         if ($TaskArguments) {
-                            $TaskCommandLine = "$($TaskProgram) $($TaskArguments)"
+                            $TaskCommandLine = "`"$($TaskProgram)`" $($TaskArguments)"
                         }
                         else {
-                            $TaskCommandLine = "$($TaskProgram)"
+                            $TaskCommandLine = "`"$($TaskProgram)`""
                         }
 
                         if ($TaskCommandLine.Length -gt 0) {
@@ -112,10 +100,12 @@ function Get-ScheduledTaskList {
                             $Result | Add-Member -MemberType "NoteProperty" -Name "TaskPath" -Value $TaskPath
                             $Result | Add-Member -MemberType "NoteProperty" -Name "TaskFile" -Value $TaskFile
                             $Result | Add-Member -MemberType "NoteProperty" -Name "RunAs" -Value $PrincipalName
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Command" -Value $TaskCommandLine
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "Program" -Value $TaskProgram
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "Arguments" -Value $TaskArguments
+                            $Result | Add-Member -MemberType "NoteProperty" -Name "CommandLine" -Value $TaskCommandLine
                             $Result | Add-Member -MemberType "NoteProperty" -Name "CurrentUserIsOwner" -Value $CurrentUserIsOwner
 
-                            [void] $CachedScheduledTaskList.Add($Result)
+                            [void] $script:CachedScheduledTaskList.Add($Result)
                         }
                     }
                 }
@@ -125,7 +115,7 @@ function Get-ScheduledTaskList {
             }
         }
 
-        $CachedScheduledTaskList | ForEach-Object {
+        $script:CachedScheduledTaskList | ForEach-Object {
             $_
         }
 
@@ -135,10 +125,10 @@ function Get-ScheduledTaskList {
     }
 }
 
-function Invoke-ScheduledTasksImagePermissionsCheck {
+function Invoke-ScheduledTaskImagePermissionCheck {
     <#
     .SYNOPSIS
-    Enumrates scheduled tasks with a modifiable path
+    Enumerates scheduled tasks with a modifiable path
 
     Author: @itm4n
     License: BSD 3-Clause
@@ -147,7 +137,7 @@ function Invoke-ScheduledTasksImagePermissionsCheck {
     This function enumerates all the scheduled tasks which are visible by the current user but are not owned by the current user. For each task, it extracts the command line and checks whether it contains a path pointing to a modifiable file. If a task is run as the current user, it is filtered out.
 
     .EXAMPLE
-    PS C:\> Invoke-ScheduledTasksImagePermissionsCheck
+    PS C:\> Invoke-ScheduledTaskImagePermissionCheck
 
     TaskName           : DummyTask
     TaskPath           : \CustomTasks\DummyTask
@@ -160,34 +150,37 @@ function Invoke-ScheduledTasksImagePermissionsCheck {
     Permissions        : {Delete, WriteAttributes, Synchronize, ReadControl...}
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [UInt32] $BaseSeverity
     )
 
     begin {
-        $ArrayOfResults = @()
+        $AllResults = @()
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
 
     process {
-        Get-ScheduledTaskList | Where-Object { -not $_.CurrentUserIsOwner } | ForEach-Object {
+        $ScheduledTasks = Get-ScheduledTaskList | Where-Object { (-not $_.CurrentUserIsOwner) -and (-not [String]::IsNullOrEmpty($_.Program)) }
 
-            $CurrentTask = $_
-    
-            $CurrentTask.Command | Get-ModifiablePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) } | ForEach-Object {
-    
-                $Result = $CurrentTask.PsObject.Copy()
-                $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $_.ModifiablePath
-                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
-                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $_.Permissions
-                $ArrayOfResults += $Result
+        foreach ($ScheduledTask in $ScheduledTasks) {
+
+            $ModifiablePaths = Get-ModifiablePath -Path $ScheduledTask.Program | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+            if ($null -eq $ModifiablePaths) { continue }
+            foreach ($ModifiablePath in $ModifiablePaths) {
+
+                $Result = $ScheduledTask.PsObject.Copy()
+                $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $ModifiablePath.ModifiablePath
+                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $ModifiablePath.IdentityReference
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($ModifiablePath.Permissions -join ", ")
+                $AllResults += $Result
             }
         }
-    
-        $Result = New-Object -TypeName PSObject
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $ArrayOfResults
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ArrayOfResults) { $BaseSeverity } else { $SeverityLevelEnum::None })
-        $Result
+
+        $CheckResult = New-Object -TypeName PSObject
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult
     }
 
     end {
@@ -195,7 +188,7 @@ function Invoke-ScheduledTasksImagePermissionsCheck {
     }
 }
 
-function Invoke-ScheduledTasksUnquotedPathCheck {
+function Invoke-ScheduledTaskUnquotedPathCheck {
     <#
     .SYNOPSIS
 
@@ -210,7 +203,7 @@ function Invoke-ScheduledTasksUnquotedPathCheck {
 
     .EXAMPLE
 
-    PS C:\> Invoke-ScheduledTasksUnquotedPathCheck
+    PS C:\> Invoke-ScheduledTaskUnquotedPathCheck
 
     TaskName           : VulnTask
     TaskPath           : \CustomTasks\VulnTask
@@ -224,34 +217,35 @@ function Invoke-ScheduledTasksUnquotedPathCheck {
 
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [UInt32] $BaseSeverity
     )
 
     begin {
-        $ArrayOfResults = @()
+        $AllResults = @()
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
 
     process {
         Get-ScheduledTaskList | Where-Object { $_.CurrentUserIsOwner -eq $false} | ForEach-Object {
-    
+
             $CurrentTask = $_
-    
+
             Get-ExploitableUnquotedPath -Path $CurrentTask.Command | ForEach-Object {
-    
+
                 $Result = $CurrentTask.PsObject.Copy()
                 $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $_.ModifiablePath
                 $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
                 $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value $_.Permissions
-                $ArrayOfResults += $Result
+                $AllResults += $Result
             }
         }
-    
-        $Result = New-Object -TypeName PSObject
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $ArrayOfResults
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ArrayOfResults) { $BaseSeverity } else { $SeverityLevelEnum::None })
-        $Result
+
+        $CheckResult = New-Object -TypeName PSObject
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult
     }
 
     end {

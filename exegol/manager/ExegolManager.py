@@ -219,18 +219,18 @@ class ExegolManager:
         logger.debug(f"Shell type: {EnvInfo.getShellType().value}")
         if not UpdateManager.isUpdateTag() and UserConfig().auto_check_updates:
             UpdateManager.checkForWrapperUpdate()
-        #if UpdateManager.isUpdateTag():
-            #logger.empty_line()
-            #if Confirm(f"An [green]Exegol[/green] update is [orange3]available[/orange3] ({UpdateManager.display_current_version()} -> {UpdateManager.display_latest_version()}), do you want to update ?", default=True):
-                #UpdateManager.updateWrapper()
-        #else:
-            #logger.empty_line(log_level=logging.DEBUG)
+        if UpdateManager.isUpdateTag():
+            logger.empty_line()
+            if Confirm(f"An [green]Exegol[/green] update is [orange3]available[/orange3] ({UpdateManager.display_current_version()} -> {UpdateManager.display_latest_version()}), do you want to update ?", default=True):
+                UpdateManager.updateWrapper()
+        else:
+            logger.empty_line(log_level=logging.DEBUG)
 
     @classmethod
     def print_sponsors(cls):
         """Show exegol sponsors"""
-        #logger.success("""We thank [blue]Capgemini[/blue][/link] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
-        #logger.success("""We thank [green]HackTheBox[/green][/link] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
+        #logger.success("""We thank [link=https://www.capgemini.com/fr-fr/carrieres/offres-emploi/][blue]Capgemini[/blue][/link] for supporting the project [bright_black](helping with dev)[/bright_black] :pray:""")
+        #logger.success("""We thank [link=https://www.hackthebox.com/][green]HackTheBox[/green][/link] for sponsoring the [bright_black]multi-arch[/bright_black] support :green_heart:""")
         pass
 
     @classmethod
@@ -362,7 +362,13 @@ class ExegolManager:
             # Return cache
             return cls.__container
         container_tag: Optional[str] = override_container if override_container is not None else ParametersManager().containertag
-        container_tags: Optional[Sequence[str]] = ParametersManager().multicontainertag
+        container_tags: Optional[List[str]] = None
+        if ParametersManager().multicontainertag:
+            container_tags = []
+            for tag in ParametersManager().multicontainertag:
+                # Prevent duplicate tag selection
+                if tag not in container_tags:
+                    container_tags.append(tag)
         try:
             if container_tag is None and (container_tags is None or len(container_tags) == 0):
                 # Interactive container selection
@@ -438,51 +444,55 @@ class ExegolManager:
     @classmethod
     def __prepareContainerConfig(cls):
         """Create Exegol configuration with user input"""
-        # Create default exegol config
-        config = ContainerConfig()
-        # Container configuration from user CLI options
-        if ParametersManager().X11:
-            config.enableGUI()
-        if ParametersManager().share_timezone:
-            config.enableSharedTimezone()
-        config.setNetworkMode(ParametersManager().host_network)
-        if ParametersManager().ports is not None:
-            for port in ParametersManager().ports:
-                config.addRawPort(port)
-        if ParametersManager().my_resources:
-            config.enableMyResources()
-        if ParametersManager().exegol_resources:
-            config.enableExegolResources()
-        if ParametersManager().log:
-            config.enableShellLogging(ParametersManager().log_method,
-                                      UserConfig().shell_logging_compress ^ ParametersManager().log_compress)
-        if ParametersManager().workspace_path:
-            if ParametersManager().mount_current_dir:
-                logger.warning(f'Workspace conflict detected (-cwd cannot be use with -w). Using: {ParametersManager().workspace_path}')
-            config.setWorkspaceShare(ParametersManager().workspace_path)
-        elif ParametersManager().mount_current_dir:
-            config.enableCwdShare()
-        if ParametersManager().privileged:
-            config.setPrivileged()
-        elif ParametersManager().capabilities is not None:
-            for cap in ParametersManager().capabilities:
-                config.addCapability(cap)
-        if ParametersManager().volumes is not None:
-            for volume in ParametersManager().volumes:
-                config.addRawVolume(volume)
-        if ParametersManager().devices is not None:
-            for device in ParametersManager().devices:
-                config.addUserDevice(device)
-        if ParametersManager().vpn is not None:
-            config.enableVPN()
-        if ParametersManager().envs is not None:
-            for env in ParametersManager().envs:
-                config.addRawEnv(env)
-        if UserConfig().desktop_default_enable ^ ParametersManager().desktop:
-            config.enableDesktop(ParametersManager().desktop_config)
-        if ParametersManager().comment:
-            config.addComment(ParametersManager().comment)
-        return config
+        try:
+            # Create default exegol config
+            config = ContainerConfig()
+            # Container configuration from user CLI options
+            if ParametersManager().X11:
+                config.enableGUI()
+            if ParametersManager().share_timezone:
+                config.enableSharedTimezone()
+            config.setNetworkMode(ParametersManager().host_network)
+            if ParametersManager().ports is not None:
+                for port in ParametersManager().ports:
+                    config.addRawPort(port)
+            if ParametersManager().my_resources:
+                config.enableMyResources()
+            if ParametersManager().exegol_resources:
+                config.enableExegolResources()
+            if ParametersManager().log:
+                config.enableShellLogging(ParametersManager().log_method,
+                                          UserConfig().shell_logging_compress ^ ParametersManager().log_compress)
+            if ParametersManager().workspace_path:
+                if ParametersManager().mount_current_dir:
+                    logger.warning(f'Workspace conflict detected (-cwd cannot be use with -w). Using: {ParametersManager().workspace_path}')
+                config.setWorkspaceShare(ParametersManager().workspace_path)
+            elif ParametersManager().mount_current_dir:
+                config.enableCwdShare()
+            if ParametersManager().privileged:
+                config.setPrivileged()
+            elif ParametersManager().capabilities is not None:
+                for cap in ParametersManager().capabilities:
+                    config.addCapability(cap)
+            if ParametersManager().volumes is not None:
+                for volume in ParametersManager().volumes:
+                    config.addRawVolume(volume)
+            if ParametersManager().devices is not None:
+                for device in ParametersManager().devices:
+                    config.addUserDevice(device)
+            if ParametersManager().vpn is not None:
+                config.enableVPN()
+            if ParametersManager().envs is not None:
+                for env in ParametersManager().envs:
+                    config.addRawEnv(env)
+            if UserConfig().desktop_default_enable ^ ParametersManager().desktop:
+                config.enableDesktop(ParametersManager().desktop_config)
+            if ParametersManager().comment:
+                config.addComment(ParametersManager().comment)
+            return config
+        except CancelOperation as e:
+            logger.critical(f"Unable to create a new container: {e}")
+            raise e
 
     @classmethod
     def __createContainer(cls, name: Optional[str]) -> ExegolContainer:

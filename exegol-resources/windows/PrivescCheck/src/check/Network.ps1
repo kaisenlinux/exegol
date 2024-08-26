@@ -7,7 +7,7 @@ function Get-RpcRange {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This function is a helper for the Invoke-TcpEndpointsCheck function. Windows uses a set of RPC ports that are randomly allocated in the range 49152-65535 by default. If we want to filter out these listening ports we must first figure out this set of ports. The aim of this function is to guess this range using basic statistics on a given array of port numbers. We can quite reliably identify the RPC port set because they are concentrated in a very small range. It's not 100% reliable but it will do the job most of the time.
+    This function is a helper for the Invoke-TcpEndpointCheck function. Windows uses a set of RPC ports that are randomly allocated in the range 49152-65535 by default. If we want to filter out these listening ports we must first figure out this set of ports. The aim of this function is to guess this range using basic statistics on a given array of port numbers. We can quite reliably identify the RPC port set because they are concentrated in a very small range. It's not 100% reliable but it will do the job most of the time.
 
     .PARAMETER Ports
     An array of port numbers
@@ -20,17 +20,19 @@ function Get-RpcRange {
     49664   49672
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [Parameter(Mandatory=$true)]
         [Int[]] $Ports
     )
 
-    function Get-Stats {
-        [CmdletBinding()]Param(
-            [Int[]]$Ports,
-            [Int]$MinPort,
-            [Int]$MaxPort,
-            [Int]$Span
+    function Get-Statistic {
+        [CmdletBinding()]
+        param(
+            [Int[]] $Ports,
+            [Int] $MinPort,
+            [Int] $MaxPort,
+            [Int] $Span
         )
 
         $Stats = @()
@@ -52,7 +54,7 @@ function Get-RpcRange {
 
     # We split the range 49152-65536 into blocks of size 32 and then, we take the block which has
     # greater number of ports in it.
-    $Stats = Get-Stats -Ports $Ports -MinPort 49152 -MaxPort 65536 -Span 32
+    $Stats = Get-Statistic -Ports $Ports -MinPort 49152 -MaxPort 65536 -Span 32
 
     $MaxStat = $null
     foreach ($Stat in $Stats) {
@@ -63,7 +65,7 @@ function Get-RpcRange {
 
     For ($i = 0; $i -lt 8; $i++) {
         $Span = ($MaxStat.MaxPort - $MaxStat.MinPort) / 2
-        $NewStats = Get-Stats -Ports $Ports -MinPort $MaxStat.MinPort -MaxPort $MaxStat.MaxPort -Span $Span
+        $NewStats = Get-Statistic -Ports $Ports -MinPort $MaxStat.MinPort -MaxPort $MaxStat.MaxPort -Span $Span
         if ($NewStats) {
             if ($NewStats[0].PortsInRange -eq 0) {
                 $MaxStat = $NewStats[1]
@@ -83,7 +85,7 @@ function Get-RpcRange {
     $Result
 }
 
-function Invoke-NetworkAdaptersCheck {
+function Invoke-NetworkAdapterCheck {
     <#
     .SYNOPSIS
     Collect detailed information about all Ethernet and Wi-Fi network adapters.
@@ -95,7 +97,7 @@ function Invoke-NetworkAdaptersCheck {
     Collect detailed information about all active Ethernet adapters.
 
     .EXAMPLE
-    PS C:\> Invoke-NetworkAdaptersCheck
+    PS C:\> Invoke-NetworkAdapterCheck
 
     Name            : {B52615AE-995C-415B-9925-0C0815A81598}
     FriendlyName    : Ethernet0
@@ -114,12 +116,13 @@ function Invoke-NetworkAdaptersCheck {
     DNSSuffixList   :
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     Get-NetworkAdaptersList | Where-Object { $_.Type -eq "Ethernet" -or $_.Type -eq "IEEE80211" } | Select-Object -Property Name,FriendlyName,Type,Status,DnsSuffix,Description,PhysicalAddress,Flags,IPv6,IPv4,Gateway,DHCPv4Server,DHCPv6Server,DnsServers,DNSSuffixList
 }
 
-function Invoke-TcpEndpointsCheck {
+function Invoke-TcpEndpointCheck {
     <#
     .SYNOPSIS
     Enumerates all TCP endpoints on the local machine (IPv4 and IPv6)
@@ -128,13 +131,13 @@ function Invoke-TcpEndpointsCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    It uses the custom "Get-NetworkEndpoints" function to enumerate all the TCP endpoints on the local machine, IPv4 and IPv6. The list can then be filtered based on a list of known ports.
+    It uses the custom "Get-NetworkEndpoint" function to enumerate all the TCP endpoints on the local machine, IPv4 and IPv6. The list can then be filtered based on a list of known ports.
 
     .PARAMETER Filtered
     Use this switch to filter out the list of endpoints returned by this function. The filter excludes all the standard ports such as 445 or 139 and all the random RPC ports. The RPC port range is dynamically guessed using the helper function "Get-RpcRange".
 
     .EXAMPLE
-    PS C:\> Invoke-TcpEndpointsCheck | ft
+    PS C:\> Invoke-TcpEndpointCheck | ft
 
     IP   Proto LocalAddress       State      PID Name
     --   ----- ------------       -----      --- ----
@@ -158,14 +161,15 @@ function Invoke-TcpEndpointsCheck {
     IPv6 TCP   [::]:49669         LISTENING  656 services
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [switch] $Filtered
     )
 
     $IgnoredPorts = @(135, 139, 445)
 
-    $Endpoints = Get-NetworkEndpoints
-    $Endpoints += Get-NetworkEndpoints -IPv6
+    $Endpoints = Get-NetworkEndpoint
+    $Endpoints += Get-NetworkEndpoint -IPv6
 
     if ($Filtered) {
         $FilteredEndpoints = @()
@@ -204,7 +208,7 @@ function Invoke-TcpEndpointsCheck {
     }
 }
 
-function Invoke-UdpEndpointsCheck {
+function Invoke-UdpEndpointCheck {
     <#
     .SYNOPSIS
     Enumerates all UDP endpoints on the local machine (IPv4 and IPv6)
@@ -213,13 +217,13 @@ function Invoke-UdpEndpointsCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    It uses the custom "Get-NetworkEndpoints" function to enumerate all the UDP endpoints on the local machine, IPv4 and IPv6. The list can be filtered based on a list of known ports.
+    It uses the custom "Get-NetworkEndpoint" function to enumerate all the UDP endpoints on the local machine, IPv4 and IPv6. The list can be filtered based on a list of known ports.
 
     .PARAMETER Filtered
     Use this switch to filter out the list of endpoints returned by this function. The filter excludes all the standard ports such as 139 or 500.
 
     .EXAMPLE
-    PS C:\> Invoke-UdpEndpointsCheck | ft
+    PS C:\> Invoke-UdpEndpointCheck | ft
 
     IP   Proto LocalAddress                       State  PID Name
     --   ----- ------------                       -----  --- ----
@@ -243,15 +247,16 @@ function Invoke-UdpEndpointsCheck {
     IPv6 UDP   [fe80::3a:b6c0:b5f0:a05e%12]:51005 N/A   5088 svchost
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [switch] $Filtered
     )
 
     # https://support.microsoft.com/en-us/help/832017/service-overview-and-network-port-requirements-for-windows
     $IgnoredPorts = @(53, 67, 123, 137, 138, 139, 500, 1701, 2535, 4500, 445, 1900, 5050, 5353, 5355)
 
-    $Endpoints = Get-NetworkEndpoints -UDP
-    $Endpoints += Get-NetworkEndpoints -UDP -IPv6
+    $Endpoints = Get-NetworkEndpoint -UDP
+    $Endpoints += Get-NetworkEndpoint -UDP -IPv6
 
     if ($Filtered) {
         $FilteredEndpoints = @()
@@ -277,7 +282,7 @@ function Invoke-UdpEndpointsCheck {
     }
 }
 
-function Invoke-WlanProfilesCheck {
+function Invoke-WlanProfileCheck {
     <#
     .SYNOPSIS
     List saved WLAN profiles and try to determine if they are vulnerable.
@@ -289,71 +294,76 @@ function Invoke-WlanProfilesCheck {
     This cmdlet invokes the 'Get-WlanProfileList' helper and then performs a series of tests on each returned item. For now, only 802.1x profiles are checked. Therefore, we assume that any other profile is 'compliant' by default. Example of a typical vulnerability: the authentication method is PEAP+MSCHAPv2, but the identity of the authentication server is not verified; an evil twin attack could therefore be used to capture or relay the credentials of the user/machine.
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [UInt32] $BaseSeverity
     )
 
-    $ArrayOfResults = @()
-
-    Get-WlanProfileList | ForEach-Object {
-
-        # Assume not vulnerable by default because there are authentication schemes that we do not support
-        # (yet?). We will perform a series of checks on some parameters. As soon as a parameter does not
-        # pass a test, we set the 'Vulnerable' status to 'True'. If a test does not pass, the description
-        # variable is populated with a text that provides a description of the issue.
-        $Description = ""
-        $Vulnerable = $false
-
-        if ($_.Dot1X) {
-
-            $PerformServerValidation = $_.Eap.PerformServerValidation
-            $PerformServerValidationDescription = $_.Eap.PerformServerValidationDescription
-            if ($null -ne $PerformServerValidation) {
-                if ($PerformServerValidation -eq $false) {
-                    $Vulnerable = $true
-                    $Description = "$($Description)$($PerformServerValidationDescription) "
-                }
-            }
-
-            $ServerValidationDisablePrompt = $_.Eap.ServerValidationDisablePrompt
-            $ServerValidationDisablePromptDescription = $_.Eap.ServerValidationDisablePromptDescription
-            if ($null -ne $ServerValidationDisablePrompt) {
-                if ($ServerValidationDisablePrompt -eq $false) {
-                    $Vulnerable = $true
-                    $Description = "$($Description)$($ServerValidationDisablePromptDescription) "
-                }
-            }
-
-            $TrustedRootCAs = $_.Eap.TrustedRootCAs
-            if ($null -eq $TrustedRootCAs) {
-                $Vulnerable = $true
-                $Description = "$($Description)No explicit trusted root CA is specified. "
-            }
-            else {
-                # TODO: ensure that only a domain CA is specified. Not sure how I should do that yet...
-            }
-
-            if ($null -ne $_.InnerEap) {
-                if ($_.InnerEapTypeId -eq 26) {
-                    # If MS-CHAPv2 is used for authentication, user (or machine) credentials are used. It is
-                    # recommended to use certificate-based authentication instead as user credentials could be cracked
-                    # or relayed.
-                    $Vulnerable = $true
-                    $Description = "$($Description)MS-CHAPv2 is used for authentication. "
-                }
-            }
-        }
-
-        if ($Vulnerable) {
-            $_ | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
-            $ArrayOfResults += $_ | Select-Object -Property * -ExcludeProperty Eap,InnerEap
-        }
+    begin {
+        $AllResults = @()
     }
 
-    $Result = New-Object -TypeName PSObject
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $ArrayOfResults
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ArrayOfResults) { $BaseSeverity } else { $SeverityLevelEnum::None })
-    $Result
+    process {
+        Get-WlanProfileList | ForEach-Object {
+
+            # Assume not vulnerable by default because there are authentication schemes that we do not support
+            # (yet?). We will perform a series of checks on some parameters. As soon as a parameter does not
+            # pass a test, we set the 'Vulnerable' status to 'True'. If a test does not pass, the description
+            # variable is populated with a text that provides a description of the issue.
+            $Description = ""
+            $Vulnerable = $false
+
+            if ($_.Dot1X) {
+
+                $PerformServerValidation = $_.Eap.PerformServerValidation
+                $PerformServerValidationDescription = $_.Eap.PerformServerValidationDescription
+                if ($null -ne $PerformServerValidation) {
+                    if ($PerformServerValidation -eq $false) {
+                        $Vulnerable = $true
+                        $Description = "$($Description)$($PerformServerValidationDescription) "
+                    }
+                }
+
+                $ServerValidationDisablePrompt = $_.Eap.ServerValidationDisablePrompt
+                $ServerValidationDisablePromptDescription = $_.Eap.ServerValidationDisablePromptDescription
+                if ($null -ne $ServerValidationDisablePrompt) {
+                    if ($ServerValidationDisablePrompt -eq $false) {
+                        $Vulnerable = $true
+                        $Description = "$($Description)$($ServerValidationDisablePromptDescription) "
+                    }
+                }
+
+                $TrustedRootCAs = $_.Eap.TrustedRootCAs
+                if ($null -eq $TrustedRootCAs) {
+                    $Vulnerable = $true
+                    $Description = "$($Description)No explicit trusted root CA is specified. "
+                }
+                else {
+                    # TODO: ensure that only a domain CA is specified. Not sure how I should do that yet...
+                }
+
+                if ($null -ne $_.InnerEap) {
+                    if ($_.InnerEapTypeId -eq 26) {
+                        # If MS-CHAPv2 is used for authentication, user (or machine) credentials are used. It is
+                        # recommended to use certificate-based authentication instead as user credentials could be cracked
+                        # or relayed.
+                        $Vulnerable = $true
+                        $Description = "$($Description)MS-CHAPv2 is used for authentication. "
+                    }
+                }
+            }
+
+            if ($Vulnerable) {
+                $_ | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+                $AllResults += $_ | Select-Object -Property * -ExcludeProperty Eap,InnerEap
+            }
+        }
+
+        $CheckResult = New-Object -TypeName PSObject
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult
+    }
 }
 
 function Invoke-AirstrikeAttackCheck {
@@ -362,7 +372,7 @@ function Invoke-AirstrikeAttackCheck {
     Check whether the 'Do not display network selection UI' policy is enforced.
 
     .DESCRIPTION
-    This cmdlet first checks whether the tested machined is a workstation with a version of Windows that supports the policy 'Do not display network selection UI'. If so, it checks wheter it was enforced by reading the corresponding registry key/value. If the value is not set to 1, the result is not compliant.
+    This cmdlet first checks whether the tested machined is a workstation with a version of Windows that supports the policy 'Do not display network selection UI'. If so, it checks whether it was enforced by reading the corresponding registry key/value. If the value is not set to 1, the result is not compliant.
 
     .EXAMPLE
     PS C:\> Invoke-AirstrikeAttackCheck
@@ -377,7 +387,8 @@ function Invoke-AirstrikeAttackCheck {
     https://admx.help/?Category=Windows_10_2016&Policy=Microsoft.Policies.WindowsLogon::DontDisplayNetworkSelectionUI
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [UInt32] $BaseSeverity
     )
 
@@ -394,7 +405,7 @@ function Invoke-AirstrikeAttackCheck {
         $WindowsVersion = Get-WindowsVersion
         if ((($WindowsVersion.Major -eq 6) -and ($WindowsVersion.Minor -lt 2)) -or ($WindowsVersion.Major -lt 6)) {
             $Description = "This version of Windows is not supported."
-            
+
         }
         else {
             # Read the value of the 'DontDisplayNetworkSelectionUI' policy.
@@ -419,16 +430,17 @@ function Invoke-AirstrikeAttackCheck {
 
     $Config | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
 
-    $Result = New-Object -TypeName PSObject
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Config
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $SeverityLevelEnum::None })
-    $Result
+    $CheckResult = New-Object -TypeName PSObject
+    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Config
+    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+    $CheckResult
 }
 
 function Convert-SocketAddressToObject {
 
-    [CmdletBinding()] Param(
-        # SOCKET_ADDRESS struct
+    [CmdletBinding()]
+    param(
+        # SOCKET_ADDRESS structure
         [object] $SocketAddress
     )
 
@@ -445,12 +457,12 @@ function Convert-SocketAddressToObject {
 
     if ($AddressFamily -eq 2) {
         $AddressFamilyName = "AF_INET"
-        $Addr = [System.Runtime.InteropServices.Marshal]::PtrToStructure($SocketAddress.SockAddr, [type]$SOCKADDR)
+        $Addr = [System.Runtime.InteropServices.Marshal]::PtrToStructure($SocketAddress.SockAddr, [type] $script:SOCKADDR)
         $StringAddr = (@($Addr.Data[2], $Addr.Data[3], $Addr.Data[4], $Addr.Data[5]) -join ".")
     }
     elseif ($AddressFamily -eq 23) {
         $AddressFamilyName = "AF_INET6"
-        $Addr = [System.Runtime.InteropServices.Marshal]::PtrToStructure($SocketAddress.SockAddr, [type]$SOCKADDR_IN6)
+        $Addr = [System.Runtime.InteropServices.Marshal]::PtrToStructure($SocketAddress.SockAddr, [type] $script:SOCKADDR_IN6)
 
         $LeadingZero = $true
         $MidZero = $true
@@ -482,7 +494,7 @@ function Convert-SocketAddressToObject {
 function Get-NetworkAdaptersList {
     <#
     .SYNOPSIS
-    List network adpaters.
+    List network adapters.
 
     Author: @itm4n
     License: BSD 3-Clause
@@ -520,7 +532,8 @@ function Get-NetworkAdaptersList {
     DnsSuffixList    :
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [switch] $All = $false
     )
 
@@ -570,9 +583,9 @@ function Get-NetworkAdaptersList {
 
     $Family = 0 # AF_UNSPEC
     $Flags = $GAA_FLAG_INCLUDE_PREFIX -bor $GAA_FLAG_INCLUDE_WINS_INFO -bor $GAA_FLAG_INCLUDE_GATEWAYS
-    if ($All) { $Flags = $Flgas -bor $GAA_FLAG_INCLUDE_ALL_INTERFACES }
+    if ($All) { $Flags = $Flags -bor $GAA_FLAG_INCLUDE_ALL_INTERFACES }
     $AdaptersSize = 0
-    $Result = $Iphlpapi::GetAdaptersAddresses($Family, $Flags, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$AdaptersSize)
+    $Result = $script:Iphlpapi::GetAdaptersAddresses($Family, $Flags, [IntPtr]::Zero, [IntPtr]::Zero, [ref] $AdaptersSize)
 
     if ($AddressesSize -eq 0) {
         Write-Verbose "GetAdaptersAddresses KO - Error: $Result"
@@ -582,7 +595,7 @@ function Get-NetworkAdaptersList {
     Write-Verbose "GetAdaptersAddresses OK - Size: $AdaptersSize"
 
     $AdaptersPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($AdaptersSize)
-    $Result = $Iphlpapi::GetAdaptersAddresses($Family, $Flags, [IntPtr]::Zero, $AdaptersPtr, [ref]$AdaptersSize)
+    $Result = $script:Iphlpapi::GetAdaptersAddresses($Family, $Flags, [IntPtr]::Zero, $AdaptersPtr, [ref] $AdaptersSize)
 
     if ($Result -ne 0) {
         Write-Verbose "GetAdaptersAddresses KO - Error: $Result"
@@ -593,7 +606,7 @@ function Get-NetworkAdaptersList {
     Write-Verbose "GetAdaptersAddresses OK"
 
     do {
-        $Adapter = [System.Runtime.InteropServices.Marshal]::PtrToStructure($AdaptersPtr, [type]$IP_ADAPTER_ADDRESSES)
+        $Adapter = [System.Runtime.InteropServices.Marshal]::PtrToStructure($AdaptersPtr, [type] $script:IP_ADAPTER_ADDRESSES)
 
         # Interface type
         $InterfaceType = $InterfaceTypes.GetEnumerator() | Where-Object { $_.value -eq $Adapter.IfType } | ForEach-Object { $_.Name }
@@ -617,7 +630,7 @@ function Get-NetworkAdaptersList {
         $UnicastAddresses = @()
         $UnicastAddressPtr = $Adapter.FirstUnicastAddress
         while ($UnicastAddressPtr -ne [IntPtr]::Zero) {
-            $UnicastAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($UnicastAddressPtr, [type]$IP_ADAPTER_UNICAST_ADDRESS_LH)
+            $UnicastAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($UnicastAddressPtr, [type] $script:IP_ADAPTER_UNICAST_ADDRESS_LH)
             $AddrObject = Convert-SocketAddressToObject -SocketAddress $UnicastAddress.Address
             $AddrObject.IPAddress = "$($AddrObject.IPAddress) (/$($UnicastAddress.OnLinkPrefixLength))"
             $UnicastAddresses += $AddrObject
@@ -628,7 +641,7 @@ function Get-NetworkAdaptersList {
         $DnsServerAddresses = @()
         $DnsServerAddressPtr = $Adapter.FirstDnsServerAddress
         while ($DnsServerAddressPtr -ne [IntPtr]::Zero) {
-            $DnsServerAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($DnsServerAddressPtr, [type]$IP_ADAPTER_DNS_SERVER_ADDRESS_XP)
+            $DnsServerAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($DnsServerAddressPtr, [type] $script:IP_ADAPTER_DNS_SERVER_ADDRESS_XP)
             $AddrObject = Convert-SocketAddressToObject -SocketAddress $DnsServerAddress.Address
             $DnsServerAddresses += $AddrObject
             $DnsServerAddressPtr = $DnsServerAddress.Next
@@ -638,7 +651,7 @@ function Get-NetworkAdaptersList {
         $WinsServerAddresses = @()
         $WinsServerAddressPtr = $Adapter.FirstWinsServerAddress
         while ($WinsServerAddressPtr -ne [IntPtr]::Zero) {
-            $WinServerAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WinsServerAddressPtr, [type]$IP_ADAPTER_WINS_SERVER_ADDRESS_LH)
+            $WinServerAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WinsServerAddressPtr, [type] $script:IP_ADAPTER_WINS_SERVER_ADDRESS_LH)
             $AddrObject = Convert-SocketAddressToObject -SocketAddress $WinServerAddress.Address
             $WinsServerAddresses += $AddrObject
             $WinsServerAddressPtr = $WinServerAddress.Next
@@ -648,7 +661,7 @@ function Get-NetworkAdaptersList {
         $GatewayAddresses = @()
         $GatewayAddressPtr = $Adapter.FirstGatewayAddress
         while ($GatewayAddressPtr -ne [IntPtr]::Zero) {
-            $GatewayAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($GatewayAddressPtr, [type]$IP_ADAPTER_GATEWAY_ADDRESS_LH)
+            $GatewayAddress = [System.Runtime.InteropServices.Marshal]::PtrToStructure($GatewayAddressPtr, [type] $script:IP_ADAPTER_GATEWAY_ADDRESS_LH)
             $AddrObject = Convert-SocketAddressToObject -SocketAddress $GatewayAddress.Address
             $GatewayAddresses += $AddrObject
             $GatewayAddressPtr = $GatewayAddress.Next
@@ -658,8 +671,8 @@ function Get-NetworkAdaptersList {
         $DnsSuffixList = @()
         $DnsSuffixPtr = $Adapter.FirstDnsSuffix
         while ($DnsSuffixPtr -ne [IntPtr]::Zero) {
-            $DnsSuffix = [System.Runtime.InteropServices.Marshal]::PtrToStructure($DnsSuffixPtr, [type]$IP_ADAPTER_DNS_SUFFIX)
-            [string[]]$DnsSuffixList += $DnsSuffix.String
+            $DnsSuffix = [System.Runtime.InteropServices.Marshal]::PtrToStructure($DnsSuffixPtr, [type] $script:IP_ADAPTER_DNS_SUFFIX)
+            [string[]] $DnsSuffixList += $DnsSuffix.String
             $DnsSuffixPtr = $DnsSuffix.Next
         }
 
@@ -682,7 +695,7 @@ function Get-NetworkAdaptersList {
         $Result | Add-Member -MemberType "NoteProperty" -Name "DnsSuffix" -Value $Adapter.DnsSuffix
         $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Adapter.Description
         $Result | Add-Member -MemberType "NoteProperty" -Name "PhysicalAddress" -Value $AdapterPhysicalAddress
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Flags" -Value ($Adapter.Flags -as $IP_ADAPTER_FLAGS)
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Flags" -Value ($Adapter.Flags -as $script:IP_ADAPTER_FLAGS)
         $Result | Add-Member -MemberType "NoteProperty" -Name "IPv6" -Value (($UnicastAddresses | Where-Object { $_.Family -eq 23 } | ForEach-Object { $_.IPAddress }) -join ", ")
         $Result | Add-Member -MemberType "NoteProperty" -Name "IPv4" -Value (($UnicastAddresses | Where-Object { $_.Family -eq 2 } | ForEach-Object { $_.IPAddress }) -join ", ")
         $Result | Add-Member -MemberType "NoteProperty" -Name "Gateway" -Value (($GatewayAddresses | ForEach-Object { $_.IPAddress }) -join ", ")
@@ -702,7 +715,7 @@ function Get-NetworkAdaptersList {
     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($AdaptersPtr)
 }
 
-function Get-NetworkEndpoints {
+function Get-NetworkEndpoint {
     <#
     .SYNOPSIS
     Get a list of listening ports (TCP/UDP)
@@ -714,7 +727,7 @@ function Get-NetworkEndpoints {
     It uses the 'GetExtendedTcpTable' and 'GetExtendedUdpTable' functions of the Windows API to list the TCP/UDP endpoints on the local machine. It handles both IPv4 and IPv6. For each entry in the table, a custom PS object is returned, indicating the IP version (IPv4/IPv6), the protocol (TCP/UDP), the local address (e.g.: "0.0.0.0:445"), the state, the PID of the associated process and the name of the process. The name of the process is retrieved through a call to "Get-Process -PID <PID>".
 
     .EXAMPLE
-    PS C:\> Get-NetworkEndpoints | ft
+    PS C:\> Get-NetworkEndpoint | ft
 
     IP   Proto LocalAddress LocalPort Endpoint         State       PID Name
     --   ----- ------------ --------- --------         -----       --- ----
@@ -730,7 +743,7 @@ function Get-NetworkEndpoints {
     IPv4 TCP   0.0.0.0          49670 0.0.0.0:49670    LISTENING   964 services
 
     .EXAMPLE
-    PS C:\> Get-NetworkEndpoints -UDP -IPv6 | ft
+    PS C:\> Get-NetworkEndpoint -UDP -IPv6 | ft
 
     IP   Proto LocalAddress LocalPort Endpoint    State  PID Name
     --   ----- ------------ --------- --------    -----  --- ----
@@ -743,7 +756,8 @@ function Get-NetworkEndpoints {
     IPv6 UDP   ::1              63168 [::1]:63168 N/A   5860 svchost
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         # IPv4 by default
         [Switch] $IPv6 = $false,
         # TCP by default
@@ -762,14 +776,14 @@ function Get-NetworkEndpoints {
 
     if ($UDP) {
         $UDP_TABLE_OWNER_PID = 1
-        [Int]$BufSize = 0
-        $Result = $Iphlpapi::GetExtendedUdpTable([IntPtr]::Zero, [ref]$BufSize, $true, $IpVersion, $UDP_TABLE_OWNER_PID, 0)
+        [Int] $BufSize = 0
+        $Result = $script:Iphlpapi::GetExtendedUdpTable([IntPtr]::Zero, [ref] $BufSize, $true, $IpVersion, $UDP_TABLE_OWNER_PID, 0)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
     }
     else {
         $TCP_TABLE_OWNER_PID_LISTENER = 3
-        [Int]$BufSize = 0
-        $Result = $Iphlpapi::GetExtendedTcpTable([IntPtr]::Zero, [ref]$BufSize, $true, $IpVersion, $TCP_TABLE_OWNER_PID_LISTENER, 0)
+        [Int] $BufSize = 0
+        $Result = $script:Iphlpapi::GetExtendedTcpTable([IntPtr]::Zero, [ref] $BufSize, $true, $IpVersion, $TCP_TABLE_OWNER_PID_LISTENER, 0)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
     }
 
@@ -777,31 +791,31 @@ function Get-NetworkEndpoints {
 
         Write-Verbose "GetExtendedProtoTable() OK - Size: $BufSize"
 
-        [IntPtr]$TablePtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($BufSize)
+        [IntPtr] $TablePtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($BufSize)
 
         if ($UDP) {
-            $Result = $Iphlpapi::GetExtendedUdpTable($TablePtr, [ref]$BufSize, $true, $IpVersion, $UDP_TABLE_OWNER_PID, 0)
+            $Result = $script:Iphlpapi::GetExtendedUdpTable($TablePtr, [ref] $BufSize, $true, $IpVersion, $UDP_TABLE_OWNER_PID, 0)
         }
         else {
-            $Result = $Iphlpapi::GetExtendedTcpTable($TablePtr, [ref]$BufSize, $true, $IpVersion, $TCP_TABLE_OWNER_PID_LISTENER, 0)
+            $Result = $script:Iphlpapi::GetExtendedTcpTable($TablePtr, [ref] $BufSize, $true, $IpVersion, $TCP_TABLE_OWNER_PID_LISTENER, 0)
         }
 
         if ($Result -eq 0) {
 
             if ($UDP) {
                 if ($IpVersion -eq $AF_INET) {
-                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $MIB_UDPTABLE_OWNER_PID)
+                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $script:MIB_UDPTABLE_OWNER_PID)
                 }
                 elseif ($IpVersion -eq $AF_INET6) {
-                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $MIB_UDP6TABLE_OWNER_PID)
+                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $script:MIB_UDP6TABLE_OWNER_PID)
                 }
             }
             else {
                 if ($IpVersion -eq $AF_INET) {
-                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $MIB_TCPTABLE_OWNER_PID)
+                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $script:MIB_TCPTABLE_OWNER_PID)
                 }
                 elseif ($IpVersion -eq $AF_INET6) {
-                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $MIB_TCP6TABLE_OWNER_PID)
+                    $Table = [System.Runtime.InteropServices.Marshal]::PtrToStructure($TablePtr, [type] $script:MIB_TCP6TABLE_OWNER_PID)
                 }
             }
 
@@ -815,21 +829,21 @@ function Get-NetworkEndpoints {
 
                 if ($UDP) {
                     if ($IpVersion -eq $AF_INET) {
-                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $MIB_UDPROW_OWNER_PID)
+                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $script:MIB_UDPROW_OWNER_PID)
                         $LocalAddr = (New-Object -TypeName System.Net.IPAddress($TableEntry.LocalAddr)).IPAddressToString
                     }
                     elseif ($IpVersion -eq $AF_INET6) {
-                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $MIB_UDP6ROW_OWNER_PID)
+                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $script:MIB_UDP6ROW_OWNER_PID)
                         $LocalAddr = New-Object -TypeName System.Net.IPAddress($TableEntry.LocalAddr, $TableEntry.LocalScopeId)
                     }
                 }
                 else {
                     if ($IpVersion -eq $AF_INET) {
-                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $MIB_TCPROW_OWNER_PID)
+                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $script:MIB_TCPROW_OWNER_PID)
                         $LocalAddr = (New-Object -TypeName System.Net.IPAddress($TableEntry.LocalAddr)).IPAddressToString
                     }
                     elseif ($IpVersion -eq $AF_INET6) {
-                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $MIB_TCP6ROW_OWNER_PID)
+                        $TableEntry = [System.Runtime.InteropServices.Marshal]::PtrToStructure($Offset, [type] $script:MIB_TCP6ROW_OWNER_PID)
                         $LocalAddr = New-Object -TypeName System.Net.IPAddress($TableEntry.LocalAddr, [Int64] $TableEntry.LocalScopeId)
                     }
                 }
@@ -919,35 +933,36 @@ function Convert-WlanXmlProfile {
     https://docs.microsoft.com/en-us/windows/win32/nativewifi/portal
     #>
 
-    [CmdletBinding()] Param(
+    [CmdletBinding()]
+    param(
         [ValidateNotNullOrEmpty()]
         [string] $WlanProfile
     )
 
-    BEGIN {
+    begin {
         function ConvertTo-Boolean {
-            param([object]$Text)
+            param([object] $Text)
             if ($null -eq $Text) { Write-Warning "$($MyInvocation.MyCommand.Name) | Null input, assuming False"; return $False }
             if ($Text.GetType() -like "*XmlElement") { $Text = $(if ([string]::IsNullOrEmpty($Text.innerText)) { $Text } else { $Text.innerText }) }
             try { [System.Convert]::ToBoolean($Text) } catch { Write-Warning "Failed to convert to boolean: $($Text)" }
         }
 
         function Get-ConnectionTypeName {
-            param([string]$ConnectionType)
+            param([string] $ConnectionType)
             if ([string]::IsNullOrEmpty($ConnectionType)) { return }
             $Enumeration = @{ "ESS" = "Infrastructure" ; "IBSS" = "Ad-hoc" }
             try { $Enumeration[$ConnectionType] } catch { Write-Warning "Unknown connection type: $($ConnectionType)" }
         }
 
         function Get-EapTypeName {
-            param([string]$MethodType)
+            param([string] $MethodType)
             if ([string]::IsNullOrEmpty($MethodType)) { return }
             $Enumeration = @{ "13" = "EAP-TLS" ; "18" = "EAP-SIM" ; "21" = "EAP-TTLS" ; "23" = "EAP-AKA" ; "25" = "PEAP" ; "26" = "MS-EAP" ; "29" = "EAP-MSCHAP-V2" ; "50" = "EAP-AKA'" ; "55" = "TEAP" }
             try { $Enumeration[$MethodType] } catch { "Unknown" }
         }
 
         function Get-CertificateName {
-            param([string]$Thumbprint)
+            param([string] $Thumbprint)
             if ([string]::IsNullOrEmpty($Thumbprint)) { ""; return }
             $Certificate = Get-ChildItem "Cert:\LocalMachine\Root\$($Thumbprint.Replace(' ', ''))" -ErrorAction SilentlyContinue
             if ($null -eq $Certificate) { "Unknown Certificate"; return }
@@ -955,34 +970,34 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-AuthModeDescription {
-            param([string]$AuthMode)
+            param([string] $AuthMode)
             if ([string]::IsNullOrEmpty($AuthMode)) { return }
             $Enumeration = @{ "machineOrUser" = "Use user credentials when a user is logged on, use machine credentials otherwise." ; "machine" = "Use machine credentials only." ; "user" = "Use user credentials only." ; "guest" = "Use guest (empty) credentials only." }
             try { $Enumeration[$AuthMode] } catch { "Unknown" }
         }
 
         function Get-ServerValidationPromptDescription {
-            param([boolean]$PromptDisabled)
+            param([boolean] $PromptDisabled)
             if ($PromptDisabled) { "Authentication fails is the certificate is not trusted." } else { "The user can be prompted for server validation." }
         }
 
         function Get-ServerValidationDescription {
-            param([boolean]$PerformValidation)
+            param([boolean] $PerformValidation)
             if ($PerformValidation) { "Server validation is performed." } else { "Server validation is not performed." }
         }
 
         function Get-AcceptServerNameDescription {
-            param([boolean]$AcceptServerName)
+            param([boolean] $AcceptServerName)
             if ($AcceptServerName) { "The server name is verified." } else { "The server name is not verified." }
         }
 
         function Get-UseWinLogonCredentialsDescription {
-            param([boolean]$UseWinLogonCredentials)
+            param([boolean] $UseWinLogonCredentials)
             if ($UseWinLogonCredentials) { "EAP MS-CHAPv2 obtains credentials from winlogon." } else { "EAP MS-CHAPv2 obtains credentials from the user." }
         }
 
-        function Get-TrustedRootCAs {
-            param([System.Xml.XmlElement]$Node, [string]$Name)
+        function Get-TrustedRootCA {
+            param([System.Xml.XmlElement] $Node, [string] $Name)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $TrustedRootCAs = $Node.GetElementsByTagName($Name) | ForEach-Object { $_.InnerText.Replace(" ", "") }
             $TrustedRootCANames = $TrustedRootCAs | ForEach-Object { Get-CertificateName -Thumbprint $_ }
@@ -993,7 +1008,7 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapType {
-            param([System.Xml.XmlElement]$Node)
+            param([System.Xml.XmlElement] $Node)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $EapTypeId = $(if ([string]::IsNullOrEmpty($Node.Type.InnerText)) { $Node.Type } else { $Node.Type.InnerText })
             $Result = New-Object -TypeName PSObject
@@ -1003,7 +1018,7 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapTlsConfig {
-            param([System.Xml.XmlElement]$Node)
+            param([System.Xml.XmlElement] $Node)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $CredentialsSource = $(
                 if ($null -ne $Node.EapType.CredentialsSource.SmartCard) { "SmartCard" }
@@ -1013,7 +1028,7 @@ function Convert-WlanXmlProfile {
             $ServerValidationDisablePrompt = ConvertTo-Boolean -Text $ServerValidationNode.DisableUserPromptForServerValidation
             $AcceptServerName = ConvertTo-Boolean -Text $Node.EapType.AcceptServerName
             $PerformServerValidation = ConvertTo-Boolean -Text $Node.EapType.PerformServerValidation
-            $TrustedRootCAs = Get-TrustedRootCAs -Node $ServerValidationNode -Name "TrustedRootCA"
+            $TrustedRootCAs = Get-TrustedRootCA -Node $ServerValidationNode -Name "TrustedRootCA"
             $Result = New-Object -TypeName PSObject
             $Result | Add-Member -MemberType "NoteProperty" -Name "CredentialsSource" -Value $CredentialsSource
             $Result | Add-Member -MemberType "NoteProperty" -Name "ServerValidationDisablePrompt" -Value $ServerValidationDisablePrompt
@@ -1029,11 +1044,11 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapTtlsConfig {
-            param([System.Xml.XmlElement]$Node)
+            param([System.Xml.XmlElement] $Node)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $ServerValidationNode = $Node.ServerValidation
             $ServerValidationDisablePrompt = ConvertTo-Boolean -Text $ServerValidationNode.DisablePrompt
-            $TrustedRootCAs = Get-TrustedRootCAs -Node $ServerValidationNode -Name "TrustedRootCAHash"
+            $TrustedRootCAs = Get-TrustedRootCA -Node $ServerValidationNode -Name "TrustedRootCAHash"
             $Result = New-Object -TypeName PSObject
             $Result | Add-Member -MemberType "NoteProperty" -Name "ServerValidationDisablePrompt" -Value $ServerValidationDisablePrompt
             $Result | Add-Member -MemberType "NoteProperty" -Name "ServerValidationDisablePromptDescription" -Value (Get-ServerValidationPromptDescription -PromptDisabled $ServerValidationDisablePrompt)
@@ -1044,11 +1059,11 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapPeapConfig {
-            param([System.Xml.XmlElement]$Node)
+            param([System.Xml.XmlElement] $Node)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $ServerValidationNode = $Node.EapType.ServerValidation
             $ServerValidationDisablePrompt = ConvertTo-Boolean -Text $ServerValidationNode.DisableUserPromptForServerValidation
-            $TrustedRootCAs = Get-TrustedRootCAs -Node $ServerValidationNode -Name "TrustedRootCA"
+            $TrustedRootCAs = Get-TrustedRootCA -Node $ServerValidationNode -Name "TrustedRootCA"
             $AcceptServerName = ConvertTo-Boolean -Text $Node.EapType.PeapExtensions.AcceptServerName
             $PerformServerValidation = ConvertTo-Boolean -Text $Node.EapType.PeapExtensions.PerformServerValidation
             $Result = New-Object -TypeName PSObject
@@ -1065,7 +1080,7 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapMsChapv2Config {
-            param([System.Xml.XmlElement]$Node)
+            param([System.Xml.XmlElement] $Node)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             $UseWinLogonCredentials = ConvertTo-Boolean -Text $Node.EapType.UseWinLogonCredentials
             $Result = New-Object -TypeName PSObject
@@ -1075,7 +1090,7 @@ function Convert-WlanXmlProfile {
         }
 
         function Get-EapConfig {
-            param([System.Xml.XmlElement]$Node, [string]$Type)
+            param([System.Xml.XmlElement] $Node, [string] $Type)
             if ($null -eq $Node) { Write-Warning "$($MyInvocation.MyCommand.Name) | Input node is null."; return }
             switch ($Type) {
                 "13" {
@@ -1097,10 +1112,9 @@ function Convert-WlanXmlProfile {
         }
     }
 
-    PROCESS {
-
+    process {
         if ([string]::IsNullOrEmpty($WlanProfile)) { Write-Warning "$($MyInvocation.MyCommand.Name) | Failed to get content: $($ProfileFileItem.FullName)"; return }
-        try { $XmlFile = [xml]$WlanProfile } catch { Write-Warning "$($MyInvocation.MyCommand.Name) | Failed to parse XML: $($ProfileFileItem.FullName)"; return }
+        try { $XmlFile = [xml] $WlanProfile } catch { Write-Warning "$($MyInvocation.MyCommand.Name) | Failed to parse XML: $($ProfileFileItem.FullName)"; return }
 
         $WifiProfiles = $XmlFile.GetElementsByTagName("WLANProfile")
 
@@ -1221,24 +1235,25 @@ function Get-WlanProfileList {
                                     TrustedRootCAsDescription                : Microsoft Root Certificate Authority 2011
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     try {
 
-        [IntPtr]$ClientHandle = [IntPtr]::Zero
-        [UInt32]$NegotiatedVersion = 0
-        [UInt32]$ClientVersion = 2 # Client version for Windows Vista and Windows Server 2008
-        $Result = $Wlanapi::WlanOpenHandle($ClientVersion, [IntPtr]::Zero, [ref]$NegotiatedVersion, [ref]$ClientHandle)
+        [IntPtr] $ClientHandle = [IntPtr]::Zero
+        [UInt32] $NegotiatedVersion = 0
+        [UInt32] $ClientVersion = 2 # Client version for Windows Vista and Windows Server 2008
+        $Result = $script:Wlanapi::WlanOpenHandle($ClientVersion, [IntPtr]::Zero, [ref] $NegotiatedVersion, [ref] $ClientHandle)
         if ($Result -ne 0) {
             Write-Warning "$($MyInvocation.MyCommand.Name) | WlanOpenHandle() failed (Err: $($Result))"
             return
         }
 
-        [IntPtr]$InterfaceListPtr = [IntPtr]::Zero
-        $Result = $Wlanapi::WlanEnumInterfaces($ClientHandle, [IntPtr]::Zero, [ref]$InterfaceListPtr)
+        [IntPtr] $InterfaceListPtr = [IntPtr]::Zero
+        $Result = $script:Wlanapi::WlanEnumInterfaces($ClientHandle, [IntPtr]::Zero, [ref] $InterfaceListPtr)
         if ($Result -ne 0) {
             Write-Warning "$($MyInvocation.MyCommand.Name) | WlanEnumInterfaces() failed (Err: $($Result))"
-            $Wlanapi::WlanCloseHandle($ClientHandle, [IntPtr]::Zero)
+            $script:Wlanapi::WlanCloseHandle($ClientHandle, [IntPtr]::Zero)
             return
         }
 
@@ -1249,10 +1264,10 @@ function Get-WlanProfileList {
 
         for ($i = 0; $i -lt $NumberOfInterfaces; $i++) {
 
-            $WlanInterfaceInfo = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WlanInterfaceInfoPtr, [type]$WLAN_INTERFACE_INFO)
+            $WlanInterfaceInfo = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WlanInterfaceInfoPtr, [type] $script:WLAN_INTERFACE_INFO)
 
-            [IntPtr]$ProfileListPtr = [IntPtr]::Zero
-            $Result = $Wlanapi::WlanGetProfileList($ClientHandle, $WlanInterfaceInfo.InterfaceGuid, [IntPtr]::Zero, [ref]$ProfileListPtr)
+            [IntPtr] $ProfileListPtr = [IntPtr]::Zero
+            $Result = $script:Wlanapi::WlanGetProfileList($ClientHandle, $WlanInterfaceInfo.InterfaceGuid, [IntPtr]::Zero, [ref] $ProfileListPtr)
             if ($Result -eq 0) {
 
                 $NumberOfProfiles = [Runtime.InteropServices.Marshal]::ReadInt32($ProfileListPtr)
@@ -1262,12 +1277,12 @@ function Get-WlanProfileList {
 
                 for ($j = 0; $j -lt $NumberOfProfiles; $j++) {
 
-                    $WlanProfileInfo = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WlanProfileInfoPtr, [type] $WLAN_PROFILE_INFO)
+                    $WlanProfileInfo = [System.Runtime.InteropServices.Marshal]::PtrToStructure($WlanProfileInfoPtr, [type] $script:WLAN_PROFILE_INFO)
 
-                    [String]$ProfileXml = ""
-                    [UInt32]$WlanProfileFlags = 4 # WLAN_PROFILE_GET_PLAINTEXT_KEY
-                    [UInt32]$WlanProfileAccessFlags = 0
-                    $Result = $Wlanapi::WlanGetProfile($ClientHandle, $WlanInterfaceInfo.InterfaceGuid, $WlanProfileInfo.ProfileName, [IntPtr]::Zero, [ref]$ProfileXml, [ref]$WlanProfileFlags, [ref]$WlanProfileAccessFlags)
+                    [String] $ProfileXml = ""
+                    [UInt32] $WlanProfileFlags = 4 # WLAN_PROFILE_GET_PLAINTEXT_KEY
+                    [UInt32] $WlanProfileAccessFlags = 0
+                    $Result = $script:Wlanapi::WlanGetProfile($ClientHandle, $WlanInterfaceInfo.InterfaceGuid, $WlanProfileInfo.ProfileName, [IntPtr]::Zero, [ref] $ProfileXml, [ref] $WlanProfileFlags, [ref] $WlanProfileAccessFlags)
                     if ($Result -eq 0) {
                         Convert-WlanXmlProfile -WlanProfile $ProfileXml
                     }
@@ -1278,7 +1293,7 @@ function Get-WlanProfileList {
                     $WlanProfileInfoPtr = [IntPtr] ($WlanProfileInfoPtr.ToInt64() + [System.Runtime.InteropServices.Marshal]::SizeOf($WlanProfileInfo))
                 }
 
-                $Wlanapi::WlanFreeMemory($ProfileListPtr)
+                $script:Wlanapi::WlanFreeMemory($ProfileListPtr)
             }
             else {
                 Write-Warning "$($MyInvocation.MyCommand.Name) | WlanGetProfileList() failed (Err: $($Result))"
@@ -1287,8 +1302,8 @@ function Get-WlanProfileList {
             $WlanInterfaceInfoPtr = [IntPtr] ($WlanInterfaceInfoPtr.ToInt64() + [System.Runtime.InteropServices.Marshal]::SizeOf($WlanInterfaceInfo))
         }
 
-        $null = $Wlanapi::WlanFreeMemory($InterfaceListPtr)
-        $null = $Wlanapi::WlanCloseHandle($ClientHandle, [IntPtr]::Zero)
+        $null = $script:Wlanapi::WlanFreeMemory($InterfaceListPtr)
+        $null = $script:Wlanapi::WlanCloseHandle($ClientHandle, [IntPtr]::Zero)
     }
     catch {
         # The Wlan API probably does not exist on this machine.

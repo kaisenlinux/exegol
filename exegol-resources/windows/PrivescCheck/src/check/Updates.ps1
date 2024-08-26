@@ -7,7 +7,7 @@ function Invoke-WindowsUpdateCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    The Windows Update status can be queried thanks to the Microsoft.Update.AutoUpdate COM object. It gives the last successful search time and the last successfull update installation time.
+    The Windows Update status can be queried thanks to the Microsoft.Update.AutoUpdate COM object. It gives the last successful search time and the last successful update installation time.
 
     .EXAMPLE
     PS C:\> Invoke-WindowsUpdateCheck
@@ -17,7 +17,8 @@ function Invoke-WindowsUpdateCheck {
     2020-01-12 - 09:17:37
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     try {
         $WindowsUpdate = (New-Object -ComObject "Microsoft.Update.AutoUpdate").Results
@@ -41,13 +42,10 @@ function Invoke-HotFixCheck {
     If a patch was not installed in the last 31 days, return the latest patch that was installed, otherwise return nothing.
 
     .DESCRIPTION
-    This check lists update packages and determines whether an update was applied within the last 31 days. 
-
-    .PARAMETER Info
-    Use this flag to get the list of all installed patches.
+    This check lists update packages and determines whether an update was applied within the last 31 days.
 
     .EXAMPLE
-    PS C:\> Invoke-HotFixCheck -Info
+    PS C:\> Invoke-HotFixCheck
 
     HotFixID  Description     InstalledBy           InstalledOn
     --------  -----------     -----------           -----------
@@ -57,7 +55,6 @@ function Invoke-HotFixCheck {
     KB4570334 Security Update NT AUTHORITY\SYSTEM   2020-08-13 17:45:34
     KB4566785 Security Update NT AUTHORITY\SYSTEM   2020-07-16 13:08:14
     KB4561600 Security Update NT AUTHORITY\SYSTEM   2020-06-22 13:00:50
-    KB4560366 Security Update DESKTOP-7A0AKQI\admin 2020-06-22 12:40:39
     KB4537759 Security Update                       2020-05-11 07:44:14
     KB4557968 Security Update                       2020-05-11 07:37:09
 
@@ -66,16 +63,16 @@ function Invoke-HotFixCheck {
     https://p0w3rsh3ll.wordpress.com/2012/10/25/getting-windows-updates-installation-history/
     #>
 
-    [CmdletBinding()] Param(
-        [switch] $Info,
+    [CmdletBinding()]
+    param(
         [UInt32] $BaseSeverity
     )
 
     begin {
         function Get-HotFixDate {
-            $Session = New-Object -ComObject Microsoft.Update.Session            
-            $UpdateSearcher = $Session.CreateUpdateSearcher()            
-            $TotalHistoryCount = $UpdateSearcher.GetTotalHistoryCount()  
+            $Session = New-Object -ComObject Microsoft.Update.Session
+            $UpdateSearcher = $Session.CreateUpdateSearcher()
+            $TotalHistoryCount = $UpdateSearcher.GetTotalHistoryCount()
             foreach ($UpdateItem in $($UpdateSearcher.QueryHistory(0, $TotalHistoryCount))) {
                 if ($UpdateItem.Title -match "\(KB\d{6,7}\)"){
                     $Id = $Matches[0].Replace("(", "").Replace(")", "")
@@ -91,6 +88,7 @@ function Invoke-HotFixCheck {
 
         $HotFixDates = $null
         $HotFixList = @()
+        $Vulnerable = $false
     }
 
     process {
@@ -115,21 +113,20 @@ function Invoke-HotFixCheck {
             $HotFixList += $HotFixObject
         }
 
-        if ($Info) { $HotFixList | Sort-Object -Property InstalledOn,HotFixID -Descending; return }
+        $HotFixListSorted = $HotFixList | Sort-Object -Property InstalledOn,HotFixID -Descending
+        $LatestHotfix = $HotFixListSorted | Select-Object -First 1
 
-        $LatestHotfix = $HotFixList | Sort-Object -Property InstalledOn,HotFixID -Descending | Select-Object -First 1
-        $TimeSpan = New-TimeSpan -Start $LatestHotfix.InstalledOn -End $(Get-Date)
+        if ($null -ne $LatestHotfix) {
+            $TimeSpan = New-TimeSpan -Start $LatestHotfix.InstalledOn -End $(Get-Date)
 
-        if ($TimeSpan.TotalDays -gt 31) {
-            $Results = $LatestHotfix
+            if ($TimeSpan.TotalDays -gt 31) {
+                $Vulnerable = $true
+            }
         }
-        else {
-            Write-Verbose "At least one hotfix was installed in the last 31 days."
-        }
 
-        $Result = New-Object -TypeName PSObject
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Results
-        $Result | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Results) { $BaseSeverity } else { $SeverityLevelEnum::None })
-        $Result
+        $CheckResult = New-Object -TypeName PSObject
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $HotFixListSorted
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult
     }
 }

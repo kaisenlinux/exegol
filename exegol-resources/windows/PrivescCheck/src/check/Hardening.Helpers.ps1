@@ -22,15 +22,16 @@ function Get-UEFIStatus {
     https://github.com/ChrisWarwick/GetUEFI/blob/master/GetFirmwareBIOSorUEFI.psm1
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     $OsVersion = Get-WindowsVersion
 
     # Windows >= 8/2012
     if (($OsVersion.Major -ge 10) -or (($OsVersion.Major -ge 6) -and ($OsVersion.Minor -ge 2))) {
 
-        [UInt32]$FirmwareType = 0
-        $Result = $Kernel32::GetFirmwareType([ref]$FirmwareType)
+        [UInt32] $FirmwareType = 0
+        $Result = $script:Kernel32::GetFirmwareType([ref] $FirmwareType)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
         if ($Result -gt 0) {
@@ -56,7 +57,7 @@ function Get-UEFIStatus {
     }
     elseif (($OsVersion.Major -eq 6) -and ($OsVersion.Minor -eq 1)) {
 
-        $null = $Kernel32::GetFirmwareEnvironmentVariable("", "{00000000-0000-0000-0000-000000000000}", [IntPtr]::Zero, 0)
+        $null = $script:Kernel32::GetFirmwareEnvironmentVariable("", "{00000000-0000-0000-0000-000000000000}", [IntPtr]::Zero, 0)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
         $ERROR_INVALID_FUNCTION = 1
@@ -103,7 +104,8 @@ function Get-SecureBootStatus {
     Description : Secure Boot is disabled
     #>
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
     $RegKey = "HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\State"
     $RegValue = "UEFISecureBootEnabled"
@@ -130,9 +132,10 @@ function Get-SecureBootStatus {
 
 function Get-MachineRole {
 
-    [CmdletBinding()] Param()
+    [CmdletBinding()]
+    param()
 
-    BEGIN {
+    begin {
         $FriendlyNames = @{
             "WinNT"     = "Workstation";
             "LanmanNT"  = "Domain Controller";
@@ -140,7 +143,7 @@ function Get-MachineRole {
         }
     }
 
-    PROCESS {
+    process {
         $RegKey = "HKLM\SYSTEM\CurrentControlSet\Control\ProductOptions"
         $RegValue = "ProductType"
         $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -ErrorAction SilentlyContinue).$RegValue
@@ -161,7 +164,7 @@ function Get-BitLockerConfiguration {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This cmdlet retrieves information about the authentication mode used by the BitLocker configuration from the 'HKLM\Software\Policies\Microsoft\FVE' key (e.g. 'TPM only', 'TPM+PIN', etc.). 
+    This cmdlet retrieves information about the authentication mode used by the BitLocker configuration from the 'HKLM\Software\Policies\Microsoft\FVE' key (e.g. 'TPM only', 'TPM+PIN', etc.).
 
     .EXAMPLE
     PS C:\> Get-BitLockerConfiguration
@@ -178,9 +181,10 @@ function Get-BitLockerConfiguration {
     https://www.geoffchappell.com/studies/windows/win32/fveapi/policy/index.htm
     #>
 
-    [CmdletBinding()] Param ()
+    [CmdletBinding()]
+    param()
 
-    BEGIN {
+    begin {
         # Default values for FVE parameters in HKLM\Software\Policies\Microsoft\FVE
         $FveConfig = @{
             UseAdvancedStartup = 0
@@ -235,14 +239,14 @@ function Get-BitLockerConfiguration {
         }
     }
 
-    PROCESS {
+    process {
 
         $Result = New-Object -TypeName PSObject
 
         $RegKey = "HKLM\SYSTEM\CurrentControlSet\Control\BitLockerStatus"
         $RegValue = "BootStatus"
         $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
-    
+
         $BitLockerEnabled = $false
 
         if ($null -eq $RegData) {
@@ -279,7 +283,7 @@ function Get-BitLockerConfiguration {
                 $FveConfigValue = $FveConfigItem.name
                 $FveConfigValueDescriptions = $FveConfigValues[$FveConfigValue]
                 $IsValid = $true
-    
+
                 if (($FveConfigValue -eq "UseAdvancedStartup") -or ($FveConfigValue -eq "EnableBDEWithNoTPM")) {
                     if (($FveConfig[$FveConfigValue] -ne 0) -and ($FveConfig[$FveConfigValue] -ne 1)) {
                         $IsValid = $false
@@ -290,16 +294,16 @@ function Get-BitLockerConfiguration {
                         $IsValid = $false
                     }
                 }
-    
+
                 if (-not $IsValid) {
                     Write-Warning "Unexpected value for $($FveConfigValue): $($FveConfig[$FveConfigValue])"
                     continue
                 }
-    
+
                 $Item = New-Object -TypeName PSObject
                 $Item | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $($FveConfig[$FveConfigValue])
                 $Item | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $($FveConfigValueDescriptions[$FveConfig[$FveConfigValue]])
-    
+
                 $Result | Add-Member -MemberType "NoteProperty" -Name $FveConfigValue -Value $Item
             }
         }
@@ -315,19 +319,17 @@ function Get-AppLockerPolicyFromRegistry {
 
     Author: @itm4n
     License: BSD 3-Clause
-    
+
     .DESCRIPTION
     This cmdlet is an alternative for the official "Get-AppLockerPolicy" (PSv4+) that works in PSv2. It reads the registry and builds an XML representation of the AppLocker policy, similar to the output of "Get-AppLockerPolicy".
     #>
 
     [CmdletBinding()]
-    param ()
-    
+    param()
+
     begin {
         function Convert-EnforcementModeToString {
-            param (
-                [UInt32] $EnforcementMode = 0
-            )
+            param([UInt32] $EnforcementMode = 0)
             switch ($EnforcementMode) {
                 0 { "NotConfigured" }
                 1 { "Enabled" }
@@ -345,7 +347,7 @@ function Get-AppLockerPolicyFromRegistry {
         $XmlWriter.WriteStartElement("AppLockerPolicy")
         $XmlWriter.WriteAttributeString("Version", "1")
     }
-    
+
     process {
         foreach ($RuleCollectionType in $RuleCollectionTypes) {
 
@@ -358,7 +360,7 @@ function Get-AppLockerPolicyFromRegistry {
             $XmlWriter.WriteStartElement("RuleCollection")
             $XmlWriter.WriteAttributeString("Type", $RuleCollectionType)
             $XmlWriter.WriteAttributeString("EnforcementMode", $EnforcementMode)
-            
+
             foreach ($ChildItem in $(Get-ChildItem -Path "Registry::$($RegKey)" -ErrorAction SilentlyContinue)) {
 
                 $SubKeyName = $ChildItem.PSChildName
@@ -373,7 +375,7 @@ function Get-AppLockerPolicyFromRegistry {
             $XmlWriter.WriteEndElement()
         }
     }
-    
+
     end {
         $XmlWriter.WriteEndElement()
         $XmlWriter.Flush()
@@ -390,29 +392,29 @@ function Get-AppLockerPolicyInternal {
 
     Author: @itm4n
     License: BSD 3-Clause
-    
+
     .DESCRIPTION
-    This cmdlet parses the AppLocker configuration to identify rules that can be exploited to execute arbitrary files. 
+    This cmdlet parses the AppLocker configuration to identify rules that can be exploited to execute arbitrary files.
 
     .PARAMETER FilterLevel
-    Filter rules based on their likelihood of exploitation (0 = all / no filter, 1 = low to high, 2 = medium and high, 3 = high only). 
+    Filter rules based on their likelihood of exploitation (0 = all / no filter, 1 = low to high, 2 = medium and high, 3 = high only).
     #>
 
     [CmdletBinding()]
-    param (
+    param(
         [ValidateSet(0, 1, 2, 3)]
         [UInt32] $FilterLevel = 0
     )
-    
+
     begin {
-        $CurrentUserSids = Get-CurrentUserSids
+        $CurrentUserSids = Get-CurrentUserSid
         $Levels = @( "None", "Low", "Moderate", "High" )
 
         function Convert-AppLockerPath {
             param(
                 [string] $Path
             )
-            
+
             # AppLocker path variables
             # https://learn.microsoft.com/en-us/windows/security/application-security/application-control/windows-defender-application-control/applocker/understanding-the-path-rule-condition-in-applocker
             $VariableHashmap = @{
@@ -436,10 +438,7 @@ function Get-AppLockerPolicyInternal {
         }
 
         function Convert-AppLockerConditionToString {
-            param (
-                [object] $Condition,
-                [string] $Type
-            )
+            param([object] $Condition, [string] $Type)
             switch ($Type) {
                 "FilePublisher" {
                     $ConditionString = "Publisher='$($Condition.PublisherName)', Product='$($Condition.ProductName)', Binary='$($Condition.BinaryName)'"
@@ -457,7 +456,7 @@ function Get-AppLockerPolicyInternal {
             $ConditionString
         }
     }
-    
+
     process {
 
         if (([UInt32[]] $PSVersionTable.PSCompatibleVersions.Major) -contains 4) {
@@ -467,9 +466,9 @@ function Get-AppLockerPolicyInternal {
             Write-Warning "Incompatible PowerShell version detected, retrieving AppLocker policy from registry instead of using 'Get-AppLockerPolicy'..."
             $AppLockerPolicyXml = [xml] (Get-AppLockerPolicyFromRegistry)
         }
-        
+
         foreach ($RuleCollection in $AppLockerPolicyXml.AppLockerPolicy.GetElementsByTagName("RuleCollection")) {
-        
+
             # Type: Appx / Dll / Exe / Msi / Script
             # EnforcementMode: NotConfigured / Enabled / ServicesOnly
 
@@ -490,7 +489,7 @@ function Get-AppLockerPolicyInternal {
             foreach ($RuleType in $RuleTypes) {
 
                 $Rules = $RuleCollection.GetElementsByTagName("$($RuleType)Rule")
-                
+
                 foreach ($Rule in $Rules) {
 
                     if ($Rule.Action -eq "Deny") {
@@ -520,7 +519,7 @@ function Get-AppLockerPolicyInternal {
                     else {
                         $ExceptionListString = $null
                     }
-                    
+
                     foreach ($Condition in $Conditions) {
 
                         $ConditionString = Convert-AppLockerConditionToString -Condition $Condition -Type $RuleType
@@ -535,7 +534,7 @@ function Get-AppLockerPolicyInternal {
                                 }
                                 elseif (($Rule.Action -eq "Allow") -and (($Condition.ProductName -eq "*") -or ($Condition.BinaryName -eq "*"))) {
                                     $Level = 1
-                                    $Description = "This rule allows any product or file from the publisher '$($Condition.PublisherName)'."   
+                                    $Description = "This rule allows any product or file from the publisher '$($Condition.PublisherName)'."
                                 }
                             }
 
@@ -570,6 +569,7 @@ function Get-AppLockerPolicyInternal {
                                 else {
                                     $CandidatePaths = [string[]] (Convert-AppLockerPath -Path $Condition.Path)
                                     foreach ($CandidatePath in $CandidatePaths) {
+                                        if ([String]::IsNullOrEmpty($CandidatePath)) { continue }
                                         $CandidatePath = $([System.Environment]::ExpandEnvironmentVariables($CandidatePath))
                                         if ($CandidatePath.StartsWith("*")) {
                                             $Level = 3
@@ -581,14 +581,15 @@ function Get-AppLockerPolicyInternal {
                                                 $Description = "This rule allows files to be executed from a system folder, and could therefore be vulnerable."
                                             }
                                             else {
-                                                if (Get-ModifiablePath -LiteralPaths $CandidatePath) {
+                                                $ModifiablePaths = Get-ModifiablePath -Path $CandidatePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+                                                if ($ModifiablePaths) {
                                                     $Level = 3
                                                     $Description = "This rule allows files to be executed from a location where the current user has write access."
                                                 }
                                             }
                                         }
                                         else {
-                                            $ModifiablePaths = Get-ModifiablePath -LiteralPaths $CandidatePath
+                                            $ModifiablePaths = Get-ModifiablePath -Path $CandidatePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
                                             if ($ModifiablePaths) {
                                                 $Level = 3
                                                 $Description = "This rule allows files to be executed from a location where the current user has write access."
@@ -618,6 +619,177 @@ function Get-AppLockerPolicyInternal {
                     }
                 }
             }
+        }
+    }
+}
+
+function Get-EnforcedPowerShellExecutionPolicy {
+    <#
+    .SYNOPSIS
+    Helper - Get the enforced PowerShell execution policy (when configured with a GPO)
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet retrieves the configuration of the PowerShell execution, when it is enforced with a GPO. If first checks the computer configuration, and returns it if found. Otherwise, it checks the the user configuration. If no execution policy is defined, this cmdlet returns null.
+
+    .EXAMPLE
+    PS C:\> Get-EnforcedPowerShellExecutionPolicy
+
+    Policy          : Turn on Script Execution
+    Key             : HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell
+    EnableScripts   : 1
+    ExecutionPolicy : RemoteSigned
+    Description     : Local scripts can be executed. Scripts that originate from the Internet can be executed only if they are signed by a trusted publisher.
+    #>
+
+    [CmdletBinding()]
+    param()
+
+    begin {
+        $RegKeys = @(
+            "HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell",
+            "HKCU\SOFTWARE\Policies\Microsoft\Windows\PowerShell"
+        )
+    }
+
+    process {
+
+        foreach ($RegKey in $RegKeys) {
+
+            $RegValue = "EnableScripts"
+            $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
+            if ($null -eq $RegData) {
+                Write-Verbose "PowerShell execution policy not enforced in '$($RegKey)'."
+                continue
+            }
+
+            $EnableScripts = [UInt32] $RegData
+
+            $RegValue = "ExecutionPolicy"
+            $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
+
+            $ExecutionPolicy = $RegData
+
+            if ($EnableScripts -eq 0) {
+                $Description = "Script execution is disabled. The execution policy defaults to a per-machine preference setting."
+            }
+            else {
+                switch ($ExecutionPolicy) {
+                    "AllSigned" { $Description = "A PowerShell execution policy is enforced. It allows scripts to execute only if they are signed by a trusted publisher." }
+                    "RemoteSigned" { $Description = "A PowerShell execution policy is enforced. It allows any local scripts to run. Scripts that originate from the Internet must be signed by a trusted publisher*;" }
+                    "Unrestricted" { $Description = "A PowerShell execution policy is enforced. It allows all scripts to run." }
+                    default { Write-Warning "Unexpected execution policy: $($ExecutionPolicy)" }
+                }
+            }
+
+            $Result = New-Object -TypeName PSObject
+            $Result | Add-Member -MemberType "NoteProperty" -Name "Policy" -Value "Turn on Script Execution"
+            $Result | Add-Member -MemberType "NoteProperty" -Name "Key" -Value $RegKey
+            $Result | Add-Member -MemberType "NoteProperty" -Name "EnableScripts" -Value $EnableScripts
+            $Result | Add-Member -MemberType "NoteProperty" -Name "ExecutionPolicy" -Value $ExecutionPolicy
+            $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $(if ($Description) { $Description } else { "(null)" })
+            $Result
+
+            # # A policy was found, so we can stop here. If it's defined in HKLM, it means
+            # # that it's set in the computer configuration, which has precedence over the
+            # # user configuration. Otherwise it's defined in the user configuration.
+            break
+        }
+    }
+}
+
+function Get-AttackSurfaceReductionRule {
+    <#
+    .SYNOPSIS
+    Helper - Get the ASR rules and their values
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet returns a list of all existing ASR rules, along with their values in the registry. If a rule is not defined, the 'Data' value is null.
+
+    .EXAMPLE
+    PS C:\> Get-AttackSurfaceReductionRule
+
+    Rule        : Block executable files from running unless they meet a prevalence, age, or trusted list criterion
+    Id          : 01443614-cd74-433a-b99e-2ecdc07bfc25
+    State       :
+    Description : Not configured (disabled)
+
+    Rule        : Block Office applications from creating executable content
+    Id          : 3b576869-a4ec-4529-8536-b80a7769e899
+    State       : 2
+    Description : Audit
+
+    Rule        : Block Webshell creation for Servers
+    Id          : a8f5898e-1dc8-49a9-9878-85004b8a61e6
+    State       :
+    Description : Not configured (disabled)
+
+    .NOTES
+    Computer Configuration > Policies > Administrative Templates > Windows Components > Microsoft Defender Antivirus > Microsoft Defender Exploit Guard > Attack Surface Reduction > Configure Attack Surface Reduction rules
+
+    .LINK
+    https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference
+    #>
+
+    [CmdletBinding()]
+    param()
+
+    begin {
+        $RuleIds = @{
+            [Guid] "56a863a9-875e-4185-98a7-b882c64b5ce5" = "Block abuse of exploited vulnerable signed drivers"
+            [Guid] "7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c" = "Block Adobe Reader from creating child processes"
+            [Guid] "d4f940ab-401b-4efc-aadc-ad5f3c50688a" = "Block all Office applications from creating child processes"
+            [Guid] "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2" = "Block credential stealing from the Windows local security authority subsystem (lsass.exe)"
+            [Guid] "be9ba2d9-53ea-4cdc-84e5-9b1eeee46550" = "Block executable content from email client and webmail"
+            [Guid] "01443614-cd74-433a-b99e-2ecdc07bfc25" = "Block executable files from running unless they meet a prevalence, age, or trusted list criterion"
+            [Guid] "5beb7efe-fd9a-4556-801d-275e5ffc04cc" = "Block execution of potentially obfuscated scripts"
+            [Guid] "d3e037e1-3eb8-44c8-a917-57927947596d" = "Block JavaScript or VBScript from launching downloaded executable content"
+            [Guid] "3b576869-a4ec-4529-8536-b80a7769e899" = "Block Office applications from creating executable content"
+            [Guid] "75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84" = "Block Office applications from injecting code into other processes"
+            [Guid] "26190899-1602-49e8-8b27-eb1d0a1ce869" = "Block Office communication application from creating child processes"
+            [Guid] "e6db77e5-3df2-4cf1-b95a-636979351e5b" = "Block persistence through WMI event subscription"
+            [Guid] "d1e49aac-8f56-4280-b9ba-993a6d77406c" = "Block process creations originating from PSExec and WMI commands"
+            [Guid] "33ddedf1-c6e0-47cb-833e-de6133960387" = "Block rebooting machine in Safe Mode (preview)"
+            [Guid] "b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4" = "Block untrusted and unsigned processes that run from USB"
+            [Guid] "c0033c00-d16d-4114-a5a0-dc9b3a7d2ceb" = "Block use of copied or impersonated system tools (preview)"
+            [Guid] "a8f5898e-1dc8-49a9-9878-85004b8a61e6" = "Block Webshell creation for Servers"
+            [Guid] "92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b" = "Block Win32 API calls from Office macros"
+            [Guid] "c1db55ab-c21a-4637-bb3f-a12568109d35" = "Use advanced protection against ransomware"
+        }
+
+        $RegKey = "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules"
+    }
+
+    process {
+
+        foreach ($RuleId in $RuleIds.GetEnumerator()) {
+
+            $RegValue = $RuleId.Name.ToString()
+            $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
+
+            switch ($RegData) {
+                $null { $Description = "Not configured (disabled)" }
+                0 { $Description = "Disabled" }
+                1 { $Description = "Block" }
+                2 { $Description = "Audit" }
+                6 { $Description = "Warn" }
+                Default {
+                    $Description = $null
+                    Write-Warning "Unexpected value for ASR rule '$($RegValue)': $($RegData)"
+                }
+            }
+
+            $Rule = New-Object -TypeName PSObject
+            $Rule | Add-Member -MemberType "NoteProperty" -Name "Rule" -Value $RuleId.Value
+            $Rule | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $RuleId.Name
+            $Rule | Add-Member -MemberType "NoteProperty" -Name "State" -Value $RegData
+            $Rule | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+            $Rule
         }
     }
 }
