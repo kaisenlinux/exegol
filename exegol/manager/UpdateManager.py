@@ -1,12 +1,12 @@
 import re
-from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional, Dict, cast, Tuple, Sequence
-from pathlib import Path, PurePath
 
 from rich.prompt import Prompt
 
 from exegol.config.ConstantConfig import ConstantConfig
 from exegol.config.DataCache import DataCache
+from exegol.config.UserConfig import UserConfig
 from exegol.console.ExegolPrompt import Confirm
 from exegol.console.TUI import ExegolTUI
 from exegol.console.cli.ParametersManager import ParametersManager
@@ -117,6 +117,9 @@ class UpdateManager:
     @classmethod
     def updateResources(cls) -> bool:
         """Update Exegol-resources from git (submodule)"""
+        if not UserConfig().enable_exegol_resources:
+            logger.info("Skipping disabled Exegol resources.")
+            return False
         try:
             if not ExegolModules().isExegolResourcesReady() and not Confirm('Do you want to update exegol resources.', default=True):
                 return False
@@ -280,7 +283,7 @@ class UpdateManager:
         DataCache().get_wrapper_data().current_version = cls.__get_current_version() if current_version is None else current_version
 
     @classmethod
-    def isUpdateTag(cls) -> bool:
+    def isUpdateAvailable(cls) -> bool:
         """Check if the cache file is present to announce an available update of the exegol wrapper."""
         current_version = cls.__get_current_version()
         wrapper_data = DataCache().get_wrapper_data()

@@ -78,6 +78,7 @@ function add_peass() {
   wget -O ./windows/winPEAS/winPEASx64_ofs.exe "https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx64_ofs.exe"
   wget -O ./windows/winPEAS/winPEASx86.exe "https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx86.exe"
   wget -O ./windows/winPEAS/winPEASx86_ofs.exe "https://github.com/carlospolop/PEASS-ng/releases/latest/download/winPEASx86_ofs.exe"
+  wget -O ./windows/winPEAS/winPEAS.ps1 "https://raw.githubusercontent.com/peass-ng/PEASS-ng/master/winPEAS/winPEASps1/winPEAS.ps1"
   add-to-list "PEASS-ng,https://github.com/carlospolop/PEASS-ng,Privilege Escalation Awesome Scripts SUITE"
 }
 
@@ -278,6 +279,7 @@ function update_submodules() {
   add-to-list "WinEnum,https://github.com/neox41/WinEnum,Script for Local Windows Enumeration"
   add-to-list "impacket-examples-windows,https://github.com/maaaaz/impacket-examples-windows,The great impacket example scripts compiled for Windows"
   add-to-list "nishang,https://github.com/samratashok/nishang,Offensive PowerShell for red team"
+  add-to-list "PowerSharpPack,https://github.com/S3cur3Th1sSh1t/PowerSharpPack,Many useful offensive CSharp Projects wraped into Powershell for easy usage."
 }
 
 function add_ligolo-ng() {
