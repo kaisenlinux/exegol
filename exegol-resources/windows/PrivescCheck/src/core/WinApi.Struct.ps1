@@ -506,29 +506,52 @@ $script:PRINTER_INFO_2 = New-Structure $Module WinApiModule.PRINTER_INFO_2 @{
     AveragePPM                  = New-StructureField 20 UInt32
 } -Charset Auto
 
-$script:WKSTA_INFO_100 = New-Structure $Module WinApiModule.WKSTA_INFO_100 @{
-    PlatformId                  = New-StructureField 0 UInt32
-    ComputerName                = New-StructureField 1 String -MarshalAs @('LPWStr')
-    LanGroup                    = New-StructureField 2 String -MarshalAs @('LPWStr')
-    VerMajor                    = New-StructureField 3 UInt32
-    VerMinor                    = New-StructureField 4 UInt32
-}
+$script:TPM_DEVICE_INFORMATION = New-Structure $Module WinApiModule.TPM_DEVICE_INFORMATION @{
+    TpmVersion                  = New-StructureField 0 UInt32
+    ManufacturerId              = New-StructureField 1 String -MarshalAs @('ByValTStr', 5)
+    ManufacturerName            = New-StructureField 2 String -MarshalAs @('ByValTStr', 64)
+    ManufacturerVersionMajor    = New-StructureField 3 UInt16
+    ManufacturerVersionMinor    = New-StructureField 4 UInt16
+    ManufacturerVersionSubMajor = New-StructureField 5 UInt16
+    ManufacturerVersionSubMinor = New-StructureField 6 UInt16
+    PpiSpecVersion              = New-StructureField 7 String -MarshalAs @('ByValTStr', 12)
+    Pcr7BindingState            = New-StructureField 8 UInt32
+    TpmPresent                  = New-StructureField 9 Byte
+    ReadyForAttestation         = New-StructureField 10 Byte
+    IsCapableForAttestation     = New-StructureField 11 Byte
+    ReadyForStorage             = New-StructureField 12 Byte
+    IsInitialized               = New-StructureField 13 Byte
+    ClearNeededToRecover        = New-StructureField 14 Byte
+    ClearPossible               = New-StructureField 15 Byte
+    MaintenanceTaskComplete     = New-StructureField 16 Byte
+    TpmHasVulnerableFirmware    = New-StructureField 17 Byte
+    TpmFirmwareVulnerability    = New-StructureField 18 $script:TPM_VULNERABILITY
+    ErrataDateDayOfYear         = New-StructureField 19 UInt32
+    ErrataDateYear              = New-StructureField 20 UInt32
+    TpmSpecVersionStr           = New-StructureField 21 String -MarshalAs @('ByValTStr', 4)
+    TpmSpecVersion              = New-StructureField 22 UInt32[] -MarshalAs @('ByValArray', 3)
+    PcClientVersion             = New-StructureField 23 String -MarshalAs @('ByValTStr', 12)
+    Tpm12SpecLevel              = New-StructureField 24 UInt32
+    Tpm12SpecRevision           = New-StructureField 25 UInt32
+} -Charset Unicode
 
-$script:WKSTA_INFO_101 = New-Structure $Module WinApiModule.WKSTA_INFO_101 @{
-    PlatformId                  = New-StructureField 0 UInt32
-    ComputerName                = New-StructureField 1 String -MarshalAs @('LPWStr')
-    LanGroup                    = New-StructureField 2 String -MarshalAs @('LPWStr')
-    VerMajor                    = New-StructureField 3 UInt32
-    VerMinor                    = New-StructureField 4 UInt32
-    LanRoot                     = New-StructureField 5 String -MarshalAs @('LPWStr')
-}
+$script:DSREG_USER_INFO = New-Structure $Module WinApiModule.DSREG_USER_INFO @{
+    UserEmail                   = New-StructureField 0 String
+    UserKeyId                   = New-StructureField 1 String
+    UserKeyName                 = New-StructureField 2 String
+} -Charset Unicode
 
-$script:WKSTA_INFO_102 = New-Structure $Module WinApiModule.WKSTA_INFO_102 @{
-    PlatformId                  = New-StructureField 0 UInt32
-    ComputerName                = New-StructureField 1 String -MarshalAs @('LPWStr')
-    LanGroup                    = New-StructureField 2 String -MarshalAs @('LPWStr')
-    VerMajor                    = New-StructureField 3 UInt32
-    VerMinor                    = New-StructureField 4 UInt32
-    LanRoot                     = New-StructureField 5 String -MarshalAs @('LPWStr')
-    LoggedOnUsers               = New-StructureField 6 UInt32
-}
+$script:DSREG_JOIN_INFO = New-Structure $Module WinApiModule.DSREG_JOIN_INFO @{
+    JoinType                    = New-StructureField 0 $script:DSREG_JOIN_TYPE
+    JoinCertificate             = New-StructureField 1 IntPtr
+    DeviceId                    = New-StructureField 2 String
+    IdpDomain                   = New-StructureField 3 String
+    TenantId                    = New-StructureField 4 String
+    JoinUserEmail               = New-StructureField 5 String
+    TenantDisplayName           = New-StructureField 6 String
+    MdmEnrollmentUrl            = New-StructureField 7 String
+    MdmTermsOfUseUrl            = New-StructureField 8 String
+    MdmComplianceUrl            = New-StructureField 9 String
+    UserSettingSyncUrl          = New-StructureField 10 String
+    UserInfo                    = New-StructureField 11 IntPtr
+} -Charset Unicode

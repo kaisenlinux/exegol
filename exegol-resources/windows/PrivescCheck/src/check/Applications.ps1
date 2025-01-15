@@ -225,7 +225,7 @@ function Invoke-StartupApplicationPermissionCheck {
 
                     try {
                         $Wsh = New-Object -ComObject WScript.Shell
-                        $Shortcut = $Wsh.CreateShortcut((Resolve-Path -Path $EntryPath))
+                        $Shortcut = $Wsh.CreateShortcut($(Resolve-Path -Path $EntryPath | Convert-Path))
                         if ([String]::IsNullOrEmpty($Shortcut.TargetPath)) { continue }
 
                         $CommandLineResolved = [String[]] (Resolve-CommandLine -CommandLine $Shortcut.TargetPath)
@@ -312,7 +312,7 @@ function Invoke-RunningProcessCheck {
                     $PotentialImagePath = Join-Path -Path $PotentialImagePath -ChildPath "$($Process.name).exe"
 
                     # If we can't find it in System32, add it to the list
-                    if (-not (Test-Path -Path $PotentialImagePath)) {
+                    if (-not (Test-Path -Path $PotentialImagePath -ErrorAction SilentlyContinue)) {
                         $ReturnProcess = $true
                     }
                     $ReturnProcess = $true

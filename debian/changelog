@@ -1,3 +1,10 @@
+exegol (4.3.9-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the new upstream release
+  * Update the manpage
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Wed, 15 Jan 2025 14:41:43 +0200
+
 exegol (4.3.8-1kaisen) kaisen-packages; urgency=medium
 
   * Import the new upstream release

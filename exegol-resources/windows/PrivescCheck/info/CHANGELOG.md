@@ -1,5 +1,59 @@
 # Changelog
 
+## 2024-11-27
+
+### Changed
+
+- The web proxy auto-configuration check was refactored to include WPAD settings.
+
+## 2024-11-21
+
+### Added
+
+- New wrapper cmdlets for obtaining (Azure) domain information.
+
+### Changed
+
+- The "Test-IsDomainJoined" cmdlet was modified so that it now relies on (Azure) domain information, which is more reliable than "NetWkstaGetInfo".
+
+### Removed
+
+- The wrapper cmdlet for "NetWkstaGetInfo" was removed since it's no longer used.
+
+## 2024-11-19
+
+### Added
+
+- The "Server SPN target name validation level" is now reported in the SMB configuration check.
+
+## 2024-11-06
+
+### Added
+
+- New wrapper cmdlet for the GetFirmwareType API.
+- New helper cmdlet "Get-SystemInformation" for collecting system information.
+
+### Changed
+
+- The system information check is now enriched with the data returned by the new "Get-SystemInformation" helper function.
+- The cmdlet "Get-UEFIStatus" now uses the new "Get-FirmwareType" helper function.
+
+## 2024-10-31
+
+### Added
+
+- Check for TPM device information. The aim is to provide the same information as the output of the command 'TpmTool.exe GetDeviceInformation' in the form of a PowerShell object.
+
+### Changed
+
+- Update BitLocker check to adapt severity and description based on the presence of a TPM (and its type).
+
+## 2024-10-30
+
+### Changed
+
+- Update Point and Print configuration check to be more accurate.
+
 ## 2024-09-22
 
 ### Added

@@ -6,7 +6,9 @@ $script:SeverityLevelEnum = New-Enum $Module WinApiModule.SeverityLevel UInt32 @
 }
 
 $script:SystemErrorCodeEnum = New-Enum $Module WinApiModule.SystemErrorCode UInt32 @{
+    ERROR_INVALID_FUNCTION              = 1
     ERROR_INSUFFICIENT_BUFFER           = 122
+    ERROR_ENVVAR_NOT_FOUND              = 203
 }
 
 $script:FileAccessRightEnum = New-Enum $Module WinApiModule.FileAccessRight UInt32 @{
@@ -393,4 +395,46 @@ $script:ASSOCSTR = New-Enum $Module WinApiModule.ASSOCSTR UInt32 @{
     ASSOCSTR_APPPUBLISHER               = '0x00000016'
     ASSOCSTR_APPICONREFERENCE           = '0x00000017'
     ASSOCSTR_MAX                        = '0x00000018'
+}
+
+# The following enum is not documented. It was crafted by reverse engineering
+# the internal function 'WriteTPMDeviceInformation' of the module TpmCoreProvisioning.dll.
+$script:TPM_VULNERABILITY = New-Enum $Module WinApiModule.TPM_VULNERABILITY UInt64 @{
+    ADV170012_IFX_ROCA_RIEMANN                                      = '0x00000001' # ADV170012 - IFX ROCA/Riemann
+    ADV190024_ECDSA_KEY_GENERATION_TPM_FAIL                         = '0x00000002' # ADV190024 - ECDSA key generation (tpm.FAIL)
+    TPM2_ACTIVATE_CREDENTIAL_SPURIOUS_TPM_RC_BINDING_ERROR          = '0x00000004' # TPM2_ActivateCredential - spurious TPM_RC_BINDING error
+    TPM2_GET_TEST_RESULT_TPM_ENTERS_FAILURE_MODE                    = '0x00000008' # TPM2_GetTestResult - TPM enters failure mode
+    TPM2_CREATE_PRIMARY_ECC_KEY_GENERATION_TPM_ENTERS_FAILURE_MODE  = '0x00000010' # TPM2_CreatePrimary - ECC key generation - TPM enters failure mode
+    NONE                                                            = '0x10000000'
+} -BitField
+
+# The following enum does not really exist in the Windows API. Its purpose is
+# to easily represent a TPM device type.
+$script:TPM_DEVICE_TYPE = New-Enum $Module WinApiModule.TPM_DEVICE_TYPE UInt32 @{
+    Discrete                            = '0x00000001'
+    Integrated                          = '0x00000002'
+    Firmware                            = '0x00000004'
+    Software                            = '0x00000008'
+    Virtual                             = '0x00000010'
+    Unknown                             = '0x00100000'
+} -BitField
+
+$script:FIRMWARE_TYPE = New-Enum $Module WinApiModule.FIRMWARE_TYPE UInt32 @{
+    Unknown                             = '0x00000000'
+    Bios                                = '0x00000001'
+    Uefi                                = '0x00000002'
+    Max                                 = '0x00000003'
+}
+
+$script:NETSETUP_JOIN_STATUS = New-Enum $Module WinApiModule.NETSETUP_JOIN_STATUS UInt32 @{
+    NetSetupUnknownStatus               = '0x00000000'
+    NetSetupUnjoined                    = '0x00000001'
+    NetSetupWorkgroupName               = '0x00000002'
+    NetSetupDomainName                  = '0x00000003'
+}
+
+$script:DSREG_JOIN_TYPE = New-Enum $Module WinApiModule.DSREG_JOIN_TYPE UInt32 @{
+    DSREG_UNKNOWN_JOIN                  = '0x00000000'
+    DSREG_DEVICE_JOIN                   = '0x00000001'
+    DSREG_WORKPLACE_JOIN                = '0x00000002'
 }

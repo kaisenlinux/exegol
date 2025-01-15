@@ -87,57 +87,6 @@ function Get-ServiceControlManagerDacl {
     }
 }
 
-function Get-ServiceFromRegistry {
-    <#
-    .SYNOPSIS
-    Extract the configuration of a service from the registry.
-
-    Author: @itm4n
-    License: BSD 3-Clause
-
-    .DESCRIPTION
-    Services' configuration is stored in teh registry under "HKLM\SYSTEM\CurrentControlSet\Services". For each service, a subkey is created and contains all the information we need. So we can just query this key to get a service's configuration.
-
-    .PARAMETER Name
-    Name of a service.
-
-    .EXAMPLE
-    PS C:\> Get-ServiceFromRegistry -Name Spooler
-
-    Name         : Spooler
-    DisplayName  : @C:\WINDOWS\system32\spoolsv.exe,-1
-    User         : LocalSystem
-    ImagePath    : C:\WINDOWS\System32\spoolsv.exe
-    StartMode    : Automatic
-    Type         : Win32OwnProcess, InteractiveProcess
-    RegistryKey  : HKLM\SYSTEM\CurrentControlSet\Services
-    RegistryPath : HKLM\SYSTEM\CurrentControlSet\Services\Spooler
-    #>
-
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)]
-        [ValidateNotNullOrEmpty()]
-        [String] $Name
-    )
-
-    $RegKeyServices = "HKLM\SYSTEM\CurrentControlSet\Services"
-    $RegKey = Join-Path -Path $RegKeyServices -ChildPath $Name
-    $RegItem = Get-ItemProperty -Path "Registry::$($RegKey)" -ErrorAction SilentlyContinue
-    if ($null -eq $RegItem) { return }
-
-    $Result = New-Object -TypeName PSObject
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $RegItem.PSChildName
-    $Result | Add-Member -MemberType "NoteProperty" -Name "DisplayName" -Value ([System.Environment]::ExpandEnvironmentVariables($RegItem.DisplayName))
-    $Result | Add-Member -MemberType "NoteProperty" -Name "User" -Value $RegItem.ObjectName
-    $Result | Add-Member -MemberType "NoteProperty" -Name "ImagePath" -Value $RegItem.ImagePath
-    $Result | Add-Member -MemberType "NoteProperty" -Name "StartMode" -Value ($RegItem.Start -as $script:ServiceStartTypeEnum)
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value ($RegItem.Type -as $script:ServiceTypeEnum)
-    $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryKey" -Value $RegKeyServices
-    $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryPath" -Value $RegKey
-    $Result
-}
-
 function Test-IsKnownService {
 
     [OutputType([Boolean])]
@@ -159,6 +108,7 @@ function Test-IsKnownService {
 
             $TempPathResolved = Resolve-Path -Path $TempPath -ErrorAction SilentlyContinue -ErrorVariable ErrorResolvePath
             if ($ErrorResolvePath) { continue }
+            $TempPathResolved = $TempPathResolved | Convert-Path
 
             $File = Get-Item -Path $TempPathResolved -ErrorAction SilentlyContinue -ErrorVariable ErrorGetItem
             if ($ErrorGetItem) { continue }
@@ -172,7 +122,7 @@ function Test-IsKnownService {
     return $false
 }
 
-function Get-ServiceList {
+function Get-ServiceFromRegistry {
     <#
     .SYNOPSIS
     Helper - Enumerates services (based on the registry)
@@ -192,7 +142,7 @@ function Get-ServiceList {
         FilterLevel = 3 - Exclude 'Services with empty ImagePath' + 'Drivers' + 'Known services'
 
     .EXAMPLE
-    PS C:\> Get-ServiceList -FilterLevel 3
+    PS C:\> Get-ServiceFromRegistry -FilterLevel 3
 
     Name         : VMTools
     DisplayName  : VMware Tools
@@ -223,6 +173,30 @@ function Get-ServiceList {
 
     begin {
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
+
+        function Get-ServiceFromRegistryHelper {
+            param (
+                [Parameter(Mandatory=$true)]
+                [ValidateNotNullOrEmpty()]
+                [String] $Name
+            )
+
+            $RegKeyServices = "HKLM\SYSTEM\CurrentControlSet\Services"
+            $RegKey = Join-Path -Path $RegKeyServices -ChildPath $Name
+            $RegItem = Get-ItemProperty -Path "Registry::$($RegKey)" -ErrorAction SilentlyContinue
+            if ($null -eq $RegItem) { return }
+
+            $Result = New-Object -TypeName PSObject
+            $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $RegItem.PSChildName
+            $Result | Add-Member -MemberType "NoteProperty" -Name "DisplayName" -Value ([System.Environment]::ExpandEnvironmentVariables($RegItem.DisplayName))
+            $Result | Add-Member -MemberType "NoteProperty" -Name "User" -Value $RegItem.ObjectName
+            $Result | Add-Member -MemberType "NoteProperty" -Name "ImagePath" -Value $RegItem.ImagePath
+            $Result | Add-Member -MemberType "NoteProperty" -Name "StartMode" -Value ($RegItem.Start -as $script:ServiceStartTypeEnum)
+            $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value ($RegItem.Type -as $script:ServiceTypeEnum)
+            $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryKey" -Value $RegKeyServices
+            $Result | Add-Member -MemberType "NoteProperty" -Name "RegistryPath" -Value $RegKey
+            $Result
+        }
     }
 
     process {
@@ -234,7 +208,7 @@ function Get-ServiceList {
             $ServicesRegPath = "HKLM\SYSTEM\CurrentControlSet\Services"
             $RegAllServices = Get-ChildItem -Path "Registry::$($ServicesRegPath)" -ErrorAction SilentlyContinue
 
-            $RegAllServices | ForEach-Object { [void] $script:CachedServiceList.Add((Get-ServiceFromRegistry -Name $_.PSChildName)) }
+            $RegAllServices | ForEach-Object { [void] $script:CachedServiceList.Add((Get-ServiceFromRegistryHelper -Name $_.PSChildName)) }
         }
 
         foreach ($ServiceItem in $script:CachedServiceList) {
@@ -274,7 +248,7 @@ function Get-ServiceList {
     }
 }
 
-function Add-ServiceDacl {
+function Add-ServiceDiscretionaryAccessControlList {
     <#
     .SYNOPSIS
     Helper - Adds a Dacl field to a service object returned by Get-Service.
@@ -291,12 +265,12 @@ function Add-ServiceDacl {
     An array of one or more service names to add a service Dacl for. Passable on the pipeline.
 
     .EXAMPLE
-    PS C:\> Get-Service | Add-ServiceDacl
+    PS C:\> Get-Service | Add-ServiceDiscretionaryAccessControlList
 
     Add DACLs for every service the current user can read.
 
     .EXAMPLE
-    PS C:\> Get-Service -Name VMTools | Add-ServiceDacl
+    PS C:\> Get-Service -Name VMTools | Add-ServiceDiscretionaryAccessControlList
 
     Add the Dacl to the VMTools service object.
 
@@ -390,7 +364,7 @@ function Add-ServiceDacl {
     }
 }
 
-function Test-ServiceDaclPermission {
+function Test-ServiceDiscretionaryAccessControlList {
     <#
     .SYNOPSIS
     Tests one or more passed services or service names against a given permission set, returning the service objects where the current user have the specified permissions.
@@ -399,7 +373,7 @@ function Test-ServiceDaclPermission {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    Takes a service Name or a ServiceProcess.ServiceController on the pipeline, and first adds a service Dacl to the service object with Add-ServiceDacl. All group SIDs for the current user are enumerated services where the user has some type of permission are filtered. The services are then filtered against a specified set of permissions, and services where the current user have the specified permissions are returned.
+    Takes a service Name or a ServiceProcess.ServiceController on the pipeline, and first adds a service Dacl to the service object with Add-ServiceDiscretionaryAccessControlList. All group SIDs for the current user are enumerated services where the user has some type of permission are filtered. The services are then filtered against a specified set of permissions, and services where the current user have the specified permissions are returned.
 
     .PARAMETER Name
     An array of one or more service names to test against the specified permission set.
@@ -414,17 +388,17 @@ function Test-ServiceDaclPermission {
     ServiceProcess.ServiceController
 
     .EXAMPLE
-    PS C:\> Get-Service | Test-ServiceDaclPermission
+    PS C:\> Get-Service | Test-ServiceDiscretionaryAccessControlList
 
     Return all service objects where the current user can modify the service configuration.
 
     .EXAMPLE
-    PS C:\> Get-Service | Test-ServiceDaclPermission -PermissionSet 'Restart'
+    PS C:\> Get-Service | Test-ServiceDiscretionaryAccessControlList -PermissionSet 'Restart'
 
     Return all service objects that the current user can restart.
 
     .EXAMPLE
-    PS C:\> Test-ServiceDaclPermission -Permissions 'Start' -Name 'VulnSVC'
+    PS C:\> Test-ServiceDiscretionaryAccessControlList -Permissions 'Start' -Name 'VulnSVC'
 
     Return the VulnSVC object if the current user has start permissions.
 
@@ -496,9 +470,9 @@ function Test-ServiceDaclPermission {
 
         foreach ($IndividualService in $Name) {
 
-            $TargetService = $IndividualService | Add-ServiceDacl
+            $TargetService = $IndividualService | Add-ServiceDiscretionaryAccessControlList
 
-            # We might not be able to access the Service at all so we must check whether Add-ServiceDacl
+            # We might not be able to access the Service at all so we must check whether Add-ServiceDiscretionaryAccessControlList
             # returned something.
             if ($TargetService -and $TargetService.Dacl) {
 
@@ -592,12 +566,12 @@ function Get-DriverList {
 
         Write-Verbose "Populating driver list cache..."
 
-        $Services = Get-ServiceList -FilterLevel 1 | Where-Object { @('KernelDriver','FileSystemDriver','RecognizerDriver') -contains $_.Type }
+        $Services = Get-ServiceFromRegistry -FilterLevel 1 | Where-Object { @('KernelDriver','FileSystemDriver','RecognizerDriver') -contains $_.Type }
 
         foreach ($Service in $Services) {
 
             $ImagePath = Resolve-DriverImagePath -Service $Service
-            if (-not (Test-Path -Path $ImagePath)) { Write-Warning "Service: $($Service.Name) | Path not found: $($ImagePath)"; continue }
+            if (-not (Test-Path -Path $ImagePath -ErrorAction SilentlyContinue)) { Write-Warning "Service: $($Service.Name) | Path not found: $($ImagePath)"; continue }
 
             $Service | Add-Member -MemberType "NoteProperty" -Name "ImagePathResolved" -Value $ImagePath
 

@@ -91,13 +91,34 @@ function Convert-DateToString {
     [OutputType([String])]
     [CmdletBinding()]
     param(
-        [System.DateTime] $Date
+        [Object] $Date,
+        [String] $DateString,
+        [Switch] $IncludeTime
     )
 
-    if ($null -ne $Date) {
-        $OutString = ""
-        $OutString += $Date.ToString('yyyy-MM-dd - HH:mm:ss')
-        $OutString
+    begin {
+        if ($IncludeTime) {
+            $DateFormat = "yyyy-MM-dd - HH:mm:ss"
+        }
+        else {
+            $DateFormat = "yyyy-MM-dd"
+        }
+    }
+
+    process {
+        if (($null -eq $Date) -and ([string]::IsNullOrEmpty($DateString))) {
+            Write-Warning "Cannot convert date, input object is null."
+            return
+        }
+
+        if ([string]::IsNullOrEmpty($DateString)) {
+            $Date = [DateTime] $Date
+        }
+        else {
+            $Date = [DateTime] $DateString
+        }
+
+        $Date.ToString($DateFormat)
     }
 }
 
@@ -704,20 +725,19 @@ function Test-IsDomainJoined {
     [CmdletBinding()]
     param()
 
-    $WorkstationInfo = Get-NetWkstaInfo
-    if ($null -eq $WorkstationInfo) {
-        Write-Warning "Test-IsDomainJoined - Failed to get workstation information."
-        return $false
+    $DomainInfo = Get-DomainInformation
+
+    if ($DomainInfo.BufferType -eq $script:NETSETUP_JOIN_STATUS::NetSetupDomainName) {
+        return $true
     }
 
-    if ([string]::IsNullOrEmpty($WorkstationInfo.LanGroup)) {
-        Write-Warning "Test-IsDomainJoined - Attribute 'LanGroup' is null."
-        return $false
+    $DomainInfo = Get-DomainInformation -Azure
+
+    if ($DomainInfo.JoinType -eq $script:DSREG_JOIN_TYPE::DSREG_DEVICE_JOIN) {
+        return $true
     }
 
-    Write-Verbose "Test-IsDomainJoined - LAN group: $($WorkstationInfo.LanGroup)"
-
-    return $WorkstationInfo.LanGroup -ne "WORKGROUP"
+    return $false
 }
 
 function Get-FileHashHex {
@@ -925,7 +945,7 @@ function Get-FirstExistingParentFolderPath {
     try {
         $ParentPath = Split-Path $Path -Parent
         if ($ParentPath -and $(Test-Path -Path $ParentPath -ErrorAction SilentlyContinue)) {
-            Resolve-Path -Path $ParentPath | Select-Object -ExpandProperty "Path"
+            Resolve-Path -Path $ParentPath | Select-Object -ExpandProperty "Path" | Convert-Path
         }
         else {
             Get-FirstExistingParentFolderPath -Path $ParentPath

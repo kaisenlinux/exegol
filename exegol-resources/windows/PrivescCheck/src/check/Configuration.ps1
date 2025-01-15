@@ -472,8 +472,8 @@ function Invoke-PointAndPrintConfigurationCheck {
 
     process {
         # If the Print Spooler is not installed or is disabled, return immediately
-        $Service = Get-ServiceList -FilterLevel 2 | Where-Object { $_.Name -eq "Spooler" }
-        if (-not $Service -or ($Service.StartMode -eq "Disabled")) {
+        $Service = Get-ServiceFromRegistry -FilterLevel 2 | Where-Object { $_.Name -eq "Spooler" }
+        if (($null -eq $Service) -or ($Service.StartMode -eq "Disabled")) {
             Write-Verbose "The Print Spooler service is not installed or is disabled."
 
             $Result = New-Object -TypeName PSObject
@@ -486,7 +486,12 @@ function Invoke-PointAndPrintConfigurationCheck {
             if ($Config.RestrictDriverInstallationToAdministrators.Data -eq 0) {
 
                 # Printer driver installation is not restricted to administrators, the system
-                # could therefore be vulnerable.
+                # is therefore vulnerable. We have yet to determine the severity level though.
+                # Indeed, the exploitation technique and complexity depend on the other Point
+                # and Print parameters. We can already mark the configuration as vulnerable.
+
+                $ConfigVulnerable = $true
+                $Severity = $script:SeverityLevelEnum::Low
 
                 # From the KB article KB5005652:
                 # "Setting the value to 0 allows non-administrators to install signed and
@@ -499,27 +504,33 @@ function Invoke-PointAndPrintConfigurationCheck {
                 # update drivers after adding additional restrictions, including adding a policy
                 # setting that constrains where drivers can be installed from."
 
-                # If the policy "Package Point and Print Only" is enabled (not the default), the
-                # "Point and Print" configuration is irrelevant, so check this first, and skip if
-                # necessary.
-                if ($Config.PackagePointAndPrintOnly.Data -ne 1) {
-
-                    # If the settings "NoWarningNoElevationOnInstall" and "UpdatePromptSettings" have
-                    # non-zero values, the device is vulnerable to CVE-2021-34527 (PrintNightmare), even
-                    # if the setting "TrustedServers" is set or "InForest" is enabled.
+                # ATTACK: Install a printer driver using an arbitrary DLL
+                if (($null -eq $Config.PackagePointAndPrintOnly.Data) -or ($Config.PackagePointAndPrintOnly.Data -eq 0)) {
+                    # Non-package aware printer drivers can be installed, we should check the configuration
+                    # of the install and update warning prompts.
                     if (($Config.NoWarningNoElevationOnInstall.Data -gt 0) -or ($Config.UpdatePromptSettings.Data -gt 0)) {
-
-                        $ConfigVulnerable = $true
+                        # At least one of the warning prompts is disabled, the device is vulnerable to CVE-2021-34527
+                        # (PrintNightmare), even if the setting "TrustedServers" is set or "InForest" is enabled.
                         $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::High) -as $script:SeverityLevelEnum
                     }
                 }
 
-                # If a list of approved "Package Point and Print" servers is not defined (default),
-                # the configuration is vulnerable. The exploitation requires the use of a fake
-                # printer server with a vulnerable signed printer driver though.
-                if ($Config.PackagePointAndPrintServerListEnabled.Data -ne 1) {
-                    $ConfigVulnerable = $true
+                # ATTACK: Install and exploit a known vulnerable printer driver
+                if (($null -eq $Config.PackagePointAndPrintServerListEnabled.Data) -or ($Config.PackagePointAndPrintServerListEnabled.Data -eq 0)) {
+                    # A list of approved servers is not configured, we can exploit the configuration by
+                    # setting up a print server hosting a known vulnerable printer driver.
                     $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::Medium) -as $script:SeverityLevelEnum
+                }
+
+                # ATTACK: Install and exploit a known vulnerable printer driver + DNS spoofing
+                if ($Config.PackagePointAndPrintServerListEnabled.Data -ge 1) {
+                    # A list of approved servers is configured, we can exploit the configuration by setting
+                    # up a print server hosting a known vulnerable printer driver, but we will also have to
+                    # spoof the name of one of those approved servers.
+                    # Note that setting the severity to 'low' here is redundant because we already set it
+                    # to 'low' as a "base severity level" when we found that the installation of printer
+                    # drivers was not restricted to administrators.
+                    $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::Low) -as $script:SeverityLevelEnum
                 }
             }
 
@@ -635,7 +646,21 @@ function Invoke-SccmCacheFolderCheck {
     }
 }
 
-function Invoke-ProxyAutoConfigurationUrlCheck {
+function Invoke-ProxyAutoConfigurationCheck {
+    <#
+    .SYNOPSIS
+    Check whether Web Proxy Auto-Discovery (WPAD) is enabled, and whether a Proxy Auto-Configuration (PAC) file is distributed over HTTPS.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet checks various mitigation measures that allow the disabling of WPAD. It also enumerates PAC URLs to check whether they use the HTTPS protocol.
+
+    .LINK
+    https://projectblack.io/blog/disable-wpad-via-gpo/
+    https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/disable-http-proxy-auth-features#how-to-disable-wpad
+    #>
 
     [CmdletBinding()]
     param(
@@ -643,15 +668,101 @@ function Invoke-ProxyAutoConfigurationUrlCheck {
     )
 
     begin {
-        $AllResults = @()
+        $HostFilePath = Join-Path -Path $env:windir -ChildPath "System32\drivers\etc\hosts"
+
+        $WinHttpAutoProxyServiceEnabledDescriptions = @(
+            "The WinHTTP Web Proxy Auto-Discovery service is disabled.",
+            "The WinHTTP Web Proxy Auto-Discovery service is not disabled."
+        )
+
+        $WpadHostEntryExistsDescriptions = @(
+            "No 'wpad' entry was found in the 'hosts' file.",
+            "A 'wpad' entry was found in the 'hosts' file."
+        )
+
+        $DisableWpadDescriptions = @(
+            "WPAD is not disabled in the registry (HKLM).",
+            "WPAD is disabled in the registry (HKLM)."
+        )
+
+        $AutoDetectDisabledDescriptions = @(
+            "Proxy auto detection is not disabled in the registry (HKCU).",
+            "Proxy auto detection is disabled in the registry (HKCU)."
+        )
     }
 
     process {
-        $AllResults = Get-ProxyAutoConfigURl | Where-Object { $_.ProxyEnable -ne 0 }
-        $Vulnerable = $null -ne ($AllResults | Where-Object { $_.AutoConfigURL -like "http://*" })
+        # Assume the configuration is vulnerable. We will check the different
+        # remediation measures, and mark the configuration as "not vulnerable" as soon
+        # as we find one implemented.
+        $WpadVulnerable = $true
+        $PacUrlVulnerable = $false
+
+        # Is the service 'WinHttpAutoProxySvc' disabled?
+        $WinHttpAutoProxyService = Get-ServiceFromRegistry -FilterLevel 2 | Where-Object { $_.Name -eq "WinHttpAutoProxySvc" }
+        $WinHttpAutoProxyServiceEnabled = $WinHttpAutoProxyService.StartMode -ne "Disabled"
+        if ($WpadVulnerable -and (-not $WinHttpAutoProxyServiceEnabled)) { $WpadVulnerable = $false }
+
+        # Is there a "WPAD" entry in the "hosts" file, we don't care about the value,
+        # but we should ensure the entry is not commented if one exists.
+        $WpadHostEntries = Select-String -Pattern "wpad" -Path $HostFilePath | Where-Object { $_.Line -notmatch "^\s*#.*$" }
+        $WpadHostEntryExists = $null -ne $WpadHostEntries
+        if ($WpadVulnerable -and ($WpadHostEntryExists)) { $WpadVulnerable = $false }
+
+        # Check if the following registry values are configured.
+        $DisableWpadRegKey = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp"
+        $DisableWpadRegValue = "DisableWpad"
+        $DisableWpadRegData = (Get-ItemProperty -Path "Registry::$($DisableWpadRegKey)" -Name $DisableWpadRegValue -ErrorAction SilentlyContinue).$DisableWpadRegValue
+        $WpadDisabled = $DisableWpadRegData -eq 1
+
+        $AutoDetectRegKey = "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings"
+        $AutoDetectRegValue = "AutoDetect"
+        $AutoDetectRegData = (Get-ItemProperty -Path "Registry::$($AutoDetectRegKey)" -Name $AutoDetectRegValue -ErrorAction SilentlyContinue).$AutoDetectRegValue
+        $AutoDetectDisabled = $AutoDetectRegData -eq 0
+        if ($WpadVulnerable -and ($WpadDisabled -and $AutoDetectDisabled)) { $WpadVulnerable = $false }
+
+        # Check if an PAC URL is configure in the machine
+        $MachineAutoConfigUrlRegKey = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings"
+        $MachineAutoConfigUrlRegValue = "AutoConfigURL"
+        $MachineAutoConfigUrlRegData = (Get-ItemProperty -Path "Registry::$($MachineAutoConfigUrlRegKey)" -Name $MachineAutoConfigUrlRegValue -ErrorAction SilentlyContinue).$MachineAutoConfigUrlRegValue
+        if ((-not $PacUrlVulnerable) -and ($MachineAutoConfigUrlRegData -like "http://*")) { $PacUrlVulnerable = $true }
+
+        $UserAutoConfigUrlRegKey = "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings"
+        $UserAutoConfigUrlRegValue = "AutoConfigURL"
+        $UserAutoConfigUrlRegData = (Get-ItemProperty -Path "Registry::$($UserAutoConfigUrlRegKey)" -Name $UserAutoConfigUrlRegValue -ErrorAction SilentlyContinue).$UserAutoConfigUrlRegValue
+        if ((-not $PacUrlVulnerable) -and ($UserAutoConfigUrlRegData -like "http://*")) { $PacUrlVulnerable = $true }
+
+        $Result = New-Object -TypeName PSObject
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WinHttpAutoProxyServiceStartMode" -Value $WinHttpAutoProxyService.StartMode
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WinHttpAutoProxyServiceEnabled" -Value $WinHttpAutoProxyServiceEnabled
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WinHttpAutoProxyServiceDescription" -Value $WinHttpAutoProxyServiceEnabledDescriptions[[UInt32]$WinHttpAutoProxyServiceEnabled]
+
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WpadHostEntry" -Value $(if ($WpadHostEntryExists) { $WpadHostEntries[0].Line } else { "(null)" })
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WpadHostEntryExists" -Value $WpadHostEntryExists
+        $Result | Add-Member -MemberType "NoteProperty" -Name "WpadHostEntryDescription" -Value $WpadHostEntryExistsDescriptions[[UInt32]$WpadHostEntryExists]
+
+        $Result | Add-Member -MemberType "NoteProperty" -Name "DisableWpadKey" -Value $DisableWpadRegKey
+        $Result | Add-Member -MemberType "NoteProperty" -Name "DisableWpadValue" -Value $DisableWpadRegValue
+        $Result | Add-Member -MemberType "NoteProperty" -Name "DisableWpadData" -Value $(if ($null -ne $DisableWpadRegData) { $DisableWpadRegData } else { "(null)" })
+        $Result | Add-Member -MemberType "NoteProperty" -Name "DisableWpadDescription" -Value $DisableWpadDescriptions[[UInt32]$WpadDisabled]
+
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoDetectKey" -Value $AutoDetectRegKey
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoDetectValue" -Value $AutoDetectRegValue
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoDetectData" -Value $(if ($null -ne $AutoDetectRegData) { $AutoDetectRegData } else { "(null)" })
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoDetectDescription" -Value $AutoDetectDisabledDescriptions[[UInt32]$AutoDetectDisabled]
+
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlMachineKey" -Value $MachineAutoConfigUrlRegKey
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlMachineValue" -Value $MachineAutoConfigUrlRegValue
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlMachineData" -Value $(if ($null -ne $MachineAutoConfigUrlRegData) { $MachineAutoConfigUrlRegData } else { "(null)" })
+
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlUserKey" -Value $UserAutoConfigUrlRegKey
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlUserValue" -Value $UserAutoConfigUrlRegValue
+        $Result | Add-Member -MemberType "NoteProperty" -Name "AutoConfigUrlUserData" -Value $(if ($null -ne $UserAutoConfigUrlRegData) { $UserAutoConfigUrlRegData } else { "(null)" })
+
+        $Vulnerable = $WpadVulnerable -or $PacUrlVulnerable
 
         $CheckResult = New-Object -TypeName PSObject
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Result
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
         $CheckResult
     }
@@ -705,6 +816,8 @@ function Invoke-SmbConfigurationCheck {
     .LINK
     https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/overview-server-message-block-signing
     https://learn.microsoft.com/en-us/windows-server/storage/file-server/troubleshoot/detect-enable-and-disable-smbv1-v2-v3?tabs=server
+    https://medium.com/tenable-techblog/smb-access-is-denied-caused-by-anti-ntlm-relay-protection-659c60089895
+    https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/microsoft-network-server-server-spn-target-name-validation-level
     #>
 
     [CmdletBinding()]
@@ -714,72 +827,82 @@ function Invoke-SmbConfigurationCheck {
 
     begin {
         $AllResults = @()
+
+        $EnableSMB1ProtocolDescriptions = @(
+            "The SMB1 protocol is disabled.",
+            "The SMB1 protocol is enabled."
+        )
+
+        $RequireSecuritySignatureDescriptions = @(
+            "Security signature (SMB signing) is not required.",
+            "Security signature (SMB signing) is required."
+        )
+
+        $SmbServerNameHardeningLevelDescriptions = @(
+            "Off (default). An SPN does not need to be sent by the SMB client. It is not required or validated by the SMB server.",
+            "Accept if provided by client. If an SPN name is sent by the SMB client, it must match the SMB server's list of SPNs, otherwise the access is denied."
+            "Required from client. An SPN must be sent by the SMB client in session setup, and it must match the SMB server's list of SPNs, otherwise the access is denied."
+        )
+
+        $ServerConfiguration = Get-SmbConfiguration -Role "Server"
+        $ClientConfiguration = Get-SmbConfiguration -Role "Client"
     }
 
     process {
-        $ServerConfiguration = Get-SmbConfiguration -Role "Server"
-        $ClientConfiguration = Get-SmbConfiguration -Role "Client"
 
-        # Server - SMBv1 must be disabled
+        $Vulnerable = $false
 
-        if ($ServerConfiguration.EnableSMB1Protocol -eq $true) {
-            $Vulnerable = $true
-            $Description = "SMBv1 is enabled."
-        }
-        else {
-            $Vulnerable = $false
-            $Description = "SMBv1 is disabled."
-        }
+        # Server - SMBv1 should not be enabled
+
+        if ($ServerConfiguration.EnableSMB1Protocol -ne $false) { $Vulnerable = $true }
 
         $ServerVersion = New-Object -TypeName PSObject
         $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Role" -Value "Server"
         $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Parameter" -Value "EnableSMB1Protocol"
         $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $ServerConfiguration.EnableSMB1Protocol
-        $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Vulnerable" -Value $Vulnerable
-        $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+        $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Expected" -Value "<False>"
+        $ServerVersion | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $($EnableSMB1ProtocolDescriptions[$($ServerConfiguration.EnableSMB1Protocol -as [UInt32])])
         $AllResults += $ServerVersion
 
-        # Server - SMB signing must be set to 'required'
+        # Server - SMB signing should be set to 'required'
 
-        if ($ServerConfiguration.RequireSecuritySignature -eq $false) {
-            $Vulnerable = $true
-            $Description = "SMB signing is not required."
-        }
-        else {
-            $Vulnerable = $false
-            $Description = "SMB signing is required."
-        }
+        if ($ServerConfiguration.RequireSecuritySignature -ne $true) { $Vulnerable = $true }
 
         $ServerSigning = New-Object -TypeName PSObject
         $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Role" -Value "Server"
         $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Parameter" -Value "RequireSecuritySignature"
         $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $ServerConfiguration.RequireSecuritySignature
-        $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Vulnerable" -Value $Vulnerable
-        $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+        $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Expected" -Value "<True>"
+        $ServerSigning | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $($RequireSecuritySignatureDescriptions[$($ServerConfiguration.RequireSecuritySignature -as [UInt32])])
         $AllResults += $ServerSigning
 
-        # Client - SMB signing must be set to 'required'
+        # Server - Server SPN target name validation should be enabled
+        # This setting is recommended only as a workaround for cases where SMB signing
+        # cannot be enforced. If SMB signing in enforced, this setting is irrelevant.
 
-        if ($ClientConfiguration.RequireSecuritySignature -eq $false) {
-            $Vulnerable = $true
-            $Description = "SMB signing is not required."
-        }
-        else {
-            $Vulnerable = $false
-            $Description = "SMB signing is required."
-        }
+        if (($ServerConfiguration.SmbServerNameHardeningLevel -eq 0) -and ($ServerConfiguration.RequireSecuritySignature -ne $true)) { $Vulnerable = $true }
+
+        $ServerNameHardeningLevel = New-Object -TypeName PSObject
+        $ServerNameHardeningLevel | Add-Member -MemberType "NoteProperty" -Name "Role" -Value "Server"
+        $ServerNameHardeningLevel | Add-Member -MemberType "NoteProperty" -Name "Parameter" -Value "SmbServerNameHardeningLevel"
+        $ServerNameHardeningLevel | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $ServerConfiguration.SmbServerNameHardeningLevel
+        $ServerNameHardeningLevel | Add-Member -MemberType "NoteProperty" -Name "Expected" -Value "<1|2>"
+        $ServerNameHardeningLevel | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $SmbServerNameHardeningLevelDescriptions[$ServerConfiguration.SmbServerNameHardeningLevel]
+        $AllResults += $ServerNameHardeningLevel
+
+        # Client - SMB signing should be set to 'required'
+
+        if ($ClientConfiguration.RequireSecuritySignature -ne $true) { $Vulnerable = $true }
 
         $ClientSigning = New-Object -TypeName PSObject
         $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Role" -Value "Client"
         $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Parameter" -Value "RequireSecuritySignature"
-        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $ClientConfiguration.RequireSecuritySignature
-        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Vulnerable" -Value $Vulnerable
-        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Value" -Value  $ClientConfiguration.RequireSecuritySignature
+        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Expected" -Value "<True>"
+        $ClientSigning | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $($RequireSecuritySignatureDescriptions[$($ClientConfiguration.RequireSecuritySignature -as [UInt32])])
         $AllResults += $ClientSigning
 
         # Final result
-
-        $Vulnerable = ([object[]] ($AllResults | Where-Object { $_.Vulnerable -eq $true })).Count
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
