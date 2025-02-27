@@ -1,11 +1,11 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.3.8.orig/exegol/manager/ExegolManager.py
-+++ exegol-4.3.8/exegol/manager/ExegolManager.py
-@@ -218,14 +218,14 @@ class ExegolManager:
+--- exegol-4.3.10.orig/exegol/manager/ExegolManager.py
++++ exegol-4.3.10/exegol/manager/ExegolManager.py
+@@ -217,14 +217,14 @@ class ExegolManager:
              logger.debug(f"Docker engine: {EnvInfo.getDockerEngine().value}")
          logger.debug(f"Docker desktop: {boolFormatter(EnvInfo.isDockerDesktop())}")
-         logger.debug(f"Shell type: {EnvInfo.getShellType().value}")
+         logger.debug(f"Shell type: {EnvInfo.getShellType()}")
 -        if UserConfig().auto_check_updates:
 -            UpdateManager.checkForWrapperUpdate()
 -        if UpdateManager.isUpdateAvailable():
@@ -24,4 +24,4 @@ Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 +            #logger.empty_line(log_level=logging.DEBUG)
  
      @classmethod
-     def print_sponsors(cls):
+     def print_sponsors(cls) -> None:

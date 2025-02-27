@@ -1,3 +1,84 @@
+function Format-Error {
+    <#
+    .SYNOPSIS
+    Helper - Format a Windows standard error message.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet returns a formatted error message given a standard Windows error code.
+
+    .PARAMETER Code
+    A mandatory standard Windows error code.
+
+    .EXAMPLE
+    PS C:\> Format-Error -Code 5
+    Access is denied (5) - HRESULT: 0x80004005
+
+    .EXAMPLE
+    PS C:\> Format-Error 2
+    The system cannot find the file specified (2) - HRESULT: 0x80004005
+    #>
+
+    [OutputType([String])]
+    [CmdletBinding()]
+    param (
+        [Parameter(Position=0, Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [Int32] $Code
+    )
+
+    process {
+        $ErrorObject = [ComponentModel.Win32Exception] $Code
+        $ErrorMessage = "$($ErrorObject.Message)"
+        if ($ErrorObject.NativeErrorCode -ge 0) { $ErrorMessage += " ($($ErrorObject.NativeErrorCode))" }
+        return $ErrorMessage
+    }
+}
+
+function Get-ProcessHandle {
+
+    [OutputType([IntPtr])]
+    [CmdletBinding()]
+    param (
+        [UInt32] $ProcessId = 0,
+        [UInt32] $AccessRights = $script:ProcessAccessRight::QUERY_INFORMATION
+    )
+
+    process {
+        $ProcessHandle = $script:Kernel32::OpenProcess($AccessRights, $false, $ProcessId)
+
+        if ($ProcessHandle -eq [IntPtr]::Zero) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Error "OpenProcess($($ProcessId), $(($AccessRights -as $script:ProcessAccessRight) -join ' | ')) - $(Format-Error $LastError)"
+        }
+
+        return $ProcessHandle
+    }
+}
+
+function Get-ThreadHandle {
+
+    [OutputType([IntPtr])]
+    [CmdletBinding()]
+    param (
+        [UInt32] $ThreadId = 0,
+        [UInt32] $AccessRights = $script:ThreadAccessRight::QueryInformation
+    )
+
+    process {
+        $ThreadHandle = $script:Kernel32::OpenThread($AccessRights, $false, $ThreadId)
+
+        if ($ThreadHandle -eq [IntPtr]::Zero) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Error "OpenThread($($ThreadId), $(($AccessRights -as $script:ThreadAccessRight) -join ' | ')) - $(Format-Error $LastError)"
+        }
+
+        return $ThreadHandle
+    }
+}
+
 function Get-ProcessTokenHandle {
     <#
     .SYNOPSIS
@@ -20,8 +101,8 @@ function Get-ProcessTokenHandle {
     [CmdletBinding()]
     param(
         [UInt32] $ProcessId = 0,
-        [UInt32] $ProcessAccess = $script:ProcessAccessRightEnum::QUERY_INFORMATION,
-        [UInt32] $TokenAccess = $script:TokenAccessRightEnum::Query
+        [UInt32] $ProcessAccess = $script:ProcessAccessRight::QUERY_INFORMATION,
+        [UInt32] $TokenAccess = $script:TokenAccessRight::Query
     )
 
     if ($ProcessId -eq 0) {
@@ -32,7 +113,7 @@ function Get-ProcessTokenHandle {
 
         if ($ProcessHandle -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Verbose "OpenProcess($($ProcessId), 0x$('{0:x8}' -f $ProcessAccess))) - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Verbose "OpenProcess($($ProcessId), 0x$('{0:x8}' -f $ProcessAccess))) - $(Format-Error $LastError)"
             return
         }
     }
@@ -41,7 +122,7 @@ function Get-ProcessTokenHandle {
     $Success = $script:Advapi32::OpenProcessToken($ProcessHandle, $TokenAccess, [ref] $TokenHandle)
     if (-not $Success) {
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "OpenProcessToken - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "OpenProcessToken - $(Format-Error $LastError)"
         $script:Kernel32::CloseHandle($ProcessHandle) | Out-Null
         return
     }
@@ -49,6 +130,319 @@ function Get-ProcessTokenHandle {
     $script:Kernel32::CloseHandle($ProcessHandle) | Out-Null
 
     $TokenHandle
+}
+
+function Get-FileHandle {
+    <#
+    .SYNOPSIS
+    Wrapper - Open a file using the 'CreateFileW' Windows API.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet is a wrapper for the 'CreateFileW' Windows API. It attempts to open a file using a user-supplied path.
+
+    .PARAMETER Path
+    A mandatory parameter representing the path of the file (or folder) to open.
+
+    .PARAMETER AccessRights
+    An optional set of file or folder access rights. If not specified, this parameter defaults to $script:FileAccessRight::GenericRead.
+
+    .PARAMETER ShareMode
+    A optional parameter representing sharing mode to use when opening the file (or folder). If not specified it defaults to 0 (none).
+
+    .EXAMPLE
+    PS C:\> Get-FileHandle "C:\Windows\Win.ini"
+    2360
+
+    .EXAMPLE
+    PS C:\> Get-FileHandle "\\localhost\C$\Windows\Win.ini" -AccessRights $script:FileAccessRight::ReadControl
+    2404
+    #>
+
+    [OutputType([IntPtr])]
+    [CmdletBinding()]
+    param (
+        [Parameter(Position=0, Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [String] $Path,
+
+        [UInt32] $AccessRights = $script:FileAccessRight::GenericRead,
+
+        [UInt32] $ShareMode = $script:FileShareMode::Read + $script:FileShareMode::Write + $script:FileShareMode::Delete,
+
+        [Switch] $Directory = $false
+    )
+
+    process {
+        $FlagsAndAttributes = 0
+
+        # A directory must be opened with the flag FILE_FLAG_BACKUP_SEMANTICS
+        if ($Directory) { $FlagsAndAttributes = $FlagsAndAttributes -bor 0x02000000 }
+
+        $FileHandle = $script:Kernel32::CreateFile($Path, $AccessRights, $ShareMode, [IntPtr]::Zero, 3, $FlagsAndAttributes, [IntPtr]::Zero)
+        if ($FileHandle -eq -1) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Error "CreateFile('$($Path)') - $(Format-Error $LastError)"
+        }
+
+        return $FileHandle
+    }
+}
+
+function Get-RegistryKeyHandle {
+    <#
+    .SYNOPSIS
+    Wrapper - Open a file using the 'RegOpenKeyEx' Windows API.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet is a wrapper for the 'RegOpenKeyEx' Windows API. It attempts to open a registry key using a user-supplied path.
+
+    .PARAMETER Path
+    A mandatory parameter representing the path of a registry key to open.
+
+    .PARAMETER AccessRights
+    An optional set of registry key access rights. If not specified, this parameter defaults to $script:RegistryKeyAccessRight::GenericRead.
+
+    .EXAMPLE
+    PS C:\> $KeyHandle = Get-RegistryKeyHandle -Path "HKLM\SYSTEM\CurrentControlSet\Control\Lsa"
+    PS C:\> $script:Kernel32::CloseHandle($KeyHandle)
+
+    .EXAMPLE
+    PS C:\> $KeyHandle = Get-RegistryKeyHandle -Path "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa"
+    PS C:\> $script:Kernel32::CloseHandle($KeyHandle)
+
+    .EXAMPLE
+    PS C:\> $KeyHandle = Get-RegistryKeyHandle -Path 'HKLM\SYSTEM\CurrentControlSet\Control\Lsa' -AccessRights $script:RegistryKeyAccessRight::ReadControl
+    PS C:\> $script:Kernel32::CloseHandle($KeyHandle)
+    #>
+
+    [OutputType([IntPtr])]
+    [CmdletBinding()]
+    param (
+        [Parameter(Position=0, Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [String] $Path,
+
+        [UInt32] $AccessRights = $script:RegistryKeyAccessRight::GenericRead
+    )
+
+    begin {
+        $RootKeyShortNames = @{
+            "HKEY_CLASSES_ROOT" = "HKCR"
+            "HKEY_CURRENT_CONFIG" = "HKCC"
+            "HKEY_CURRENT_USER" = "HKCU"
+            "HKEY_LOCAL_MACHINE" = "HKLM"
+            "HKEY_USERS" = "HKU"
+        }
+    }
+
+    process {
+        $RootKeyShortNames.Keys | ForEach-Object { $Path = $Path -replace $_, $RootKeyShortNames[$_] }
+        $RootKeyName = $Path.Split('\')[0]
+        $RootKeyPath = ($Path -replace $RootKeyName, "").Trim('\')
+
+        switch ($RootKeyName) {
+            "HKCR" { $RootKeyValue = 0x80000000 }
+            "HKCU" { $RootKeyValue = 0x80000001 }
+            "HKLM" { $RootKeyValue = 0x80000002 }
+            "HKU"  { $RootKeyValue = 0x80000003 }
+            "HKCC" { $RootKeyValue = 0x80000005 }
+            default { throw "Unhandled root key: $($RootKeyName)" }
+        }
+
+        $RegistryKeyHandle = [IntPtr]::Zero
+        $Status = $script:Advapi32::RegOpenKeyEx($RootKeyValue, $RootKeyPath, 0, $AccessRights, [ref] $RegistryKeyHandle)
+        if ($Status -ne $script:SystemErrorCode::ERROR_SUCCESS) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "RegOpenKeyEx('$($Path)') - $(Format-Error $LastError)"
+        }
+
+        return $RegistryKeyHandle
+    }
+}
+
+function Get-ServiceHandle {
+    <#
+    .SYNOPSIS
+    Wrapper - Open a service using the 'OpenService' Windows API.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet is a wrapper for the 'OpenService' Windows API. It automatically connects to the service control manager and invokes 'OpenService' to get a handle on Windows service. The service handle is returned as an IntPtr.
+
+    .PARAMETER Name
+    A mandatory service name.
+
+    .PARAMETER AccessRights
+    Optional service rights to use when opening the service. If not specified, the GENERIC_READ access right set is used.
+
+    .PARAMETER SCM
+    An optional switch specifying whether the service to open is the Service Control Manager itself. This flag is intended to avoid name conflicts by specifying explicitly that we want to open the Service Control Manager, not a potential service named "SCM".
+
+    .EXAMPLE
+    PS C:\> $ServiceHandle = Get-ServiceHandle -Name 'IKEEXT'
+    PS C:\> $null = $script:Advapi32::CloseServiceHandle($ServiceHandle)
+
+    .EXAMPLE
+    PS C:\> $ServiceHandle = Get-ServiceHandle -Name 'IKEEXT' -AccessRights $script:ServiceAccessRight::AllAccess
+    WARNING: OpenService(0x2031963154800, 'IKEEXT', AllAccess) - Access is denied (5) - HRESULT: 0x80004005
+    0
+
+    .EXAMPLE
+    PS C:\> # Open the Service Control Manager
+    PS C:\> $ServiceControlManagerHandle = Get-ServiceHandle -Name 'SCM' -SCM
+    PS C:\> $null = $script:Advapi32::CloseServiceHandle($ServiceControlManagerHandle)
+    #>
+
+    [OutputType([IntPtr])]
+    [CmdletBinding()]
+    param (
+        [Parameter(Position = 0, Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [String] $Name,
+
+        [UInt32] $AccessRights = $script:ServiceAccessRight::GenericRead,
+
+        [Switch] $SCM = $false
+    )
+
+    begin {
+        $SERVICES_ACTIVE_DATABASE = "ServicesActive"
+        $ServiceControlManagerHandle = [IntPtr]::Zero
+
+        if ($SCM) {
+            $ServiceControlManagerAccessRights = $script:ServiceControlManagerAccessRight::GenericRead
+            if ($PSBoundParameters['AccessRights']) {
+                $ServiceControlManagerAccessRights = $AccessRights
+            }
+        }
+        else {
+            $ServiceControlManagerAccessRights = $script:ServiceControlManagerAccessRight::Connect
+            $ServiceAccessRights = $script:ServiceAccessRight::GenericRead
+            if ($PSBoundParameters['AccessRights']) {
+                $ServiceAccessRights = $AccessRights
+            }
+        }
+    }
+
+    process {
+        $ServiceControlManagerHandle = $script:Advapi32::OpenSCManager($null, $SERVICES_ACTIVE_DATABASE, $ServiceControlManagerAccessRights)
+        if ($ServiceControlManagerHandle -eq [IntPtr]::Zero) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "OpenSCManager(null, '$($SERVICES_ACTIVE_DATABASE)', $($ServiceControlManagerAccessRights -as $script:ServiceControlManagerAccessRight)) - $(Format-Error $LastError)"
+            return [IntPtr]::Zero
+        }
+
+        # If the service being queried is the Service Control Manager, we
+        if (($Name -eq "SCM") -and $SCM) {
+            return $ServiceControlManagerHandle
+        }
+
+        $ServiceHandle = $script:advapi32::OpenService($ServiceControlManagerHandle, $Name, $ServiceAccessRights)
+        if ($ServiceHandle -eq [IntPtr]::Zero) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "OpenService($('0x{0:x}' -f $ServiceControlManagerHandle), '$($Name)', $($ServiceAccessRights -as $script:ServiceAccessRight)) - $(Format-Error $LastError)"
+        }
+
+        return $ServiceHandle
+    }
+
+    end {
+        if ((-not $SCM) -and ($ServiceControlManagerHandle -ne [IntPtr]::Zero)) { $null = $script:Advapi32::CloseServiceHandle($ServiceControlManagerHandle) }
+    }
+}
+
+function Get-ServiceStatus {
+    <#
+    .SYNOPSIS
+    Wrapper - Get the status of a Windows service.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet uses the API QueryServiceStatusEx to query the status of a service, using a user-supplied service handle or a service name. When passing a service handle as a parameter, users must ensure that the SERVICE_QUERY_STATUS access right was specified when opening the service. When passing a service name, the cmdlet takes care of opening the service with appropriate rights, and closes it when done.
+
+    .PARAMETER Handle
+    A service handle (SERVICE_QUERY_STATUS access right required).
+
+    .PARAMETER Name
+    A service name.
+
+    .EXAMPLE
+    PS C:\> $ServiceHandle = Get-ServiceHandle -Name 'IKEEXT'
+    PS C:\> Get-ServiceStatus -Handle $ServiceHandle
+    Stopped
+    PS C:\> $script:Advapi32::CloseServiceHandle($ServiceHandle)
+
+    .EXAMPLE
+    PS C:\> Get-ServiceStatus -Name 'IKEEXT'
+    Stopped
+
+    .LINK
+    https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-queryservicestatusex
+    #>
+
+    [CmdletBinding()]
+    param (
+        [IntPtr] $Handle,
+        [String] $Name
+    )
+
+    begin {
+        if (($null -eq $PSBoundParameters['Handle']) -and ($null -eq $PSBoundParameters['Name'])) {
+            throw "Either a service handle or service name must be passed as an input."
+        }
+
+        if (($null -ne $PSBoundParameters['Handle']) -and ($null -ne $PSBoundParameters['Name'])) {
+            throw "Either a service handle or service name must be passed as an input, but not both."
+        }
+
+        # At the time of writing, SC_STATUS_PROCESS_INFO is the only enum member
+        # supported by QueryServiceStatusEx.
+        $SC_STATUS_PROCESS_INFO = 0
+
+        # If a service name is passed as an input, instead of a service handle, we must
+        # open the target service first. The access right SERVICE_QUERY_STATUS is
+        # mandatory for querying a service's status.
+        if ($null -ne $PSBoundParameters['Name']) {
+            $Handle = Get-ServiceHandle -Name $Name -AccessRights $script:ServiceAccessRight::QueryStatus
+            if ($Handle -eq [IntPtr]::Zero) { return }
+        }
+    }
+
+    process {
+        $StructSize = [Runtime.InteropServices.Marshal]::SizeOf([type] $script:SERVICE_STATUS_PROCESS)
+        $StatusProcessInfoPtr = [Runtime.InteropServices.Marshal]::AllocHGlobal($StructSize)
+        $Success = $script:Advapi32::QueryServiceStatusEx($Handle, $SC_STATUS_PROCESS_INFO, $StatusProcessInfoPtr, $StructSize, [ref] $StructSize)
+
+        if (-not $Success) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "QueryServiceStatusEx - $(Format-Error $LastError)"
+            [System.Runtime.InteropServices.Marshal]::FreeHGlobal($StatusProcessInfoPtr)
+            return
+        }
+
+        $StatusProcessInfo = [Runtime.InteropServices.Marshal]::PtrToStructure($StatusProcessInfoPtr, [type] $script:SERVICE_STATUS_PROCESS)
+        [System.Runtime.InteropServices.Marshal]::FreeHGlobal($StatusProcessInfoPtr)
+
+        return ($StatusProcessInfo.CurrentState -as $script:ServiceState)
+    }
+
+    end {
+        # A service name was passed as an input, which means that we opened it, so we
+        # must close it here.
+        if (($null -ne $PSBoundParameters['Name']) -and ($Handle -ne [IntPtr]::Zero)) {
+            $null = $script:Advapi32::CloseServiceHandle($Handle)
+        }
+    }
 }
 
 function Get-TokenInformationData {
@@ -79,7 +473,7 @@ function Get-TokenInformationData {
     $Success = $script:Advapi32::GetTokenInformation($TokenHandle, $InformationClass, 0, $null, [ref] $DataSize)
     if ($DataSize -eq 0) {
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "GetTokenInformation - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "GetTokenInformation - $(Format-Error $LastError)"
         return
     }
 
@@ -88,7 +482,7 @@ function Get-TokenInformationData {
     $Success = $script:Advapi32::GetTokenInformation($TokenHandle, $InformationClass, $DataPtr, $DataSize, [ref] $DataSize)
     if (-not $Success) {
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "GetTokenInformation - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "GetTokenInformation - $(Format-Error $LastError)"
         [System.Runtime.InteropServices.Marshal]::FreeHGlobal($DataPtr)
         return
     }
@@ -313,7 +707,7 @@ function Get-TokenInformationPrivilege {
 
         if ($Length -eq 0) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Verbose "LookupPrivilegeName - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Verbose "LookupPrivilegeName - $(Format-Error $LastError)"
             continue
         }
 
@@ -325,7 +719,7 @@ function Get-TokenInformationPrivilege {
 
         if (-not $Success) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Verbose "LookupPrivilegeName - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Verbose "LookupPrivilegeName - $(Format-Error $LastError)"
             continue
         }
 
@@ -376,7 +770,7 @@ function Get-TokenInformationIntegrityLevel {
         [UInt32] $ProcessId = 0
     )
 
-    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId -ProcessAccess $script:ProcessAccessRightEnum::QUERY_LIMITED_INFORMATION
+    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId -ProcessAccess $script:ProcessAccessRight::QUERY_LIMITED_INFORMATION
     if (-not $TokenHandle) { return }
 
     $TokenMandatoryLabelPtr = Get-TokenInformationData -TokenHandle $TokenHandle -InformationClass $script:TOKEN_INFORMATION_CLASS::TokenIntegrityLevel
@@ -558,7 +952,7 @@ function Get-TokenInformationSource {
         [UInt32] $ProcessId = 0
     )
 
-    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId -TokenAccess $script:TokenAccessRightEnum::QuerySource
+    $TokenHandle = Get-ProcessTokenHandle -ProcessId $ProcessId -TokenAccess $script:TokenAccessRight::QuerySource
     if (-not $TokenHandle) { return }
 
     $TokenSourcePtr = Get-TokenInformationData -TokenHandle $TokenHandle -InformationClass $script:TOKEN_INFORMATION_CLASS::TokenSource
@@ -786,6 +1180,95 @@ function Get-SystemInformationData {
     $SystemInformationPtr
 }
 
+function Get-SystemInformationProcessAndThread {
+    <#
+    .SYNOPSIS
+    Wrapper - Get system information about all processes and threads.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet calls the helper function 'Get-SystemInformationData' and parse the returned buffer to enumerate all processes and threads. It returns a list of custom PS objects representing processes. For each process object, a list of thread objects is returned in the member 'Threads'.
+
+    .EXAMPLE
+    PS C:\> Get-SystemInformationProcessAndThread
+
+    ImageName       :
+    ProcessId       : 0
+    ParentProcessId : 0
+    HandleCount     : 0
+    SessionId       : 0
+    Threads         : {@{ProcessId=0; ThreadId=0; State=Running}, @{ProcessId=0; ThreadId=32; State=Standby}, @{ProcessId=0; ThreadId=36; State=Initialized}, @{ProcessId=0; ThreadId=0; State=Running}...}
+
+    ImageName       : System
+    ProcessId       : 4
+    ParentProcessId : 0
+    HandleCount     : 3737
+    SessionId       : 0
+    Threads         : {@{ProcessId=4; ThreadId=12; State=Wait}, @{ProcessId=4; ThreadId=16; State=Wait}, @{ProcessId=4; ThreadId=20; State=Wait}, @{ProcessId=4; ThreadId=24; State=Wait}...}
+
+    ImageName       : Registry
+    ProcessId       : 172
+    ParentProcessId : 4
+    HandleCount     : 0
+    SessionId       : 0
+    Threads         : {@{ProcessId=172; ThreadId=176; State=Wait}, @{ProcessId=172; ThreadId=756; State=Wait}, @{ProcessId=172; ThreadId=760; State=Wait}, @{ProcessId=172; ThreadId=764; State=Wait}}
+
+    ...
+    #>
+
+    [CmdletBinding()]
+    param ()
+
+    begin {
+        $ProcessInformationPtr = [IntPtr]::Zero
+    }
+
+    process {
+        # SystemProcessInformation = 5
+        $ProcessInformationPtr = Get-SystemInformationData -InformationClass 5
+        if ($ProcessInformationPtr -eq [IntPtr]::Zero) { return }
+
+        $CurrentProcessInformationPtr = $ProcessInformationPtr
+        do {
+            $Threads = @()
+            $ProcessInformation = [System.Runtime.InteropServices.Marshal]::PtrToStructure($CurrentProcessInformationPtr, [type] $script:SYSTEM_PROCESS_INFORMATION)
+
+            $CurrentThreadInformationPtr = [IntPtr] ($CurrentProcessInformationPtr.ToInt64() + [System.Runtime.InteropServices.Marshal]::OffsetOf([type] $script:SYSTEM_PROCESS_INFORMATION, "Threads"))
+            for ($i = 0; $i -lt $ProcessInformation.NumberOfThreads; $i++) {
+                $ThreadInformation = [System.Runtime.InteropServices.Marshal]::PtrToStructure($CurrentThreadInformationPtr, [type] $script:SYSTEM_THREAD_INFORMATION)
+
+                $ThreadInfo = New-Object -TypeName PSObject
+                $ThreadInfo | Add-Member -MemberType "NoteProperty" -Name "ProcessId" -Value $ThreadInformation.ClientId.UniqueProcess
+                $ThreadInfo | Add-Member -MemberType "NoteProperty" -Name "ThreadId" -Value $ThreadInformation.ClientId.UniqueThread
+                $ThreadInfo | Add-Member -MemberType "NoteProperty" -Name "State" -Value ($ThreadInformation.ThreadState -as $script:ThreadState)
+                $Threads += $ThreadInfo
+
+                $CurrentThreadInformationPtr = [IntPtr] ($CurrentThreadInformationPtr.ToInt64() + [Runtime.InteropServices.Marshal]::SizeOf([type] $script:SYSTEM_THREAD_INFORMATION))
+            }
+
+            $ProcInfo = New-Object -TypeName PSObject
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "ImageName" -Value ([Runtime.InteropServices.Marshal]::PtrToStringUni($ProcessInformation.ImageName.Buffer))
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "ProcessId" -Value $ProcessInformation.UniqueProcessId
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "ParentProcessId" -Value $ProcessInformation.InheritedFromUniqueProcessId
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "HandleCount" -Value $ProcessInformation.HandleCount
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "SessionId" -Value $ProcessInformation.SessionId
+            $ProcInfo | Add-Member -MemberType "NoteProperty" -Name "Threads" -Value $Threads
+            $ProcInfo
+
+            if ($ProcessInformation.NextEntryOffset -eq 0) { break }
+
+            $CurrentProcessInformationPtr = [IntPtr] ($CurrentProcessInformationPtr.ToInt64() + $ProcessInformation.NextEntryOffset)
+        } while ($true)
+
+    }
+
+    end {
+        if ($ProcessInformationPtr -ne [IntPtr]::Zero) { [System.Runtime.InteropServices.Marshal]::FreeHGlobal($ProcessInformationPtr) }
+    }
+}
+
 function Get-SystemInformationExtendedHandle {
     <#
     .SYNOPSIS
@@ -881,7 +1364,7 @@ function Convert-PSidToStringSid {
 
     if (-not $Success) {
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "ConvertSidToStringSidW - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "ConvertSidToStringSidW - $(Format-Error $LastError)"
         return
     }
 
@@ -912,7 +1395,7 @@ function Convert-PSidToNameAndType {
     $Success = $script:Advapi32::LookupAccountSid($null, $PSid, $Name, [ref] $NameSize, $Domain, [ref] $DomainSize, [ref] $SidType)
     if (-not $Success) {
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "LookupAccountSid - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "LookupAccountSid - $(Format-Error $LastError)"
         return
     }
 
@@ -976,7 +1459,7 @@ function Convert-DosDeviceToDevicePath {
     if ($TargetPathLen -eq 0) {
         [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TargetPathPtr)
         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "QueryDosDevice('$($DosDevice)') - $([ComponentModel.Win32Exception] $LastError)"
+        Write-Verbose "QueryDosDevice('$($DosDevice)') - $(Format-Error $LastError)"
         return
     }
 
@@ -984,126 +1467,155 @@ function Convert-DosDeviceToDevicePath {
     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TargetPathPtr)
 }
 
-function Get-FileDacl {
+function Get-ObjectSecurityInfo {
     <#
     .SYNOPSIS
-    Get security information about a file.
+    Wrapper - Get security information about an object.
 
     Author: @itm4n
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This function leverages the Windows API to get some security information about a file, such as the owner and the DACL.
+    This cmdlet is a wrapper for the Windows API 'GetSecurityInfo'. It takes an object handle as an input, queries its security information (owner, group, DACL), and returns the result as a custom PS object.
 
-    .PARAMETER Path
-    The path of a file such as "C:\Windows\win.ini", "\\.pipe\spoolss"
+    .PARAMETER Handle
+    A mandatory parameter representing an object handle. The minimum required access right for this operation is usually 'ReadControl'.
+
+    .PARAMETER Type
+    A mandatory parameter representing the type of the queried object (File, Directory, Process, etc.).
 
     .EXAMPLE
-    PS C:\> Get-FileDacl -Path C:\Windows\win.ini
+    PS C:\> $Handle = Get-FileHandle 'C:\Windows\Win.ini' -AccessRights $script:FileAccessRight::ReadControl
+    PS C:\> Get-ObjectSecurityInfo -Handle $Handle -Type File
 
-    Path     : C:\Windows\win.ini
     Owner    : NT AUTHORITY\SYSTEM
     OwnerSid : S-1-5-18
     Group    : NT AUTHORITY\SYSTEM
     GroupSid : S-1-5-18
-    Access   : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce...}
-    SDDL     : O:SYG:SYD:AI(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;0x1200a9;;;BU)(A;ID;0x1200a9;;;AC)(A;ID;0x1200a9;;;S-1-15-2-2)
+    Dacl     : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce...}
+    Sddl     : O:SYG:SYD:AI(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;0x1200a9;;;BU)(A;ID;0x1200a9;;;AC)(A;ID;0x1200a9;;;S-1-15-2-2)
+
+    PS C:\> $script:Kernel32::CloseHandle($Handle)
 
     .EXAMPLE
-    PS C:\> Get-FileDacl -Path \\.\pipe\spoolss
+    PS C:\> $Handle = Get-ServiceHandle 'IKEEXT' -AccessRights $script:ServiceAccessRight::ReadControl
+    PS C:\> Get-ObjectSecurityInfo -Handle $Handle -Type Service
 
-    Path     : \\.\pipe\spoolss
     Owner    : NT AUTHORITY\SYSTEM
     OwnerSid : S-1-5-18
     Group    : NT AUTHORITY\SYSTEM
     GroupSid : S-1-5-18
-    Access   : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce...}
-    SDDL     : O:SYG:SYD:(A;;0x100003;;;BU)(A;;0x1201bb;;;WD)(A;;0x1201bb;;;AN)(A;;FA;;;CO)(A;;FA;;;SY)(A;;FA;;;BA)
+    Dacl     : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce}
+    Sddl     : O:SYG:SYD:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)
+
+    PS C:\> $null = $script:Advapi32::CloseServiceHandle($Handle)
     #>
 
     [CmdletBinding()]
-    param(
-        [String] $Path
+    param (
+        [Parameter(Mandatory=$true)]
+        [IntPtr] $Handle,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateSet("File", "Directory", "RegistryKey", "Service", "ServiceControlManager", "Process", "Thread")]
+        [String] $Type
     )
 
-    $DesiredAccess = $script:FileAccessRightEnum::ReadControl
-    $ShareMode = 0x00000001 # FILE_SHARE_READ
-    $CreationDisposition = 3 # OPEN_EXISTING
-    $FlagsAndAttributes = 0x80 # FILE_ATTRIBUTE_NORMAL
-    $FileHandle = $script:Kernel32::CreateFile($Path, $DesiredAccess, $ShareMode, [IntPtr]::Zero, $CreationDisposition, $FlagsAndAttributes, [IntPtr]::Zero)
-
-    if ($FileHandle -eq [IntPtr]-1) {
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "CreateFile KO - $([ComponentModel.Win32Exception] $LastError)"
-        return
+    begin {
+        $SecurityDescriptorPtr = [IntPtr]::Zero
+        $SecurityDescriptorNewPtr = [IntPtr]::Zero
     }
 
-    $ObjectType = 6 # SE_KERNEL_OBJECT
-    $SecurityInfo = 7 # DACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION
-    $SidOwnerPtr = [IntPtr]::Zero
-    $SidGroupPtr = [IntPtr]::Zero
-    $DaclPtr = [IntPtr]::Zero
-    $SaclPtr = [IntPtr]::Zero
-    $SecurityDescriptorPtr = [IntPtr]::Zero
-    $Result = $script:Advapi32::GetSecurityInfo($FileHandle, $ObjectType, $SecurityInfo, [ref] $SidOwnerPtr, [ref] $SidGroupPtr, [ref] $DaclPtr, [ref] $SaclPtr, [ref] $SecurityDescriptorPtr)
+    process {
 
-    if ($Result -ne 0) {
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "GetSecurityInfo KO ($Result) - $([ComponentModel.Win32Exception] $LastError)"
-        $script:Kernel32::CloseHandle($FileHandle) | Out-Null
-        return
+        switch ($Type) {
+            "File"                  { $ObjectType = $script:SE_OBJECT_TYPE::SE_FILE_OBJECT;     $AccessRights = $script:FileAccessRight }
+            "Directory"             { $ObjectType = $script:SE_OBJECT_TYPE::SE_FILE_OBJECT;     $AccessRights = $script:DirectoryAccessRight }
+            "RegistryKey"           { $ObjectType = $script:SE_OBJECT_TYPE::SE_REGISTRY_KEY;    $AccessRights = $script:RegistryKeyAccessRight }
+            "Service"               { $ObjectType = $script:SE_OBJECT_TYPE::SE_SERVICE;         $AccessRights = $script:ServiceAccessRight }
+            "ServiceControlManager" { $ObjectType = $script:SE_OBJECT_TYPE::SE_SERVICE;         $AccessRights = $script:ServiceControlManagerAccessRight }
+            "Process"               { $ObjectType = $script:SE_OBJECT_TYPE::SE_KERNEL_OBJECT;   $AccessRights = $script:ProcessAccessRight }
+            "Thread"                { $ObjectType = $script:SE_OBJECT_TYPE::SE_KERNEL_OBJECT;   $AccessRights = $script:ThreadAccessRight }
+            default                 { throw "Unhandled object type: $($Type)" }
+        }
+
+        $SecurityInfo = 7 # DACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION
+        $SidOwnerPtr = [IntPtr]::Zero
+        $SidGroupPtr = [IntPtr]::Zero
+        $DaclPtr = [IntPtr]::Zero
+        $SaclPtr = [IntPtr]::Zero
+
+        $Result = $script:Advapi32::GetSecurityInfo($Handle, $ObjectType, $SecurityInfo, [ref] $SidOwnerPtr, [ref] $SidGroupPtr, [ref] $DaclPtr, [ref] $SaclPtr, [ref] $SecurityDescriptorPtr)
+
+        if ($Result -ne $script:SystemErrorCode::ERROR_SUCCESS) {
+            Write-Verbose "GetSecurityInfo - $(Format-Error $Result)"
+            return
+        }
+
+        $OwnerSidString = Convert-PSidToStringSid -PSid $SidOwnerPtr
+        $OwnerSidInfo = Convert-PSidToNameAndType -PSid $SidOwnerPtr
+        $GroupSidString = Convert-PSidToStringSid -PSid $SidGroupPtr
+        $GroupSidInfo = Convert-PSidToNameAndType -PSid $SidGroupPtr
+
+        $SecurityDescriptorString = ""
+        $SecurityDescriptorStringLen = 0
+        $Success = $script:Advapi32::ConvertSecurityDescriptorToStringSecurityDescriptor($SecurityDescriptorPtr, 1, $SecurityInfo, [ref] $SecurityDescriptorString, [ref] $SecurityDescriptorStringLen)
+
+        if (-not $Success) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "ConvertSecurityDescriptorToStringSecurityDescriptor - $(Format-Error $LastError)"
+            return
+        }
+
+        $SecurityDescriptorNewSize = 0
+        $Success = $script:Advapi32::ConvertStringSecurityDescriptorToSecurityDescriptor($SecurityDescriptorString, 1, [ref] $SecurityDescriptorNewPtr, [ref] $SecurityDescriptorNewSize)
+
+        if (-not $Success) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "ConvertStringSecurityDescriptorToSecurityDescriptor - $(Format-Error $LastError)"
+            return
+        }
+
+        $SecurityDescriptorNewBytes = New-Object Byte[]($SecurityDescriptorNewSize)
+        for ($i = 0; $i -lt $SecurityDescriptorNewSize; $i++) {
+            $Offset = [IntPtr] ($SecurityDescriptorNewPtr.ToInt64() + $i)
+            $SecurityDescriptorNewBytes[$i] = [Runtime.InteropServices.Marshal]::ReadByte($Offset)
+        }
+
+        $RawSecurityDescriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $SecurityDescriptorNewBytes, 0
+
+        # A null DACL is equivalent to AllAccess for everyone, so let's create a "virtual"
+        # DACL that represents that.
+        if ($null -eq $RawSecurityDescriptor.DiscretionaryAcl) {
+            $Ace = New-Object -TypeName PSObject
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "AceQualifier" -Value [System.Security.AccessControl.AceQualifier]::AccessAllowed
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "IsCallback" -Value $false
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "AccessMask" -Value $AccessRights::AllAccess
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value "S-1-1-0"
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value [System.Security.AccessControl.AceType]::AccessAllowed
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "InheritanceFlags" -Value [System.Security.AccessControl.InheritanceFlags]::None
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "PropagationFlags" -Value [System.Security.AccessControl.PropagationFlags]::None
+            $Ace | Add-Member -MemberType "NoteProperty" -Name "AuditFlags" -Value [System.Security.AccessControl.AuditFlags]::None
+            $Dacl = @( $Ace )
+        }
+        else {
+            $Dacl = $RawSecurityDescriptor.DiscretionaryAcl
+        }
+
+        $Result = New-Object -TypeName PSObject
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $OwnerSidInfo.DisplayName
+        $Result | Add-Member -MemberType "NoteProperty" -Name "OwnerSid" -Value $OwnerSidString
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value $GroupSidInfo.DisplayName
+        $Result | Add-Member -MemberType "NoteProperty" -Name "GroupSid" -Value $GroupSidString
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Dacl" -Value $Dacl
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Sddl" -Value $SecurityDescriptorString
+        $Result
     }
 
-    $OwnerSidString = Convert-PSidToStringSid -PSid $SidOwnerPtr
-    $OwnerSidInfo = Convert-PSidToNameAndType -PSid $SidOwnerPtr
-    $GroupSidString = Convert-PSidToStringSid -PSid $SidGroupPtr
-    $GroupSidInfo = Convert-PSidToNameAndType -PSid $SidGroupPtr
-
-    $SecurityDescriptorString = ""
-    $SecurityDescriptorStringLen = 0
-    $Success = $script:Advapi32::ConvertSecurityDescriptorToStringSecurityDescriptor($SecurityDescriptorPtr, 1, $SecurityInfo, [ref] $SecurityDescriptorString, [ref] $SecurityDescriptorStringLen)
-
-    if (-not $Success) {
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "ConvertSecurityDescriptorToStringSecurityDescriptor KO ($Result) - $([ComponentModel.Win32Exception] $LastError)"
-        $script:Kernel32::LocalFree($SecurityDescriptorPtr) | Out-Null
-        $script:Kernel32::CloseHandle($FileHandle) | Out-Null
-        return
+    end {
+        if ($SecurityDescriptorPtr -ne [IntPtr]::Zero) { $null = $script:Kernel32::LocalFree($SecurityDescriptorPtr) }
+        if ($SecurityDescriptorNewPtr -ne [IntPtr]::Zero) { $null = $script:Kernel32::LocalFree($SecurityDescriptorNewPtr) }
     }
-
-    $SecurityDescriptorNewPtr = [IntPtr]::Zero
-    $SecurityDescriptorNewSize = 0
-    $Success = $script:Advapi32::ConvertStringSecurityDescriptorToSecurityDescriptor($SecurityDescriptorString, 1, [ref] $SecurityDescriptorNewPtr, [ref] $SecurityDescriptorNewSize)
-
-    if (-not $Success) {
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        Write-Verbose "ConvertStringSecurityDescriptorToSecurityDescriptor KO ($Result) - $([ComponentModel.Win32Exception] $LastError)"
-        $script:Kernel32::LocalFree($SecurityDescriptorPtr) | Out-Null
-        $script:Kernel32::CloseHandle($FileHandle) | Out-Null
-        return
-    }
-
-    $SecurityDescriptorNewBytes = New-Object Byte[]($SecurityDescriptorNewSize)
-    for ($i = 0; $i -lt $SecurityDescriptorNewSize; $i++) {
-        $Offset = [IntPtr] ($SecurityDescriptorNewPtr.ToInt64() + $i)
-        $SecurityDescriptorNewBytes[$i] = [Runtime.InteropServices.Marshal]::ReadByte($Offset)
-    }
-
-    $RawSecurityDescriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $SecurityDescriptorNewBytes, 0
-
-    $Result = New-Object -TypeName PSObject
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $Path
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $OwnerSidInfo.DisplayName
-    $Result | Add-Member -MemberType "NoteProperty" -Name "OwnerSid" -Value $OwnerSidString
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value $GroupSidInfo.DisplayName
-    $Result | Add-Member -MemberType "NoteProperty" -Name "GroupSid" -Value $GroupSidString
-    $Result | Add-Member -MemberType "NoteProperty" -Name "Access" -Value $RawSecurityDescriptor.DiscretionaryAcl
-    $Result | Add-Member -MemberType "NoteProperty" -Name "SDDL" -Value $SecurityDescriptorString
-    $Result
-
-    $script:Kernel32::LocalFree($SecurityDescriptorNewPtr) | Out-Null
-    $script:Kernel32::LocalFree($SecurityDescriptorPtr) | Out-Null
-    $script:Kernel32::CloseHandle($FileHandle) | Out-Null
 }
 
 function Disable-Wow64FileSystemRedirection {
@@ -1136,7 +1648,7 @@ function Disable-Wow64FileSystemRedirection {
             }
             else {
                 $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                Write-Warning "Wow64DisableWow64FsRedirection KO ($Result) - $([ComponentModel.Win32Exception] $LastError)"
+                Write-Warning "Wow64DisableWow64FsRedirection KO ($Result) - $(Format-Error $LastError)"
             }
         }
     }
@@ -1176,7 +1688,7 @@ function Restore-Wow64FileSystemRedirection {
             }
             else {
                 $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                Write-Warning "Wow64RevertWow64FsRedirection KO ($Result) - $([ComponentModel.Win32Exception] $LastError)"
+                Write-Warning "Wow64RevertWow64FsRedirection KO ($Result) - $(Format-Error $LastError)"
             }
         }
     }
@@ -1265,7 +1777,7 @@ function Get-DomainInformation {
 
     process {
         if ($Azure) {
-            $WindowsVersion = Get-WindowsVersion
+            $WindowsVersion = Get-WindowsVersionFromRegistry
 
             if ($WindowsVersion.Major -lt 10) {
                 Write-Warning "NetGetAadJoinInformation is not supported on this version of Windows."
@@ -1281,7 +1793,7 @@ function Get-DomainInformation {
                     Write-Verbose "No Azure Active Directory configuration found on this machine."
                 }
                 else {
-                    Write-Warning "NetGetAadJoinInformation - $([ComponentModel.Win32Exception] $RetVal)"
+                    Write-Warning "NetGetAadJoinInformation - $(Format-Error $RetVal)"
                 }
                 return
             }
@@ -1319,7 +1831,7 @@ function Get-DomainInformation {
             $BufferType = 0
             $RetVal = $script:Netapi32::NetGetJoinInformation([IntPtr]::Zero, [ref] $NameBufferPtr, [ref] $BufferType)
             if ($RetVal -ne 0) {
-                Write-Warning "NetGetJoinInformation - $([ComponentModel.Win32Exception] $RetVal)"
+                Write-Warning "NetGetJoinInformation - $(Format-Error $RetVal))"
                 return
             }
 
@@ -1330,7 +1842,7 @@ function Get-DomainInformation {
 
             $RetVal = $Netapi32::NetApiBufferFree($NameBufferPtr)
             if ($RetVal -ne 0) {
-                Write-Warning "NetApiBufferFree - $([ComponentModel.Win32Exception] $RetVal)"
+                Write-Warning "NetApiBufferFree - $(Format-Error $RetVal)"
                 return
             }
         }
@@ -1363,7 +1875,7 @@ function ConvertTo-ArgumentList {
         $RetVal = $script:Shell32::CommandLineToArgvW($CommandLine, [ref] $NumArgs)
         if ($RetVal -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "CommandLineToArgvW - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Warning "CommandLineToArgvW - $(Format-Error $LastError)"
             return
         }
 
@@ -1422,7 +1934,7 @@ function Resolve-ModulePath {
         $RetVal = $script:Kernel32::LoadLibrary($Name)
         if ($RetVal -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "LoadLibrary(`"$($Name)`") - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Warning "LoadLibrary(`"$($Name)`") - $(Format-Error $LastError)"
             return
         }
 
@@ -1442,7 +1954,7 @@ function Resolve-ModulePath {
             $RetVal = $script:Kernel32::GetModuleFileName($ModuleHandle, $ModuleFileName, $ModuleFileNameLength)
             if ($RetVal -eq 0) {
                 $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                Write-Warning "GetModuleFileName - $([ComponentModel.Win32Exception] $LastError)"
+                Write-Warning "GetModuleFileName - $(Format-Error $LastError)"
                 return
             }
 
@@ -1452,12 +1964,12 @@ function Resolve-ModulePath {
             # Otherwise, print an error.
             if ($RetVal -eq $ModuleFileNameLength) {
                 $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                if ($LastError -eq $script:SystemErrorCodeEnum::ERROR_INSUFFICIENT_BUFFER) {
+                if ($LastError -eq $script:SystemErrorCode::ERROR_INSUFFICIENT_BUFFER) {
                     $ModuleFileNameLength = $ModuleFileNameLength * 2
                     continue
                 }
                 else {
-                    Write-Warning "GetModuleFileName - $([ComponentModel.Win32Exception] $LastError)"
+                    Write-Warning "GetModuleFileName - $(Format-Error $LastError)"
                     return
                 }
             }
@@ -1518,7 +2030,7 @@ function Resolve-PathRelativeTo {
         $Result = $script:Shlwapi::PathRelativePathTo($PathOut, $From, $FILE_ATTRIBUTE_DIRECTORY, $To, $FILE_ATTRIBUTE_NORMAL)
         if (-not $Result) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "PathRelativePathTo(`"$($From)`", `"$($To)`") error - $([ComponentModel.Win32Exception] $LastError)"
+            Write-Warning "PathRelativePathTo(`"$($From)`", `"$($To)`") error - $(Format-Error $LastError)"
             return
         }
 
@@ -1548,10 +2060,10 @@ function Get-FirmwareType {
     process {
         [UInt32] $FirmwareType = 0
         $Result = $script:Kernel32::GetFirmwareType([ref] $FirmwareType)
-        $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
 
         if ($Result -eq 0) {
-            Write-Warning "GetFirmwareType error - $([ComponentModel.Win32Exception] $LastError)"
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Warning "GetFirmwareType error - $(Format-Error $LastError)"
             return
         }
 
@@ -1563,5 +2075,64 @@ function Get-FirmwareType {
         }
 
         $FirmwareTypeAsEnum
+    }
+}
+
+function Get-LocalUserInformation {
+    <#
+    .SYNOPSIS
+    Wrapper for the Win32 API NetUserEnum
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet is a wrapper for the Win32 API NetUserEnum. If successful, it returns detailed information about all local user accounts.
+
+    .PARAMETER Level
+    The level of information to query. Currently, only the value '3' (USER_INFO_3) is supported.
+    #>
+
+    [CmdletBinding()]
+    param (
+        [ValidateSet(3)]
+        [UInt32] $Level = 3
+    )
+
+    begin {
+        $BufferPtr = [IntPtr]::Zero
+        $FILTER_NORMAL_ACCOUNT = 2
+        $MAX_PREFERRED_LENGTH = [UInt32]::MaxValue
+    }
+
+    process {
+
+        switch ($Level) {
+            3 { $UserInfoType = $script:USER_INFO_3 }
+            default {
+                throw "Unhandled user information level: $($Level)"
+            }
+        }
+
+        $EntriesRead = [UInt32] 0
+        $TotalEntries = [UInt32] 0
+        $ResumeHandle = [UInt32] 0
+        $RetVal = $script:Netapi32::NetUserEnum([IntPtr]::Zero, $Level, $FILTER_NORMAL_ACCOUNT, [ref] $BufferPtr, $MAX_PREFERRED_LENGTH, [ref] $EntriesRead, [ref] $TotalEntries, [ref] $ResumeHandle)
+        if ($RetVal -ne 0) {
+            Write-Warning "NetUserEnum - $(Format-Error $RetVal)"
+            return
+        }
+
+        $CurrentUserInfoPtr = $BufferPtr
+
+        for ($i = 0; $i -lt $TotalEntries; $i++) {
+
+            [System.Runtime.InteropServices.Marshal]::PtrToStructure($CurrentUserInfoPtr, [type] $UserInfoType)
+            $CurrentUserInfoPtr = [IntPtr] ($CurrentUserInfoPtr.ToInt64() + [Runtime.InteropServices.Marshal]::SizeOf([type] $UserInfoType))
+        }
+    }
+
+    end {
+        if ($BufferPtr -ne [IntPtr]::Zero) { $null = $script:Netapi32::NetApiBufferFree($BufferPtr) }
     }
 }

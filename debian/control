@@ -7,6 +7,8 @@ Build-Depends:
  debhelper-compat (= 13),
  python3,
  dh-python,
+ pybuild-plugin-pyproject,
+ python3-pdm-backend,
 Standards-Version: 4.7.2
 Homepage: https://github.com/ThePorgs/Exegol
 Vcs-Browser: https://gitlab.com/kaisenlinux/packages/exegol

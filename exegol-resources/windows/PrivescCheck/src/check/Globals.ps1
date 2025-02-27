@@ -1,15 +1,22 @@
-$script:CachedServiceList = New-Object -TypeName System.Collections.ArrayList
-$script:CachedDriverList = New-Object -TypeName System.Collections.ArrayList
-$script:CachedHotFixList = New-Object -TypeName System.Collections.ArrayList
-$script:CachedScheduledTaskList = New-Object -TypeName System.Collections.ArrayList
-$script:CachedRegisteredComList = New-Object -TypeName System.Collections.ArrayList
-$script:CachedCurrentUserSids = $null
-$script:CachedCurrentUserDenySids = $null
-$script:ResultArrayList = New-Object -TypeName System.Collections.ArrayList
-$script:KeywordsOfInterest = @( "key", "passw", "secret", "pwd", "creds", "credential", "api" )
-$script:CommonApplicationExtensions = @( "bat", "cmd", "exe", "dll", "msi", "ps1", "reg", "vbe", "vbs" )
-$script:ExploitablePrivileges = @( "SeAssignPrimaryTokenPrivilege", "SeImpersonatePrivilege", "SeCreateTokenPrivilege", "SeDebugPrivilege", "SeLoadDriverPrivilege", "SeRestorePrivilege", "SeTakeOwnershipPrivilege", "SeTcbPrivilege", "SeBackupPrivilege", "SeManageVolumePrivilege", "SeRelabelPrivilege" )
-$script:DangerousDefaultFileExtensionAssociations = @"
+$script:GlobalVariable = @{
+    CheckResultList = $null
+    InitialSessionState = $null
+}
+
+$script:GlobalCache = @{
+    ServiceList = $null
+    DriverList = $null
+    ScheduledTaskList = $null
+    RegisteredComList = $null
+    CurrentUserSids = $null
+    CurrentUserDenySids = $null
+}
+
+$script:GlobalConstant = @{
+    KeywordsOfInterest = @( "key", "passw", "secret", "pwd", "creds", "credential", "api" )
+    CommonApplicationExtensions = @( "bat", "cmd", "exe", "dll", "msi", "ps1", "reg", "vbe", "vbs" )
+    ExploitablePrivileges = @( "SeAssignPrimaryTokenPrivilege", "SeImpersonatePrivilege", "SeCreateTokenPrivilege", "SeDebugPrivilege", "SeLoadDriverPrivilege", "SeRestorePrivilege", "SeTakeOwnershipPrivilege", "SeTcbPrivilege", "SeBackupPrivilege", "SeManageVolumePrivilege", "SeRelabelPrivilege" )
+    DangerousDefaultFileExtensionAssociations = @"
 ".application","C:\Windows\System32\dfshim.dll"
 ".appref-ms","C:\Windows\System32\dfshim.dll"
 ".bat","%1"
@@ -45,8 +52,9 @@ $script:DangerousDefaultFileExtensionAssociations = @"
 ".WSF","C:\Windows\System32\WScript.exe"
 ".WSH","C:\Windows\System32\WScript.exe"
 "@
-$script:VulnerableDrivers = @"
+    VulnerableDrivers = @"
 VULNERABLE_DRIVERS
 "@
-$script:CheckCsvBlob = "CHECK_CSV_BLOB"
-$script:EndpointProtectionSignatureBlob = "ENDPOINT_PROTECTION_SIGNATURE_CSV_BLOB"
+    CheckCsvBlob = "CHECK_CSV_BLOB"
+    EndpointProtectionSignatureBlob = "ENDPOINT_PROTECTION_SIGNATURE_CSV_BLOB"
+}

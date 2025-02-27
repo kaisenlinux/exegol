@@ -1,5 +1,132 @@
 # Changelog
 
+## 2025-01-10
+
+### Added
+
+- Helper function for enumerating all processes and threads.
+- Check for process and thread permissions.
+
+### Changed
+
+- Merge and refactor hive file permission checks (CVE-2021-36934).
+
+## 2025-01-09
+
+### Changed
+
+- Rename helper function 'Get-ModificationRight' to 'Get-ObjectAccessRight', and make it even more generic so that it can be used to check any access right, not just modification rights (which is still the default).
+- The helper function 'Get-ObjectAccessRight' now handles access right checks for the Service Control Manager.
+
+### Removed
+
+- The cmdlet 'Get-ModifiableService' was replaced by the more generic helper function 'Get-ModificationRight'.
+- The helper function 'Convert-NameToSid' embedded within 'Get-ModificationRight' was removed as it is no longer needed.
+- The helper function 'Get-ModifiableRegistryPath' was replaced by 'Get-ObjectAccessRight'.
+- The helper function 'Test-ServiceDiscretionaryAccessControlList' was replaced by 'Get-ObjectAccessRight'.
+- The helper function 'Get-ServiceDiscretionaryAccessControlList' was replaced by 'Get-ObjectAccessRight'.
+- The helper function 'Convert-SidStringToSid' is not used and was therefore removed.
+
+## 2025-01-08
+
+### Added
+
+- Wrapper function for querying an object's security information in a generic way.
+- Implement a generic way of analyzing an object's DACL.
+
+### Changed
+
+- Refactor file, directory, registry key ACL check.
+
+## 2025-01-06
+
+### Changed
+
+- Add multithreading to root folder permissions check.
+- Update check result output (and include execution time).
+- Add check type information to check banner (console output).
+
+## 2025-01-04
+
+### Added
+
+- Add a Windows API wrapper ('Get-ServiceStatus') for querying a service's status.
+
+### Changed
+
+- Replaced use of 'Get-Service' for obtaining a service's current status with the new wrapper cmdlet 'Get-ServiceStatus'.
+
+## 2025-01-01
+
+### Changed
+
+- Refactor service access and DACL check, and merge Service Control Manager check.
+
+## 2024-12-31
+
+### Changed
+
+- Improve standard Windows error handling (using a dedicated 'Format-Error' helper function).
+
+## 2024-12-28
+
+### Added
+
+- Add a helper function for opening services.
+
+### Changed
+
+- Add multithreading to application file permissions check.
+- Refactor application folder enumeration.
+
+## 2024-12-27
+
+### Added
+
+- Support for multithreading.
+
+### Changed
+
+- Add multithreading to COM class registry path permission check.
+- Add multithreading to COM class image file permission check.
+- Add multithreading to MSI enumeration.
+
+## 2024-12-25
+
+### Added
+
+- Benchmark option to measure the time taken by each check.
+
+## 2024-12-24
+
+### Added
+
+- Check for the configuration of the default local administrator account.
+- Helper function to obtain information about local user accounts.
+
+### Changed
+
+- Check "Invoke-StartupApplicationPermissionCheck" refactored to remove duplicate code.
+- Helper functions "Get-UnquotedPath" and "Get-ExploitableUnquotedPath" merged and refactored.
+
+### Removed
+
+- Helper function "Test-IsKnownService" (replaced by "Resolve-CommandLine" + "Test-IsMicrosoftFile").
+
+## 2024-12-06
+
+### Added
+
+- Check for name resolution protocol configuration.
+
+## 2024-12-05
+
+### Added
+
+- Helper function for collecting information about firewall profiles.
+- Check for disabled firewall on each network profile.
+- Check for registered AMSI providers.
+
 ## 2024-11-27
 
 ### Changed
@@ -447,14 +574,14 @@
 
 ### Changed
 
-- Second try to supporting deny-only SIDs when checking DACLs (Get-AclModificationRight).
+- Second try to supporting deny-only SIDs when checking DACLs (Get-ModificationRight).
 
 ## 2022-08-07
 
 ### Changed
 
-- DACL checking is now done in a dedicated cmdlet (Get-AclModificationRight) which can currently handle objects of types "File", "Directory" and "Registry Key".
-- The Get-ModifiablePath and Get-ModifiableRegistryPath cmdlets now use the generic Get-AclModificationRight cmdlet.
+- DACL checking is now done in a dedicated cmdlet (Get-ModificationRight) which can currently handle objects of types "File", "Directory" and "Registry Key".
+- The Get-ModifiablePath and Get-ModifiableRegistryPath cmdlets now use the generic Get-ModificationRight cmdlet.
 - Deny ACEs are now taken into account when checking DACLs.
 
 ## 2022-06-08

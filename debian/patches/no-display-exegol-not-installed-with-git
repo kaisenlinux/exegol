@@ -1,8 +1,8 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- exegol-4.3.8.orig/exegol/utils/GitUtils.py
-+++ exegol-4.3.8/exegol/utils/GitUtils.py
-@@ -48,7 +48,7 @@ class GitUtils:
+--- exegol-4.3.10.orig/exegol/utils/GitUtils.py
++++ exegol-4.3.10/exegol/utils/GitUtils.py
+@@ -49,7 +49,7 @@ class GitUtils:
                  raise PermissionError(test_git_dir.owner())
          except ReferenceError:
              if self.__git_name == "wrapper":

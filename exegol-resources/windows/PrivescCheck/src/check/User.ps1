@@ -143,14 +143,14 @@ function Invoke-UserPrivilegeCheck {
     $Privileges = Get-TokenInformationPrivilege
 
     foreach ($Privilege in $Privileges) {
-        $Exploitable = $($script:ExploitablePrivileges -contains $Privilege.Name)
+        $Exploitable = $($script:GlobalConstant.ExploitablePrivileges -contains $Privilege.Name)
         if ($Exploitable) { $Vulnerable = $true }
         $Privilege | Add-Member -MemberType "NoteProperty" -Name "Exploitable" -Value $Exploitable
     }
 
     $CheckResult = New-Object -TypeName PSObject
     $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Privileges
-    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
     $CheckResult
 }
 
@@ -208,7 +208,7 @@ function Invoke-UserPrivilegeGpoCheck {
                     $IdentityList = $Matches[2]
 
                     # Check if the privilege is exploitable, ignore if not.
-                    if ($script:ExploitablePrivileges -notcontains $PrivilegeName) { continue }
+                    if ($script:GlobalConstant.ExploitablePrivileges -notcontains $PrivilegeName) { continue }
 
                     # The identity list is represented like this:
                     # *S-1-2-3-123,*S-1-2-3-456,*S-1-2-3-789
@@ -232,7 +232,7 @@ function Invoke-UserPrivilegeGpoCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -262,7 +262,7 @@ function Invoke-UserEnvironmentCheck {
         $EntryValue = $_.Value
         $CheckVal = "$($_.Name) $($_.Value)"
 
-        foreach ($Keyword in $script:KeywordsOfInterest) {
+        foreach ($Keyword in $script:GlobalConstant.KeywordsOfInterest) {
 
             if ($CheckVal -Like "*$($Keyword)*") {
 

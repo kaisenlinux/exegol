@@ -1,19 +1,3 @@
-function Get-SccmCacheFolder {
-    <#
-    .SYNOPSIS
-    Helper - Get the SCCM cache folder as a PowerShell object if it exists.
-
-    Author: @itm4n
-    License: BSD 3-Clause
-    #>
-
-    [CmdletBinding()]
-    param()
-
-    $CcmCachePath = Join-Path -Path $env:windir -ChildPath "CCMCache"
-    Get-Item -Path $CcmCachePath -ErrorAction SilentlyContinue | Select-Object -Property FullName,Attributes,Exists
-}
-
 function Invoke-RegistryAlwaysInstallElevatedCheck {
     <#
     .SYNOPSIS
@@ -81,7 +65,7 @@ function Invoke-RegistryAlwaysInstallElevatedCheck {
 
     $CheckResult = New-Object -TypeName PSObject
     $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Config
-    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
     $CheckResult
 }
 
@@ -178,7 +162,7 @@ function Invoke-WsusConfigurationCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -246,7 +230,7 @@ function Invoke-HardenedUNCPathCheck {
             $Results | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
         }
         else {
-            $OsVersionMajor = (Get-WindowsVersion).Major
+            $OsVersionMajor = (Get-WindowsVersionFromRegistry).Major
 
             $RegKey = "HKLM\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths"
 
@@ -333,7 +317,7 @@ function Invoke-HardenedUNCPathCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -381,7 +365,7 @@ function Invoke-DllHijackingCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -491,7 +475,7 @@ function Invoke-PointAndPrintConfigurationCheck {
                 # and Print parameters. We can already mark the configuration as vulnerable.
 
                 $ConfigVulnerable = $true
-                $Severity = $script:SeverityLevelEnum::Low
+                $Severity = $script:SeverityLevel::Low
 
                 # From the KB article KB5005652:
                 # "Setting the value to 0 allows non-administrators to install signed and
@@ -511,7 +495,7 @@ function Invoke-PointAndPrintConfigurationCheck {
                     if (($Config.NoWarningNoElevationOnInstall.Data -gt 0) -or ($Config.UpdatePromptSettings.Data -gt 0)) {
                         # At least one of the warning prompts is disabled, the device is vulnerable to CVE-2021-34527
                         # (PrintNightmare), even if the setting "TrustedServers" is set or "InForest" is enabled.
-                        $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::High) -as $script:SeverityLevelEnum
+                        $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevel::High) -as $script:SeverityLevel
                     }
                 }
 
@@ -519,7 +503,7 @@ function Invoke-PointAndPrintConfigurationCheck {
                 if (($null -eq $Config.PackagePointAndPrintServerListEnabled.Data) -or ($Config.PackagePointAndPrintServerListEnabled.Data -eq 0)) {
                     # A list of approved servers is not configured, we can exploit the configuration by
                     # setting up a print server hosting a known vulnerable printer driver.
-                    $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::Medium) -as $script:SeverityLevelEnum
+                    $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevel::Medium) -as $script:SeverityLevel
                 }
 
                 # ATTACK: Install and exploit a known vulnerable printer driver + DNS spoofing
@@ -530,7 +514,7 @@ function Invoke-PointAndPrintConfigurationCheck {
                     # Note that setting the severity to 'low' here is redundant because we already set it
                     # to 'low' as a "base severity level" when we found that the installation of printer
                     # drivers was not restricted to administrators.
-                    $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevelEnum::Low) -as $script:SeverityLevelEnum
+                    $Severity = [Math]::Max([UInt32] $Severity, [UInt32] $script:SeverityLevel::Low) -as $script:SeverityLevel
                 }
             }
 
@@ -553,7 +537,7 @@ function Invoke-PointAndPrintConfigurationCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ConfigVulnerable) { $Severity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ConfigVulnerable) { $Severity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -598,7 +582,7 @@ function Invoke-DriverCoInstallerCheck {
 
     $CheckResult = New-Object -TypeName PSObject
     $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Config
-    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+    $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
     $CheckResult
 }
 
@@ -618,7 +602,7 @@ function Invoke-SccmCacheFolderCheck {
     param()
 
     process {
-        $SccmCacheFolders = Get-SccmCacheFoldersFromRegistry
+        $SccmCacheFolders = Get-SccmCacheFolderFromRegistry
 
         foreach ($SccmCacheFolder in $SccmCacheFolders) {
 
@@ -763,7 +747,7 @@ function Invoke-ProxyAutoConfigurationCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Result
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -906,7 +890,7 @@ function Invoke-SmbConfigurationCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -936,26 +920,14 @@ function Invoke-ComServerRegistryPermissionCheck {
     }
 
     process {
-        $RegisteredClasses = Get-RegisteredComFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) }
-        foreach ($RegisteredClass in $RegisteredClasses) {
-
-            $RegPath = Join-Path -Path $RegisteredClass.Path -ChildPath $RegisteredClass.Value
-            $ModifiableRegPaths = Get-ModifiableRegistryPath -Path $RegPath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-            if ($null -eq $ModifiableRegPaths) { continue }
-
-            foreach ($ModifiableRegPath in $ModifiableRegPaths) {
-
-                $Result = $RegisteredClass.PSObject.Copy()
-                $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $ModifiableRegPath.ModifiablePath
-                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $ModifiableRegPath.IdentityReference
-                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($ModifiableRegPath.Permissions -join ", ")
-                $AllResults += $Result
-            }
-        }
+        Get-ComClassFromRegistry |
+            Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) } |
+                Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ModifiableComClassEntryRegistryPath" -InputParameter "ComClassEntry" |
+                    ForEach-Object { $AllResults += $_ }
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -979,73 +951,22 @@ function Invoke-ComServerImagePermissionCheck {
 
     begin {
         $AllResults = @()
-        $AlreadyCheckedPaths = @()
-        $FsRedirectionValue = Disable-Wow64FileSystemRedirection
+        # Create a synchronized list that we will use to store file paths which were
+        # tested and are not vulnerable. This list will be populated by the threads,
+        # hence why we need to use thread-safe collection object.
+        $AlreadyCheckedPaths = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     }
 
     process {
-        $RegisteredClasses = Get-RegisteredComFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) -and ($null -ne $_.Data) }
-
-        foreach ($RegisteredClass in $RegisteredClasses) {
-
-            $CandidatePaths = @()
-
-            switch ($RegisteredClass.DataType) {
-                "FileName" {
-                    Resolve-ModulePath -Name $RegisteredClass.Data | ForEach-Object { $CandidatePaths += $_ }
-                }
-                "FilePath" {
-                    $CandidatePaths += [System.Environment]::ExpandEnvironmentVariables($RegisteredClass.Data).Trim('"')
-                }
-                "CommandLine" {
-                    $CommandLineResolved = [string[]] (Resolve-CommandLine -CommandLine $RegisteredClass.Data)
-                    if ($null -eq $CommandLineResolved) { continue }
-
-                    $CandidatePaths += $CommandLineResolved[0]
-
-                    if (($CommandLineResolved[0] -match ".*rundll32(\.exe)?`$") -and ($CommandLineResolved.Count -gt 1) -and ($CommandLineResolved[1] -like "*.dll,*")) {
-                        $PathToAnalyze = $CommandLineResolved[1].Split(',')[0]
-                        if ([System.IO.Path]::IsPathRooted($PathToAnalyze)) {
-                            $CandidatePaths += $PathToAnalyze
-                        }
-                        else {
-                            Resolve-ModulePath -Name $PathToAnalyze | ForEach-Object { $CandidatePaths += $_ }
-                        }
-                    }
-                }
-                default {
-                    Write-Warning "Unknown server data type: $($RegisteredClass.DataType)"
-                    continue
-                }
-            }
-
-            foreach ($CandidatePath in $CandidatePaths) {
-
-                if ([String]::IsNullOrEmpty($CandidatePath)) { continue }
-                if ($AlreadyCheckedPaths -contains $CandidatePath) { continue }
-
-                $ModifiablePaths = Get-ModifiablePath -Path $CandidatePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                if ($null -eq $ModifiablePaths) { $AlreadyCheckedPaths += $CandidatePath; continue }
-
-                foreach ($ModifiablePath in $ModifiablePaths) {
-
-                    $Result = $RegisteredClass.PSObject.Copy()
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $ModifiablePath.ModifiablePath
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $ModifiablePath.IdentityReference
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($ModifiablePath.Permissions -join ", ")
-                    $AllResults += $Result
-                }
-            }
-        }
+        Get-ComClassFromRegistry |
+            Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) -and ($null -ne $_.Data) } |
+                Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ModifiableComClassEntryImagePath" -InputParameter "ComClassEntry" -OptionalParameter @{ "CheckedPaths" = $AlreadyCheckedPaths } |
+                    ForEach-Object { $AllResults += $_ }
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
-    }
-
-    end {
-        Restore-Wow64FileSystemRedirection -OldValue $FsRedirectionValue
     }
 }
 
@@ -1073,7 +994,7 @@ function Invoke-ComServerGhostDllHijackingCheck {
     }
 
     process {
-        $RegisteredClasses = Get-RegisteredComFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Data) }
+        $RegisteredClasses = Get-ComClassFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Data) }
 
         foreach ($RegisteredClass in $RegisteredClasses) {
 
@@ -1116,7 +1037,7 @@ function Invoke-ComServerGhostDllHijackingCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -1149,7 +1070,7 @@ function Invoke-ComServerMissingModuleFileCheck {
     }
 
     process {
-        $RegisteredClasses = Get-RegisteredComFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) -and ($null -ne $_.Data) }
+        $RegisteredClasses = Get-ComClassFromRegistry | Where-Object { ($_.Value -like "*server*") -and ($null -ne $_.Path) -and ($null -ne $_.Data) }
 
         foreach ($RegisteredClass in $RegisteredClasses) {
 
@@ -1207,7 +1128,7 @@ function Invoke-ComServerMissingModuleFileCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults.Count -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -1240,24 +1161,26 @@ function Invoke-MsiAutomaticRepairUacPromptCheck {
     begin {
         $RegKey = "HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer"
         $RegValue = "DisableLUAInRepair"
-        $Vulnerable = $False
+
+        $DisableLUAInRepairDescriptions = @(
+            "The User Account Control (UAC) prompts for credentials before initiating an application repair.",
+            "The User Account Control (UAC) does not prompt for credentials before initiating an application repair."
+        )
     }
 
     process {
         $RegData = (Get-ItemProperty -Path "Registry::$($RegKey)" -Name $RegValue -ErrorAction SilentlyContinue).$RegValue
-
-        if (($null -ne $RegData) -and ($RegData -gt 0)) {
-            $Vulnerable = $True
-        }
+        $Vulnerable = $RegData -ge 1
 
         $Result = New-Object -TypeName PSObject
         $Result | Add-Member -MemberType "NoteProperty" -Name "Key" -Value $RegKey
         $Result | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $RegValue
         $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value $(if ($null -eq $RegData) { "(null)" } else { $RegData })
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $DisableLUAInRepairDescriptions[[UInt32]$Vulnerable]
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Result
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }

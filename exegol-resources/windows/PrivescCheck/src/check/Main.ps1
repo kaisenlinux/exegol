@@ -57,8 +57,8 @@ function Invoke-PrivescCheck {
     )
 
     begin {
-        # Check wether the current process has admin privileges.
-        # The following check was taken from Pow*rUp.ps1
+        # Check whether the current process has admin privileges.
+        # The following check was taken from PowerUp.ps1
         $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
         if ($IsAdmin) {
             if (-not $Force) {
@@ -67,19 +67,31 @@ function Invoke-PrivescCheck {
             }
         }
 
-        # Reset all global ArrayLists on startup
-        $script:CachedServiceList.Clear()
-        $script:CachedHotFixList.Clear()
-        $script:CachedScheduledTaskList.Clear()
-        $script:CachedRegisteredComList.Clear()
-        $script:ResultArrayList.Clear()
+        # Reset global variables.
+        foreach ($VariableEntry in $($script:GlobalVariable.Keys)) {
+            $script:GlobalVariable.$VariableEntry = $null
+        }
 
+        # Reset global cache.
+        foreach ($CacheEntryName in $($script:GlobalCache.Keys)) {
+            $script:GlobalCache.$CacheEntryName = $null
+        }
+
+        # Once the cache is fully initialized, we can build an InitialSessionState
+        # object that we can use in different runspaces.
+        $script:GlobalVariable.InitialSessionState = New-InitialSessionState
+
+        $script:GlobalVariable.CheckResultList = @()
         $AllChecks = New-Object System.Collections.ArrayList
+
+        # Create a StopWatch object to measure the time take by each check.
+        $StopWatch = [Diagnostics.StopWatch]::StartNew()
+        $StopWatch.Stop()
     }
 
     process {
 
-        ConvertFrom-EmbeddedTextBlob -TextBlob $script:CheckCsvBlob | ConvertFrom-Csv | ForEach-Object {
+        ConvertFrom-EmbeddedTextBlob -TextBlob $script:GlobalConstant.CheckCsvBlob | ConvertFrom-Csv | ForEach-Object {
             [void] $AllChecks.Add($_)
         }
 
@@ -116,11 +128,22 @@ function Invoke-PrivescCheck {
 
             if (-not $Silent) { Write-CheckBanner -Check $Check }
 
-            # Run the check and store its output in a temp variable.
-            $BaseSeverity = $Check.Severity -as $script:SeverityLevelEnum
+            # Set the default base severity level of the check based on the information stored in the input
+            # CSV file.
+            $BaseSeverity = $Check.Severity -as $script:SeverityLevel
             $Check | Add-Member -MemberType "NoteProperty" -Name "BaseSeverity" -Value $BaseSeverity
+
+            # Reset and start the StopWatch.
+            $StopWatch.Reset()
+            $StopWatch.Start()
+
+            # Run the check.
             $CheckResult = Invoke-Check -Check $Check
-            $CheckResult.Severity = $CheckResult.Severity -as $script:SeverityLevelEnum
+            $CheckResult.Severity = $CheckResult.Severity -as $script:SeverityLevel
+
+            # Stop the StopWatch and add the elapsed time object as a new property to the check result.
+            $StopWatch.Stop()
+            $CheckResult | Add-Member -MemberType "NoteProperty" -Name "TimeElapsed" -Value $StopWatch.Elapsed
 
             if (-not $Silent) {
                 # If the 'Silent' option was not specified, print a banner that shows some information about the
@@ -164,10 +187,10 @@ function Invoke-PrivescCheck {
                 # filename.
                 $ReportFileName = "$($Report.Trim()).$($_.ToLower())"
                 switch ($_) {
-                    "TXT"   { Write-TxtReport  -AllResults $script:ResultArrayList | Out-File $ReportFileName }
-                    "HTML"  { Write-HtmlReport -AllResults $script:ResultArrayList | Out-File $ReportFileName }
-                    "CSV"   { Write-CsvReport  -AllResults $script:ResultArrayList | Out-File $ReportFileName }
-                    "XML"   { Write-XmlReport  -AllResults $script:ResultArrayList | Out-File $ReportFileName }
+                    "TXT"   { Write-TxtReport  -AllResults $script:GlobalVariable.CheckResultList | Out-File $ReportFileName }
+                    "HTML"  { Write-HtmlReport -AllResults $script:GlobalVariable.CheckResultList | Out-File $ReportFileName }
+                    "CSV"   { Write-CsvReport  -AllResults $script:GlobalVariable.CheckResultList | Out-File $ReportFileName }
+                    "XML"   { Write-XmlReport  -AllResults $script:GlobalVariable.CheckResultList | Out-File $ReportFileName }
                     default { Write-Warning "`nReport format not implemented: $($Format.ToUpper())`n" }
                 }
             }
@@ -209,8 +232,8 @@ function Invoke-Check {
         [object] $Check
     )
 
-    $Check.Severity = $Check.Severity -as $script:SeverityLevelEnum
-    $IsVulnerabilityCheck = $Check.Severity -ne $script:SeverityLevelEnum::None
+    $Check.Severity = $Check.Severity -as $script:SeverityLevel
+    $IsVulnerabilityCheck = $Check.Severity -ne $script:SeverityLevel::None
 
     if ($IsVulnerabilityCheck) {
         $Result = Invoke-DynamicCommand -Command "$($Check.Command) -BaseSeverity $([UInt32] $Check.BaseSeverity)"
@@ -229,7 +252,7 @@ function Invoke-Check {
         $Check | Add-Member -MemberType "NoteProperty" -Name "ResultRawString" -Value $($Check.ResultRaw | Format-List | Out-String)
     }
 
-    [void] $script:ResultArrayList.Add($Check)
+    $script:GlobalVariable.CheckResultList += $Check
     $Check
 }
 
@@ -280,6 +303,7 @@ function Write-CheckBanner {
     $Result += "$($HeavyDownAndRight)$("$HeavyHorizontal" * 10)$($HeavyDownAndHorizontal)$("$HeavyHorizontal" * 51)$($HeavyDownAndLeft)`n"
     $Result += "$($HeavyVertical) CATEGORY $($HeavyVertical) $($Check.Category)$(' ' * (49 - $Check.Category.Length)) $($HeavyVertical)`n"
     $Result += "$($HeavyVertical) NAME     $($HeavyVertical) $($Check.DisplayName)$(' ' * (49 - $Check.DisplayName.Length)) $($HeavyVertical)`n"
+    $Result += "$($HeavyVertical) TYPE     $($HeavyVertical) $($Check.Type)$(' ' * (49 - $Check.Type.Length)) $($HeavyVertical)`n"
     $Result += "$($HeavyVerticalAndRight)$("$HeavyHorizontal" * 10)$($HeavyUpAndHorizontal)$("$HeavyHorizontal" * 51)$($HeavyVerticalAndLeft)`n"
     Split-Description -Description $Check.Description | ForEach-Object {
         $Result += "$($HeavyVertical) $($_)$(' '*(60 - ([String] $_).Length)) $($HeavyVertical)`n"
@@ -293,37 +317,46 @@ function Write-CheckResult {
     [OutputType([string])]
     [CmdletBinding()]
     param(
-        [object] $CheckResult
+        [Object] $CheckResult
     )
 
-    $IsVulnerabilityCheck = $CheckResult.BaseSeverity -ne $script:SeverityLevelEnum::None
-    $Severity = $(if ($CheckResult.Severity) { $CheckResult.Severity} else { $script:SeverityLevelEnum::None }) -as $script:SeverityLevelEnum
-    $ResultOutput = "[*] Status:"
+    begin {
+        $ResultOutput = ""
+        $IsVulnerabilityCheck = $CheckResult.BaseSeverity -ne $script:SeverityLevel::None
+        $Severity = $(if ($CheckResult.Severity) { $CheckResult.Severity} else { $script:SeverityLevel::None }) -as $script:SeverityLevel
+    }
 
-    if ($Severity -eq $script:SeverityLevelEnum::None) {
-        $ResultOutput += " Informational"
-        if ($IsVulnerabilityCheck) {
-            $ResultOutput += " (not vulnerable)"
+    process {
+        # Show the raw output of the check first.
+        switch ($CheckResult.Format) {
+            "Table"     { $ResultOutput += $CheckResult.ResultRaw | Format-Table -AutoSize | Out-String }
+            "List"      { $ResultOutput += $CheckResult.ResultRaw | Format-List | Out-String }
+            default     { throw "Unknown output format: $($CheckResult.Format)" }
         }
-        else {
-            if (-not $CheckResult.ResultRaw) {
-                $ResultOutput += " (nothing found)"
+
+        # Then show a status message.
+        $ResultOutput += "[*] Status:"
+
+        if ($Severity -eq $script:SeverityLevel::None) {
+            $ResultOutput += " Informational"
+            if ($IsVulnerabilityCheck) {
+                $ResultOutput += " (not vulnerable)"
+            }
+            else {
+                if (-not $CheckResult.ResultRaw) {
+                    $ResultOutput += " (nothing found)"
+                }
             }
         }
-    }
-    else {
-        $ResultOutput += " Vulnerable - $($Severity)"
-    }
+        else {
+            $ResultOutput += " Vulnerable"
+        }
 
-    $ResultOutput += "`n"
+        $ResultOutput += " - Severity: $($Severity) - Execution time: $($CheckResult.TimeElapsed.ToString("hh\:mm\:ss\.fff"))"
+        $ResultOutput += "`n`n"
 
-    switch ($CheckResult.Format) {
-        "Table"     { $ResultOutput += $CheckResult.ResultRaw | Format-Table -AutoSize | Out-String }
-        "List"      { $ResultOutput += $CheckResult.ResultRaw | Format-List | Out-String }
-        default     { Write-Warning "Unknown format: $($CheckResult.Format)" }
+        $ResultOutput
     }
-
-    $ResultOutput
 }
 
 function Write-TxtReport {
@@ -507,10 +540,10 @@ function Get-SeverityColor {
         [UInt32] $Severity
     )
 
-    switch ($Severity -as $script:SeverityLevelEnum) {
-        $script:SeverityLevelEnum::Low    { "DarkCyan" }
-        $script:SeverityLevelEnum::Medium { "DarkYellow" }
-        $script:SeverityLevelEnum::High   { "Red" }
+    switch ($Severity -as $script:SeverityLevel) {
+        $script:SeverityLevel::Low    { "DarkCyan" }
+        $script:SeverityLevel::Medium { "DarkYellow" }
+        $script:SeverityLevel::High   { "Red" }
         default { Write-Warning "Get-SeverityColor > Unhandled severity level: $($Severity)" }
     }
 }
@@ -538,7 +571,7 @@ function Write-ShortReport {
 
     # Show only vulnerabilities, i.e. any finding that has a final severity of at
     # least "low".
-    $AllVulnerabilities = $script:ResultArrayList | Where-Object { $_.Severity -ne $script:SeverityLevelEnum::None }
+    $AllVulnerabilities = $script:GlobalVariable.CheckResultList | Where-Object { $_.Severity -ne $script:SeverityLevel::None }
     $Categories = $AllVulnerabilities | Select-Object -ExpandProperty "Category" | Sort-Object -Unique
 
     if ($null -eq $AllVulnerabilities) {
@@ -554,11 +587,11 @@ function Write-ShortReport {
 
         foreach ($Vulnerability in $Vulnerabilities) {
 
-            $SeverityColor = Get-SeverityColor -Severity $($Vulnerability.Severity -as $script:SeverityLevelEnum)
+            $SeverityColor = Get-SeverityColor -Severity $($Vulnerability.Severity -as $script:SeverityLevel)
 
             Write-Host -NoNewline -ForegroundColor White " -"
             Write-Host -NoNewLine " $($Vulnerability.DisplayName) $($RightwardsArrow)"
-            Write-Host -ForegroundColor $SeverityColor " $($Vulnerability.Severity -as $script:SeverityLevelEnum)"
+            Write-Host -ForegroundColor $SeverityColor " $($Vulnerability.Severity -as $script:SeverityLevel)"
         }
     }
 

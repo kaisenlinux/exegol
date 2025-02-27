@@ -159,7 +159,7 @@ function Invoke-WinLogonCredentialCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -471,7 +471,7 @@ function Invoke-GPPCredentialCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -503,7 +503,7 @@ function Invoke-PowerShellHistoryCredentialCheck {
     if (-not $ErrorGetContent) {
 
         $HistoryCount = $HistoryFileContent.Count
-        $AllMatches = $HistoryFileContent | Select-String -Pattern $script:KeywordsOfInterest -AllMatches
+        $AllMatches = $HistoryFileContent | Select-String -Pattern $script:GlobalConstant.KeywordsOfInterest -AllMatches
         $AllMatchesCount = $AllMatches.Count
         $FileItem = Get-Item -Path $HistoryFilePath
 
@@ -520,13 +520,13 @@ function Invoke-PowerShellHistoryCredentialCheck {
 function Invoke-HiveFilePermissionCheck {
     <#
     .SYNOPSIS
-    Checks for READ access on the SAM, SYSTEM and SECURITY hive files (including potential backups).
+    Check for read access on hive files.
 
     Author: @itm4n
     License: BSD 3-Clause
 
     .DESCRIPTION
-    Checks for READ access on the SAM, SYSTEM and SECURITY hive files (including potential backups).
+    This cmdlet constructs a list of hive file paths, on the active filesystem, and in shadow copies, and checks whether the current use has read access. This vulnerability was initially referenced as CVE-2021-36934, also known as "HiveNightmare".
 
     .EXAMPLE
     PS C:\> Invoke-HiveFilePermissionCheck
@@ -542,183 +542,62 @@ function Invoke-HiveFilePermissionCheck {
     Path              : C:\Windows\System32\config\SECURITY
     IdentityReference : BUILTIN\Users
     Permissions       : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
-    #>
 
-    [CmdletBinding()]
-    param(
-        [UInt32] $BaseSeverity
-    )
-
-    begin {
-        $AllResults = @()
-        $FsRedirectionValue = Disable-Wow64FileSystemRedirection
-    }
-
-    process {
-        $CurrentUserSids = Get-CurrentUserSid
-
-        $TranslatedIdentityReferences = @{}
-
-        $ArrayOfPaths = New-Object System.Collections.ArrayList
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "repair\SAM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\RegBack\SAM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\SAM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "repair\SYSTEM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\SYSTEM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\RegBack\SYSTEM"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "repair\SECURITY"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\SECURITY"))
-        [void] $ArrayOfPaths.Add($(Join-Path -Path $env:SystemRoot -ChildPath "System32\config\RegBack\SECURITY"))
-
-        foreach ($Path in [string[]] $ArrayOfPaths) {
-
-            try {
-                $Acl = Get-Acl -Path $Path -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Access
-                if ($null -eq $Acl) { Write-Verbose "ACL is null"; continue }
-
-                foreach ($Ace in $Acl) {
-
-                    $PermissionReference = @(
-                        $script:FileAccessRightEnum::ReadData
-                    )
-
-                    $Permissions = [enum]::GetValues($script:FileAccessRightEnum) | Where-Object {
-                        ($Ace.FileSystemRights.value__ -band ($script:FileAccessRightEnum::$_)) -eq ($script:FileAccessRightEnum::$_)
-                    }
-
-                    if (Compare-Object -ReferenceObject $Permissions -DifferenceObject $PermissionReference -IncludeEqual -ExcludeDifferent) {
-
-                        if ($Ace.IdentityReference -notmatch '^S-1-5.*' -and $Ace.IdentityReference -notmatch '^S-1-15-.*') {
-                            if (-not ($TranslatedIdentityReferences[$Ace.IdentityReference])) {
-
-                                try {
-                                    # translate the IdentityReference if it's a username and not a SID
-                                    $IdentityUser = New-Object System.Security.Principal.NTAccount($Ace.IdentityReference)
-                                    $TranslatedIdentityReferences[$Ace.IdentityReference] = $IdentityUser.Translate([System.Security.Principal.SecurityIdentifier]) | Select-Object -ExpandProperty Value
-                                }
-                                catch {
-                                    # If we cannot resolve the SID, go to the next ACE.
-                                    continue
-                                }
-                            }
-                            $IdentitySID = $TranslatedIdentityReferences[$Ace.IdentityReference]
-                        }
-                        else {
-                            $IdentitySID = $Ace.IdentityReference
-                        }
-
-                        if ($CurrentUserSids -contains $IdentitySID) {
-                            $Result = New-Object -TypeName PSObject
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $Path
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $Ace.IdentityReference
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($Permissions -join ", ")
-                            $AllResults += $Result
-                        }
-                    }
-                }
-            }
-            catch {
-                $null = $_
-            }
-        }
-
-        $CheckResult = New-Object -TypeName PSObject
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
-        $CheckResult
-    }
-
-    end {
-        Restore-Wow64FileSystemRedirection -OldValue $FsRedirectionValue
-    }
-}
-
-function Invoke-HiveFileShadowCopyPermissionCheck {
-    <#
-    .SYNOPSIS
-    Checks for READ access on the SAM, SYSTEM and SECURITY hive files in shadow copies.
-
-    Author: @SAERXCIT, @itm4n
-    License: BSD 3-Clause
-
-    .DESCRIPTION
-    Checks for READ access on the SAM, SYSTEM and SECURITY hive files in shadow copies.
-
-    .EXAMPLE
-    PS C:\> Invoke-HiveFileShadowCopyPermissionCheck
-
-    Volume            : HarddiskVolumeShadowCopy1
     Path              : \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SAM
     IdentityReference : BUILTIN\Users
-    AccessRights      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
+    Permissions      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
 
-    Volume            : HarddiskVolumeShadowCopy1
     Path              : \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SECURITY
     IdentityReference : BUILTIN\Users
-    AccessRights      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
+    Permissions      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
 
-    Volume            : HarddiskVolumeShadowCopy1
     Path              : \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SYSTEM
     IdentityReference : BUILTIN\Users
-    AccessRights      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
+    Permissions      : ReadData, ReadExtendedAttributes, Execute, ReadAttributes, ReadControl, Synchronize
     #>
 
     [CmdletBinding()]
-    param(
+    param (
         [UInt32] $BaseSeverity
     )
 
     begin {
-        $AllResults = @()
-        $CurrentUserSids = Get-CurrentUserSid
+        $HiveFilePaths = @()
+        $HiveFileNames = @("SAM", "SYSTEM", "SECURITY", "SOFTWARE")
+        $SubFolderPaths = @("repair", "System32\config", "System32\config\RegBack")
+        $ShadowCopies = Get-VolumeShadowCopyInformation
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
 
     process {
-        foreach($ShadowCopy in $(Get-ShadowCopy)) {
+        $AllResults = @()
+        $BasePaths = @($env:SystemRoot)
+        $ShadowCopies | ForEach-Object { $BasePaths += Join-Path -Path $_.Path -ChildPath "Windows" }
 
-            $ConfigPath = $(Join-Path -Path $ShadowCopy.Path -ChildPath "Windows\System32\config")
-
-            foreach ($HiveFile in "SAM", "SECURITY", "SYSTEM") {
-
-                $Path = $(Join-Path -Path $ConfigPath -ChildPath $HiveFile)
-                $FileDacl = Get-FileDacl -Path $Path
-
-                if ($null -eq $FileDacl) { continue }
-
-                $PermissionReference = @(
-                    $script:FileAccessRightEnum::ReadData
-                )
-
-                foreach ($Ace in $FileDacl.Access) {
-
-                    if ($Ace.AceType -notmatch "AccessAllowed") { continue }
-
-                    $Permissions = [Enum]::GetValues($script:FileAccessRightEnum) | Where-Object {
-                        ($Ace.AccessMask -band ($script:FileAccessRightEnum::$_)) -eq ($script:FileAccessRightEnum::$_)
-                    }
-
-                    if (Compare-Object -ReferenceObject $Permissions -DifferenceObject $PermissionReference -IncludeEqual -ExcludeDifferent) {
-
-                        $IdentityReference = $($Ace | Select-Object -ExpandProperty "SecurityIdentifier").ToString()
-
-                        if ($CurrentUserSids -contains $IdentityReference) {
-
-                            $Result = New-Object -TypeName PSObject
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Volume" -Value $ShadowCopy.Volume
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $Path
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value (Convert-SidToName -Sid $IdentityReference)
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value ($Permissions -join ", ")
-                            $AllResults += $Result
-                        }
-                    }
+        foreach ($BasePath in $BasePaths) {
+            foreach ($SubFolderPath in $SubFolderPaths) {
+                foreach ($HiveFileName in $HiveFileNames) {
+                    $HiveFilePath = Join-Path -Path $BasePath -ChildPath $SubFolderPath
+                    $HiveFilePath = Join-Path -Path $HiveFilePath -ChildPath $HiveFileName
+                    $HiveFilePaths += $HiveFilePath
                 }
+            }
+        }
+
+        foreach ($HiveFilePath in $HiveFilePaths) {
+
+            Get-ObjectAccessRight -Name $HiveFilePath -Type File -AccessRights @($script:FileAccessRight::ReadData) -ErrorAction SilentlyContinue | ForEach-Object {
+                $Result = New-Object -TypeName PSObject
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $_.ModifiablePath
+                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($_.Permissions -join ", ")
+                $AllResults += $Result
             }
         }
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -784,7 +663,7 @@ function Invoke-UnattendFileCredentialCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -802,7 +681,7 @@ function Invoke-SccmNaaCredentialCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    The cmdlet simply invokes the Find-WmiCcmNaaCredential command to get a list of locally stored SCCM NAA credentials.
+    The cmdlet simply invokes the Get-SccmNetworkAccessAccountCredential command to get a list of locally stored SCCM NAA credentials.
     #>
 
     [CmdletBinding()]
@@ -811,11 +690,11 @@ function Invoke-SccmNaaCredentialCheck {
     )
 
     process {
-        $Entries = Find-WmiCcmNaaCredential | Sort-Object -Property NetworkAccessUsername,NetworkAccessPassword -Unique
+        $Entries = Get-SccmNetworkAccessAccountCredential | Sort-Object -Property NetworkAccessUsername,NetworkAccessPassword -Unique
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $Entries
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Entries) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Entries) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -829,7 +708,7 @@ function Invoke-SccmCacheFolderCredentialCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This cmdlet simply invokes the Find-SccmCacheFileCredential command to get a list of files that potentially contain hard coded credentials.
+    This cmdlet simply invokes the Get-SccmCacheFileCredential command to get a list of files that potentially contain hard coded credentials.
     #>
 
     [CmdletBinding()]
@@ -838,11 +717,11 @@ function Invoke-SccmCacheFolderCredentialCheck {
     )
 
     process {
-        $AllResults = Find-SccmCacheFileCredential
+        $AllResults = Get-SccmCacheFileCredential
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }

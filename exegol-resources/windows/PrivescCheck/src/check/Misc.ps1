@@ -21,7 +21,7 @@ function Invoke-SystemInformationCheck {
     [CmdletBinding()]
     param()
 
-    $OsVersion = Get-WindowsVersion
+    $OsVersion = Get-WindowsVersionFromRegistry
     $SystemInformation = Get-SystemInformation
 
     if ($null -eq $OsVersion) { return }
@@ -360,7 +360,7 @@ function Invoke-EndpointProtectionCheck {
     begin {
         $Signatures = @{}
 
-        ConvertFrom-EmbeddedTextBlob -TextBlob $script:EndpointProtectionSignatureBlob | ConvertFrom-Csv | ForEach-Object {
+        ConvertFrom-EmbeddedTextBlob -TextBlob $script:GlobalConstant.EndpointProtectionSignatureBlob | ConvertFrom-Csv | ForEach-Object {
             $Signatures.Add($_.Name, $_.Signature)
         }
 
@@ -425,7 +425,7 @@ function Invoke-EndpointProtectionCheck {
         }
 
         # Check installed applications
-        Get-InstalledProgram | Select-Object -Property Name | ForEach-Object {
+        Get-InstalledApplication | Select-Object -Property Name | ForEach-Object {
 
             Find-ProtectionSoftware -Object $_ | ForEach-Object {
 
@@ -451,6 +451,38 @@ function Invoke-EndpointProtectionCheck {
         }
 
         $Results | Sort-Object -Property ProductName,Source
+    }
+}
+
+function Invoke-AmsiProviderCheck {
+    <#
+    .SYNOPSIS
+    Get information about AMSI providers registered by antimalware software.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet iterates the subkeys of HKLM\SOFTWARE\Microsoft\AMSI\Providers to find the class ID of registered AMSI providers. Then it uses the helper function Get-ComClassFromRegistry to collect information about the COM class.
+
+    .EXAMPLE
+    PS C:\> Invoke-AmsiProviderCheck
+
+    Id       : {2781761E-28E0-4109-99FE-B9D127C57AFE}
+    Path     : HKLM\SOFTWARE\Classes\CLSID\{2781761E-28E0-4109-99FE-B9D127C57AFE}
+    Value    : InprocServer32
+    Data     : "%ProgramData%\Microsoft\Windows Defender\Platform\4.18.24090.11-0\MpOav.dll"
+    DataType : FilePath
+    #>
+
+    [CmdletBinding()]
+    param ()
+
+    process {
+        Get-ChildItem -Path "Registry::HKLM\SOFTWARE\Microsoft\AMSI\Providers" -ErrorAction SilentlyContinue | ForEach-Object {
+            $ChildKeyName = $_.PSChildName
+            Get-ComClassFromRegistry | Where-Object { $ChildKeyName -like "*$($_.Id)*" }
+        }
     }
 }
 
@@ -553,7 +585,7 @@ function Invoke-HijackableDllCheck {
         }
     }
 
-    $OsVersion = Get-WindowsVersion
+    $OsVersion = Get-WindowsVersionFromRegistry
 
     # Windows 10, 11, ?
     if ($OsVersion.Major -ge 10) {
@@ -571,8 +603,8 @@ function Invoke-HijackableDllCheck {
     # Windows Vista, 7, 8
     if (($OsVersion.Major -eq 6) -and ($OsVersion.Minor -ge 0) -and ($OsVersion.Minor -le 2)) {
         $RebootRequired = $true
-        $Service = Get-Service -Name "IKEEXT" -ErrorAction SilentlyContinue -ErrorVariable ErrorGetService
-        if ((-not $ErrorGetService) -and ($Service.Status -eq "Stopped")) {
+        $ServiceStatus = Get-ServiceStatus -Name "IKEEXT"
+        if ($ServiceStatus -eq $script:ServiceState::Stopped) {
             $RebootRequired = $false
         }
         Test-HijackableDll -ServiceName "IKEEXT" -DllName "wlbsctrl.dll" -Description "Loaded by the IKE and AuthIP IPsec Keying Modules service (IKEEXT) upon startup." -RebootRequired $RebootRequired -Link "https://www.reddit.com/r/hacking/comments/b0lr05/a_few_binary_plating_0days_for_windows/"
@@ -607,64 +639,68 @@ function Invoke-NamedPipePermissionCheck {
     [CmdletBinding()]
     param()
 
-    $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $CurrentUserSids = Get-CurrentUserSid
-
-    ForEach ($NamedPipe in $(Get-ChildItem -Path "\\.\pipe\")) {
-
-        $NamedPipeDacl = Get-FileDacl -Path $NamedPipe.FullName
-
-        if ($null -eq $NamedPipeDacl) { continue }
-
-        if ($UserIdentity.User.Value -match $NamedPipeDacl.OwnerSid) { continue }
-
-        if ($null -eq $NamedPipeDacl.Access) {
-
-            $Result = New-Object -TypeName PSObject
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Pipe" -Value $NamedPipe.FullName
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $NamedPipeDacl.Owner
-            # $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value $NamedPipeDacl.Group
-            $Result | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value "AccessAllowed"
-            $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value "GenericAll"
-            $Result | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value "S-1-1-0"
-            $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityName" -Value (Convert-SidToName -Sid "S-1-1-0")
-            $Result
-            continue
-        }
+    begin {
+        $UserIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $CurrentUserSids = Get-CurrentUserSid
+        $NamedPipeHandles = @()
 
         $PermissionReference = @(
-            $script:FileAccessRightEnum::Delete,
-            $script:FileAccessRightEnum::WriteDac,
-            $script:FileAccessRightEnum::WriteOwner,
-            $script:FileAccessRightEnum::FileWriteEa,
-            $script:FileAccessRightEnum::FileWriteAttributes
+            $script:FileAccessRight::Delete,
+            $script:FileAccessRight::WriteDac,
+            $script:FileAccessRight::WriteOwner,
+            $script:FileAccessRight::FileWriteEa,
+            $script:FileAccessRight::FileWriteAttributes,
+            $script:FileAccessRight::AllAccess
         )
+    }
 
-        ForEach ($Ace in $NamedPipeDacl.Access) {
+    process {
+        ForEach ($NamedPipe in $(Get-ChildItem -Path "\\.\pipe\")) {
 
-            if ($Ace.AceType -notmatch "AccessAllowed") { continue }
+            $NamedPipeHandle = Get-FileHandle -Path $NamedPipe.FullName -AccessRights $script:FileAccessRight::ReadControl
+            if ($NamedPipeHandle -eq -1) { continue }
 
-            $Permissions = [Enum]::GetValues($script:FileAccessRightEnum) | Where-Object {
-                ($Ace.AccessMask -band ($script:FileAccessRightEnum::$_)) -eq ($script:FileAccessRightEnum::$_)
-            }
+            $NamedPipeHandles += $NamedPipeHandle
 
-            if (Compare-Object -ReferenceObject $Permissions -DifferenceObject $PermissionReference -IncludeEqual -ExcludeDifferent) {
+            $NamedPipeDacl = Get-ObjectSecurityInfo -Handle $NamedPipeHandle -Type File
+            if ($null -eq $NamedPipeDacl) { continue }
 
-                $IdentityReference = $($Ace | Select-Object -ExpandProperty "SecurityIdentifier").ToString()
+            # Ignore named pipes owned by the current user.
+            if ($UserIdentity.User.Value -match $NamedPipeDacl.OwnerSid) { continue }
 
-                if ($CurrentUserSids -contains $IdentityReference) {
+            foreach ($Ace in $NamedPipeDacl.Dacl) {
 
-                    $Result = New-Object -TypeName PSObject
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Pipe" -Value $NamedPipe.FullName
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $NamedPipeDacl.Owner
-                    # $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value $NamedPipeDacl.Group
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value ($Ace | Select-Object -ExpandProperty "AceType")
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value ($Ace.AccessMask -as $script:FileAccessRightEnum)
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value $IdentityReference
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityName" -Value (Convert-SidToName -Sid $IdentityReference)
-                    $Result
+                if ($Ace.AceType -notmatch "AccessAllowed") { continue }
+
+                $Permissions = $script:FileAccessRight.GetEnumValues() |
+                    Where-Object {
+                        ($Ace.AccessMask -band ($script:FileAccessRight::$_)) -eq ($script:FileAccessRight::$_)
+                    }
+
+                if (Compare-Object -ReferenceObject $Permissions -DifferenceObject $PermissionReference -IncludeEqual -ExcludeDifferent) {
+
+                    $IdentityReference = $($Ace | Select-Object -ExpandProperty "SecurityIdentifier").ToString()
+
+                    if ($CurrentUserSids -contains $IdentityReference) {
+
+                        $Result = New-Object -TypeName PSObject
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Pipe" -Value $NamedPipe.FullName
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $NamedPipeDacl.Owner
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value $NamedPipeDacl.Group
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "AceType" -Value ($Ace | Select-Object -ExpandProperty "AceType")
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "AccessRights" -Value ($Ace.AccessMask -as $script:FileAccessRight)
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "SecurityIdentifier" -Value $IdentityReference
+                        $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityName" -Value (Convert-SidToName -Sid $IdentityReference)
+                        $Result
+                    }
                 }
             }
+        }
+    }
+
+    end {
+        foreach ($NamedPipeHandle in $NamedPipeHandles) {
+            $null = $script:Kernel32::CloseHandle($NamedPipeHandle)
         }
     }
 }
@@ -678,7 +714,7 @@ function Invoke-UserSessionCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This check is essentially a wrapper for the helper function Get-RemoteDesktopUserSessionList.
+    This check is essentially a wrapper for the helper function Get-RemoteDesktopUserSession.
 
     .EXAMPLE
     PS C:\> Invoke-UserSessionCheck
@@ -693,7 +729,7 @@ function Invoke-UserSessionCheck {
     [CmdletBinding()]
     param()
 
-    foreach ($Session in (Get-RemoteDesktopUserSessionList)) {
+    foreach ($Session in (Get-RemoteDesktopUserSession)) {
 
         if ([String]::IsNullOrEmpty($Session.UserName)) {
             $UserName = ""
@@ -741,9 +777,9 @@ function Invoke-ExploitableLeakedHandleCheck {
 
         $ObjectTypeOfInterest = @( "Process", "Thread", "File" )
         $AccessMasks = @{
-            "Process" = $script:ProcessAccessRightEnum::CREATE_PROCESS -bor $script:ProcessAccessRightEnum::CREATE_THREAD -bor $script:ProcessAccessRightEnum::DUP_HANDLE -bor $script:ProcessAccessRightEnum::VM_OPERATION -bor $script:ProcessAccessRightEnum::VM_READ -bor $script:ProcessAccessRightEnum::VM_WRITE
-            "Thread" = $script:ThreadAccessRightEnum::DirectImpersonation -bor $script:ThreadAccessRightEnum::SetContext
-            "File" = $script:FileAccessRightEnum::WriteData -bor $script:FileAccessRightEnum::AppendData -bor $script:FileAccessRightEnum::WriteOwner -bor $script:FileAccessRightEnum::WriteDac
+            "Process" = $script:ProcessAccessRight::CREATE_PROCESS -bor $script:ProcessAccessRight::CREATE_THREAD -bor $script:ProcessAccessRight::DUP_HANDLE -bor $script:ProcessAccessRight::VM_OPERATION -bor $script:ProcessAccessRight::VM_READ -bor $script:ProcessAccessRight::VM_WRITE
+            "Thread" = $script:ThreadAccessRight::DirectImpersonation -bor $script:ThreadAccessRight::SetContext
+            "File" = $script:FileAccessRight::WriteData -bor $script:FileAccessRight::AppendData -bor $script:FileAccessRight::WriteOwner -bor $script:FileAccessRight::WriteDac
         }
 
         $DUPLICATE_SAME_ACCESS = 2
@@ -789,7 +825,7 @@ function Invoke-ExploitableLeakedHandleCheck {
             # will not be exploitable. Whatever the result, save it to a local hashtable
             # for future use.
             if ($ProcessHandles.Keys -notcontains $ProcessId) {
-                $ProcHandle = $script:Kernel32::OpenProcess($script:ProcessAccessRightEnum::DUP_HANDLE, $false, $ProcessId)
+                $ProcHandle = $script:Kernel32::OpenProcess($script:ProcessAccessRight::DUP_HANDLE, $false, $ProcessId)
                 $ProcessHandles += @{ $ProcessId = $ProcHandle }
             }
 
@@ -806,7 +842,7 @@ function Invoke-ExploitableLeakedHandleCheck {
                 # can be opened with the access right "duplicate handle". So, print a warning,
                 # just in case.
                 $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                Write-Warning "Failed to duplicate handle 0x$('{0:x}' -f $InheritedHandle.HandleValue) - $([ComponentModel.Win32Exception] $LastError)"
+                Write-Warning "Failed to duplicate handle 0x$('{0:x}' -f $InheritedHandle.HandleValue) - $(Format-Error $LastError)"
                 continue
             }
 
@@ -827,7 +863,7 @@ function Invoke-ExploitableLeakedHandleCheck {
                     $TargetProcessId = $script:Kernel32::GetProcessId($InheritedHandleDuplicated)
                     if ($HandleProcessId -eq 0) {
                         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                        Write-Warning "GetProcessId KO - $([ComponentModel.Win32Exception] $LastError)"
+                        Write-Warning "GetProcessId KO - $(Format-Error $LastError)"
                         continue
                     }
                     $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetProcessId" -Value $TargetProcessId
@@ -838,14 +874,14 @@ function Invoke-ExploitableLeakedHandleCheck {
                         $null = $script:Kernel32::CloseHandle($TargetProcessHandle)
                         continue
                     }
-                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetProcessAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:ProcessAccessRightEnum)
+                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetProcessAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:ProcessAccessRight)
                     $ExploitableHandles += $CandidateHandle
                 }
                 "Thread" {
                     $TargetThreadId = $script:Kernel32::GetThreadId($InheritedHandleDuplicated)
                     if ($HandleThreadId -eq 0) {
                         $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-                        Write-Warning "GetThreadId KO - $([ComponentModel.Win32Exception] $LastError)"
+                        Write-Warning "GetThreadId KO - $(Format-Error $LastError)"
                         continue
                     }
                     $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetThreadId" -Value $TargetThreadId
@@ -856,7 +892,7 @@ function Invoke-ExploitableLeakedHandleCheck {
                         $null = $script:Kernel32::CloseHandle($TargetThreadHandle)
                         continue
                     }
-                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetThreadAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:ThreadAccessRightEnum)
+                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetThreadAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:ThreadAccessRight)
                     $ExploitableHandles += $CandidateHandle
                 }
                 "File" {
@@ -878,7 +914,7 @@ function Invoke-ExploitableLeakedHandleCheck {
                     # the handle isn't interesting, so ignore it.
                     $ModifiablePaths = Get-ModifiablePath -Path $TargetFilename | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
                     if ($null -ne $ModifiablePaths) { continue }
-                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetFileAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:FileAccessRightEnum)
+                    $CandidateHandle | Add-Member -MemberType "NoteProperty" -Name "TargetFileAccessRights" -Value ($CandidateHandle.GrantedAccess -as $script:FileAccessRight)
                     $ExploitableHandles += $CandidateHandle
                 }
                 default {
@@ -896,7 +932,7 @@ function Invoke-ExploitableLeakedHandleCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -1034,5 +1070,75 @@ function Invoke-TpmDeviceInformationCheck {
 
     process {
         Get-TpmDeviceInformation
+    }
+}
+
+function Invoke-ProcessAndThreadPermissionCheck {
+    <#
+    .SYNOPSIS
+    Check permissions of processes and threads.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet enumerates all processes and threads, and checks whether the current user has any privileged access rights on objects which they do not own.
+    #>
+
+    [CmdletBinding()]
+    param (
+        [UInt32] $BaseSeverity
+    )
+
+    begin {
+        $AllResults = @()
+        $CurrentUserSids = Get-CurrentUserSid
+    }
+
+    process {
+
+        $Processes = Get-SystemInformationProcessAndThread
+
+        foreach ($Process in $Processes) {
+
+            # Check the permissions of the process first. If we have any privileged access
+            # right, stop there and return the result.
+            $ProcessModificationRights = Get-ObjectAccessRight -Name $Process.ProcessId -Type Process
+            if (($null -ne $ProcessModificationRights) -and ($CurrentUserSids -notcontains $ProcessModificationRights.OwnerSid)) {
+                $Result = New-Object -TypeName PSObject
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $Process.ProcessId
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value "Process"
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $ProcessModificationRights.Owner
+                $Result | Add-Member -MemberType "NoteProperty" -Name "OwnerSid" -Value $ProcessModificationRights.OwnerSid
+                $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $ProcessModificationRights.IdentityReference
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($ProcessModificationRights.Permissions -join ", ")
+                $AllResults += $Result
+                continue
+            }
+
+            foreach ($Thread in $Process.Threads) {
+
+                # Check the permissions of each thread in the process. Report any object on
+                # which the current has privileged access rights and is not the owner.
+                $ThreadModificationRights = Get-ObjectAccessRight -Name $Thread.ThreadId -Type Thread
+                if (($null -ne $ThreadModificationRights) -and ($CurrentUserSids -notcontains $ThreadModificationRights.OwnerSid)) {
+                    $ThreadModificationRights
+
+                    $Result = New-Object -TypeName PSObject
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $Thread.ThreadId
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Type" -Value "Thread"
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value $ThreadModificationRights.Owner
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "OwnerSid" -Value $ThreadModificationRights.OwnerSid
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $ThreadModificationRights.IdentityReference
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Permissions" -Value ($ThreadModificationRights.Permissions -join ", ")
+                    $AllResults += $Result
+                }
+            }
+        }
+
+        $CheckResult = New-Object -TypeName PSObject
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
+        $CheckResult
     }
 }

@@ -7,13 +7,13 @@ function Invoke-InstalledApplicationCheck {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    Uses the custom "Get-InstalledProgram" function to get a filtered list of installed programs and then returns each result as a simplified PS object, indicating the name and the path of the application.
+    Uses the custom "Get-InstalledApplication" function to get a filtered list of installed programs and then returns each result as a simplified PS object, indicating the name and the path of the application.
     #>
 
     [CmdletBinding()]
     param()
 
-    Get-InstalledProgram -Filtered | Select-Object -Property Name,FullName
+    Get-InstalledApplication -Filtered | Select-Object -Property Name,FullName
 }
 
 function Invoke-InstalledApplicationPermissionCheck {
@@ -33,56 +33,20 @@ function Invoke-InstalledApplicationPermissionCheck {
         [UInt32] $BaseSeverity
     )
 
-    begin {
-        $AllResults = @()
-        $FsRedirectionValue = Disable-Wow64FileSystemRedirection
-    }
-
     process {
-        $InstalledPrograms = Get-InstalledProgram -Filtered
+        $AllResults = @()
 
-        foreach ($InstalledProgram in $InstalledPrograms) {
-
-            # Ensure the path is not a known system folder, in which case it does not make
-            # sense to check it. This also prevents the script from spending a considerable
-            # amount of time and resources searching those paths recursively.
-            if (Test-IsSystemFolder -Path $InstalledProgram.FullName) {
-                Write-Warning "System path detected, ignoring: $($InstalledProgram.FullName)"
-                continue
-            }
-
-            # Build the search path list. The following trick is used to search recursively
-            # without using the 'Depth' option, which is only available in PSv5+. This
-            # allows us to maintain compatibility with PSv2.
-            $SearchPath = New-Object -TypeName System.Collections.ArrayList
-            [void] $SearchPath.Add([String] $(Join-Path -Path $InstalledProgram.FullName -ChildPath "\*"))
-            [void] $SearchPath.Add([String] $(Join-Path -Path $InstalledProgram.FullName -ChildPath "\*\*"))
-
-            $CandidateItems = Get-ChildItem -Path $SearchPath -ErrorAction SilentlyContinue
-            if ($null -eq $CandidateItems) { continue }
-
-            foreach ($CandidateItem in $CandidateItems) {
-
-                if (($CandidateItem -is [System.IO.FileInfo]) -and (-not (Test-CommonApplicationFile -Path $CandidateItem.FullName))) { continue }
-                if ([String]::IsNullOrEmpty($CandidateItem.FullName)) { continue }
-
-                $ModifiablePaths = Get-ModifiablePath -Path $CandidateItem.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                if ($null -eq $ModifiablePaths) { continue }
-                foreach ($ModifiablePath in $ModifiablePaths) {
-                    $ModifiablePath.Permissions = $ModifiablePath.Permissions -join ', '
-                    $AllResults += $ModifiablePath
+        Get-InstalledApplication -Filtered |
+            Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ModifiableApplicationFile" -InputParameter "FileItem" |
+                ForEach-Object {
+                    $_.Permissions = $_.Permissions -join ', '
+                    $AllResults += $_
                 }
-            }
-        }
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
-    }
-
-    end {
-        Restore-Wow64FileSystemRedirection -OldValue $FsRedirectionValue
     }
 }
 
@@ -128,7 +92,7 @@ function Invoke-ProgramDataPermissionCheck {
                 # Ignore non-executable files
                 if ([String]::IsNullOrEmpty($ProgramDataFolderChildItem.FullName)) { continue }
                 if ($ProgramDataFolderChildItem -is [System.IO.DirectoryInfo]) { continue }
-                if (($ProgramDataFolderChildItem -is [System.IO.FileInfo]) -and (-not (Test-CommonApplicationFile -Path $ProgramDataFolderChildItem.FullName))) { continue }
+                if (($ProgramDataFolderChildItem -is [System.IO.FileInfo]) -and (-not (Test-IsCommonApplicationFile -Path $ProgramDataFolderChildItem.FullName))) { continue }
 
                 $ModifiablePaths = Get-ModifiablePath -Path $ProgramDataFolderChildItem.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
                 if ($null -eq $ModifiablePaths) { continue }
@@ -145,7 +109,7 @@ function Invoke-ProgramDataPermissionCheck {
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($AllResults) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }
@@ -169,91 +133,84 @@ function Invoke-StartupApplicationPermissionCheck {
 
     begin {
         $AllResults = @()
-        [string[]] $RegistryPaths = "HKLM\Software\Microsoft\Windows\CurrentVersion\Run", "HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+        $SystemDriveLetter = (Get-Item -Path $env:windir).PSDrive.Root
+        $StartupAppRegistryPaths = @("HKLM\Software\Microsoft\Windows\CurrentVersion\Run", "HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce")
+        $StartupAppFileSystemPaths = @("\Users\All Users\Start Menu\Programs\Startup")
         $FsRedirectionValue = Disable-Wow64FileSystemRedirection
     }
 
     process {
-        $RegistryPaths | ForEach-Object {
+        # 1. Inspect registry keys
+        foreach ($StartupAppRegistryPath in $StartupAppRegistryPaths) {
 
-            $RegKeyPath = $_
+            $RegItem = Get-Item -Path "Registry::$($StartupAppRegistryPath)" -ErrorAction SilentlyContinue
+            if ($null -eq $RegItem) { continue }
 
-            $Item = Get-Item -Path "Registry::$($RegKeyPath)" -ErrorAction SilentlyContinue -ErrorVariable ErrorGetItem
-            if (-not $ErrorGetItem) {
+            $RegValues = [string[]] ($RegItem | Select-Object -ExpandProperty Property)
+            foreach ($RegValue in $RegValues) {
 
-                $Values = [string[]] ($Item | Select-Object -ExpandProperty Property)
-                foreach ($Value in $Values) {
+                $RegData = $RegItem.GetValue($RegValue, "", "DoNotExpandEnvironmentNames")
+                if ([String]::IsNullOrEmpty($RegData)) { continue }
 
-                    $RegKeyValueName = $Value
-                    $RegKeyValueData = $Item.GetValue($RegKeyValueName, "", "DoNotExpandEnvironmentNames")
-                    if ([String]::IsNullOrEmpty($RegKeyValueData)) { continue }
+                $Result = New-Object -TypeName PSObject
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $RegValue
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value "$($StartupAppRegistryPath)\$($RegValue)"
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value $RegData
+                $AllResults += $Result
+            }
+        }
 
-                    $CommandLineResolved = [string[]] (Resolve-CommandLine -CommandLine $RegKeyValueData)
-                    if ($null -eq $CommandLineResolved) { continue }
-                    $ExecutablePath = $CommandLineResolved[0]
+        # 2. Inspect global start menu
+        foreach ($StartupAppFileSystemPath in $StartupAppFileSystemPaths) {
 
-                    $ModifiablePaths = Get-ModifiablePath -Path $ExecutablePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                    $IsModifiable = $($null -ne $ModifiablePaths)
+            $StartupAppFileSystemPath = Join-Path -Path $SystemDriveLetter -ChildPath $StartupAppFileSystemPath
+            $StartupAppFolders = Get-ChildItem -Path $StartupAppFileSystemPath -ErrorAction SilentlyContinue
+
+            foreach ($StartupAppFolder in $StartupAppFolders) {
+
+                $EntryName = $StartupAppFolder.Name
+                $EntryPath = $StartupAppFolder.FullName
+
+                # Check only .lnk file
+                if ($EntryPath -notlike "*.lnk") { continue }
+
+                try {
+                    $Wsh = New-Object -ComObject WScript.Shell
+                    $Shortcut = $Wsh.CreateShortcut($(Resolve-Path -Path $EntryPath | Convert-Path))
+                    if ([String]::IsNullOrEmpty($Shortcut.TargetPath)) { continue }
 
                     $Result = New-Object -TypeName PSObject
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $RegKeyValueName
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value "$($RegKeyPath)\$($RegKeyValueName)"
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value $RegKeyValueData
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "IsModifiable" -Value $IsModifiable
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $EntryName
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $EntryPath
+                    $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value "$($Shortcut.TargetPath) $($Shortcut.Arguments)"
                     $AllResults += $Result
+                }
+                catch {
+                    Write-Warning "$($MyInvocation.MyCommand) | Failed to create Shortcut object from path: $($EntryPath)"
                 }
             }
         }
 
-        $Root = (Get-Item -Path $env:windir).PSDrive.Root
+        # 3. Inspect each item to see of the path is modifiable
+        foreach ($Result in $AllResults) {
 
-        # We want to check only startup applications that affect all users
-        [string[]] $FileSystemPaths = "\Users\All Users\Start Menu\Programs\Startup"
+            $CommandLineResolved = [string[]] (Resolve-CommandLine -CommandLine $Result.Data)
+            $IsModifiable = $null
 
-        $FileSystemPaths | ForEach-Object {
-
-            $StartupFolderPath = Join-Path -Path $Root -ChildPath $_
-
-            $StartupFolders = Get-ChildItem -Path $StartupFolderPath -ErrorAction SilentlyContinue
-
-            foreach ($StartupFolder in $StartupFolders) {
-
-                $EntryName = $StartupFolder.Name
-                $EntryPath = $StartupFolder.FullName
-
-                if ($EntryPath -Like "*.lnk") {
-
-                    try {
-                        $Wsh = New-Object -ComObject WScript.Shell
-                        $Shortcut = $Wsh.CreateShortcut($(Resolve-Path -Path $EntryPath | Convert-Path))
-                        if ([String]::IsNullOrEmpty($Shortcut.TargetPath)) { continue }
-
-                        $CommandLineResolved = [String[]] (Resolve-CommandLine -CommandLine $Shortcut.TargetPath)
-                        if ($nul -eq $CommandLineResolved) { continue }
-                        $ExecutablePath = $CommandLineResolved[0]
-
-                        $ModifiablePaths = Get-ModifiablePath -Path $ExecutablePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                        $IsModifiable = $($null -ne $ModifiablePaths)
-
-                        $Result = New-Object -TypeName PSObject
-                        $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $EntryName
-                        $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $EntryPath
-                        $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value "$($Shortcut.TargetPath) $($Shortcut.Arguments)"
-                        $Result | Add-Member -MemberType "NoteProperty" -Name "IsModifiable" -Value $IsModifiable
-                        $AllResults += $Result
-                    }
-                    catch {
-                        Write-Warning "$($MyInvocation.MyCommand) | Failed to create Shortcut object from path: $($EntryPath)"
-                    }
-                }
+            if ($null -ne $CommandLineResolved) {
+                $ExecutablePath = $CommandLineResolved[0]
+                $ModifiablePaths = Get-ModifiablePath -Path $ExecutablePath | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+                $IsModifiable = $($null -ne $ModifiablePaths)
             }
+
+            $Result | Add-Member -MemberType "NoteProperty" -Name "IsModifiable" -Value $IsModifiable
         }
 
         $ModifiableCount = ([object[]] ($AllResults | Where-Object { $_.IsModifiable })).Count
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ModifiableCount -gt 0) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($ModifiableCount -gt 0) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 
@@ -339,8 +296,8 @@ function Invoke-RootFolderPermissionCheck {
 
     begin {
         # $IgnoredRootFolders = @( "Windows", "Users", "Program Files", "Program Files (x86)", "PerfLogs")
-        $IgnoredRootFolders = @( "`$Recycle.Bin", "`$WinREAgent", "Documents and Settings", "PerfLogs", "Program Files", "Program Files (x86)", "ProgramData", "Recovery", "System Volume Information", "Users", "Windows" )
-        $MaxFileCount = 8
+        $IgnoredRootFolders = @( "`$Recycle.Bin", "`$WinREAgent", "Documents and Settings", "PerfLogs", "Program Files", "Program Files (x86)", "ProgramData", "Recovery", "System Volume Information", "Users", "Windows", "Windows.old" )
+        # $MaxFileCount = 8
         $AllResults = @()
     }
 
@@ -355,69 +312,73 @@ function Invoke-RootFolderPermissionCheck {
             # is then filtered to exclude known folders such as "C:\Windows".
             $RootFolders = Get-ChildItem -Path $FixedDrive -Force -ErrorAction SilentlyContinue | Where-Object { ($_ -is [System.IO.DirectoryInfo]) -and ($IgnoredRootFolders -notcontains $_.Name) }
             if ($null -eq $RootFolders) { continue }
-            foreach ($RootFolder in $RootFolders) {
+            # foreach ($RootFolder in $RootFolders) {
 
-                $Vulnerable = $false
+            #     $Vulnerable = $false
 
-                # Check whether the current user has any modification right on the root folder.
-                $RootFolderModifiablePaths = Get-ModifiablePath -Path $RootFolder.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                if ($RootFolderModifiablePaths) {
-                    $Description = "The current user has modification rights on this root folder."
-                }
-                else {
-                    $Description = "The current user does not have modification rights on this root folder."
-                }
+            #     # Check whether the current user has any modification right on the root folder.
+            #     $RootFolderModifiablePaths = Get-ModifiablePath -Path $RootFolder.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+            #     if ($RootFolderModifiablePaths) {
+            #         $Description = "The current user has modification rights on this root folder."
+            #     }
+            #     else {
+            #         $Description = "The current user does not have modification rights on this root folder."
+            #     }
 
-                # Check whether the current user has any modification right on a common app
-                # file within this root folder.
-                $ApplicationFileModifiablePaths = @()
-                $ApplicationFiles = Get-ChildItem -Path $RootFolder.FullName -Force -Recurse -ErrorAction SilentlyContinue | Where-Object { ($_ -is [System.IO.FileInfo]) -and (Test-CommonApplicationFile -Path $_.FullName) }
-                foreach ($ApplicationFile in $ApplicationFiles) {
-                    if ($ApplicationFileModifiablePaths.Count -gt $MaxFileCount) { break }
-                    if ([String]::IsNullOrEmpty($ApplicationFile.FullName)) { continue }
-                    $ModifiablePaths = Get-ModifiablePath -Path $ApplicationFile.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
-                    if ($ModifiablePaths) { $ApplicationFileModifiablePaths += $ApplicationFile.FullName }
-                }
+            #     # Check whether the current user has any modification right on a common app
+            #     # file within this root folder.
+            #     $ApplicationFileModifiablePaths = @()
+            #     $ApplicationFiles = Get-ChildItem -Path $RootFolder.FullName -Force -Recurse -ErrorAction SilentlyContinue | Where-Object { ($_ -is [System.IO.FileInfo]) -and (Test-IsCommonApplicationFile -Path $_.FullName) }
+            #     foreach ($ApplicationFile in $ApplicationFiles) {
+            #         if ($ApplicationFileModifiablePaths.Count -gt $MaxFileCount) { break }
+            #         if ([String]::IsNullOrEmpty($ApplicationFile.FullName)) { continue }
+            #         $ModifiablePaths = Get-ModifiablePath -Path $ApplicationFile.FullName | Where-Object { $_ -and (-not [String]::IsNullOrEmpty($_.ModifiablePath)) }
+            #         if ($ModifiablePaths) { $ApplicationFileModifiablePaths += $ApplicationFile.FullName }
+            #     }
 
-                # If at least one modifiable application file is found, consider the folder as
-                # 'vulnerable'. Even if application files are not modifiable, consider the folder
-                # as 'vulnerable' if the current user has any modification right on it.
-                if ($ApplicationFileModifiablePaths) { $Vulnerable = $true }
-                if ($ApplicationFiles.Count -gt 0 -and $RootFolderModifiablePaths) { $Vulnerable = $true }
+            #     # If at least one modifiable application file is found, consider the folder as
+            #     # 'vulnerable'. Even if application files are not modifiable, consider the folder
+            #     # as 'vulnerable' if the current user has any modification right on it.
+            #     if ($ApplicationFileModifiablePaths) { $Vulnerable = $true }
+            #     if ($ApplicationFiles.Count -gt 0 -and $RootFolderModifiablePaths) { $Vulnerable = $true }
 
-                if ($ApplicationFiles.Count -gt 0) {
-                    if ($ApplicationFileModifiablePaths) {
-                        $Description = "$($Description) A total of $($ApplicationFiles.Count) common application files were found. The current user has modification rights on some, or all of them."
-                    }
-                    else {
-                        $Description = "$($Description) A total of $($ApplicationFiles.Count) common application files were found. The current user does not have any modification right on them."
-                    }
-                }
-                else {
-                    $Description = "$($Description) This folder does not seem to contain any common application file."
-                }
+            #     if ($ApplicationFiles.Count -gt 0) {
+            #         if ($ApplicationFileModifiablePaths) {
+            #             $Description = "$($Description) A total of $($ApplicationFiles.Count) common application files were found. The current user has modification rights on some, or all of them."
+            #         }
+            #         else {
+            #             $Description = "$($Description) A total of $($ApplicationFiles.Count) common application files were found. The current user does not have any modification right on them."
+            #         }
+            #     }
+            #     else {
+            #         $Description = "$($Description) This folder does not seem to contain any common application file."
+            #     }
 
-                if (($null -ne $RootFolderFiles) -or ($null -ne $RootFolderModifiablePaths)) {
+            #     if (($null -ne $RootFolderFiles) -or ($null -ne $RootFolderModifiablePaths)) {
 
-                    $ModifiableChildPathResult = ($ApplicationFileModifiablePaths | ForEach-Object { Resolve-PathRelativeTo -From $RootFolder.FullName -To $_ } | Select-Object -First $MaxFileCount) -join "; "
-                    if ($ApplicationFileModifiablePaths.Count -gt $MaxFileCount) { $ModifiableChildPathResult += "; ..." }
+            #         $ModifiableChildPathResult = ($ApplicationFileModifiablePaths | ForEach-Object { Resolve-PathRelativeTo -From $RootFolder.FullName -To $_ } | Select-Object -First $MaxFileCount) -join "; "
+            #         if ($ApplicationFileModifiablePaths.Count -gt $MaxFileCount) { $ModifiableChildPathResult += "; ..." }
 
-                    $Result = New-Object -TypeName PSObject
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $RootFolder.FullName
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Modifiable" -Value ($null -ne $RootFolderModifiablePaths)
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePaths" -Value $ModifiableChildPathResult
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Vulnerable" -Value $Vulnerable
-                    $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
-                    $AllResults += $Result
-                }
-            }
+            #         $Result = New-Object -TypeName PSObject
+            #         $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $RootFolder.FullName
+            #         $Result | Add-Member -MemberType "NoteProperty" -Name "Modifiable" -Value ($null -ne $RootFolderModifiablePaths)
+            #         $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePaths" -Value $ModifiableChildPathResult
+            #         $Result | Add-Member -MemberType "NoteProperty" -Name "Vulnerable" -Value $Vulnerable
+            #         $Result | Add-Member -MemberType "NoteProperty" -Name "Description" -Value $Description
+            #         $AllResults += $Result
+            #     }
+            # }
+
+            $RootFolders | Select-Object -ExpandProperty "Fullname" |
+                Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ModifiableRootFolder" -InputParameter "Path" |
+                    ForEach-Object { $AllResults += $_ }
         }
 
         $Vulnerable = ($AllResults | Where-Object { $_.Vulnerable }).Count -gt 0
 
         $CheckResult = New-Object -TypeName PSObject
         $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Result" -Value $AllResults
-        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevelEnum::None })
+        $CheckResult | Add-Member -MemberType "NoteProperty" -Name "Severity" -Value $(if ($Vulnerable) { $BaseSeverity } else { $script:SeverityLevel::None })
         $CheckResult
     }
 }

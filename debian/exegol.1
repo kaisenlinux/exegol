@@ -28,7 +28,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "EXEGOL" "1" "Jan 15, 2025" "" "Exegol"
+.TH "EXEGOL" "1" "Feb 26, 2025" "" "Exegol"
 .SH NAME
 exegol \- Exegol 
 .sp
@@ -679,6 +679,10 @@ Here are the most common problems encountered when installing and using Exegol.
 \fI\%How to fix Docker download error: no space left on device\fP
 .IP \(bu 2
 \fI\%How to fix CRLF errors on Windows\fP
+.IP \(bu 2
+\fI\%How to fix the error This environment is externally managed\fP
+.IP \(bu 2
+\fI\%Arsenal needs TIOCSTI enable for running\fP
 .UNINDENT
 .SS Unable to connect to Docker
 .sp
@@ -791,6 +795,111 @@ cd ./Exegol
 git config core.autocrlf false
 git rm \-rf \-\-cached .
 git reset \-\-hard HEAD
+.EE
+.UNINDENT
+.UNINDENT
+.SS How to fix the error \fBThis environment is externally managed\fP
+.sp
+When installing exegol with \fBpython3 \-m pip install exegol\fP on modern operating systems (Ubuntu 23.04 and higher, Debian 12 and higher, macOS 14+), you may encounter the following error:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+This environment is externally managed
+To install Python packages system\-wide, try apt install
+python3\-xyz, where xyz is the package you are trying to
+install.
+
+If you wish to install a non\-Debian\-packaged Python package,
+create a virtual environment using python3 \-m venv path/to/venv.
+Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
+sure you have python3\-full installed.
+
+If you wish to install a non\-Debian packaged Python application,
+it may be easiest to use pipx install xyz, which will manage a
+virtual environment for you. Make sure you have pipx installed.
+
+See /usr/share/doc/python3.11/README.venv for more information.
+
+hint: See PEP 668 for the detailed specification.
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+As the error message suggests, this error occurs when you try to install Python packages system\-wide.
+To resolve this issue, you have two options :
+Recommended Methods
+\fBUsing pipx (Preferred)\fP
+.sp
+The recommended way to install Exegol is using \fBpipx\fP, which automatically handles virtual environment creation:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+pipx install exegol
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+\fBManual Virtual Environment\fP
+.sp
+Alternatively, you can create and manage a virtual environment manually:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+python3 \-m venv path/to/venv
+source path/to/venv/bin/activate
+python3 \-m pip install exegol
+.EE
+.UNINDENT
+.UNINDENT
+Other Methods
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+The following methods are not recommended as they can lead to conflicts with system packages.
+.UNINDENT
+.UNINDENT
+.sp
+\fBUser Site Installation\fP
+.sp
+Install in the user site directory:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+python3 \-m pip install \-\-user exegol
+.EE
+.UNINDENT
+.UNINDENT
+.sp
+\fBSystem\-wide Installation\fP
+.sp
+Override system restrictions (not recommended):
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+python3 \-m pip install exegol \-\-break\-system\-site\-packages
+.EE
+.UNINDENT
+.UNINDENT
+.SS Arsenal needs TIOCSTI enable for running
+.sp
+The arsenal tool needs the \fBTIOCSTI\fP functionality enabled. A GitHub exit exists to request an evolution: \X'tty: link https://github.com/Orange-Cyberdefense/arsenal/issues/77'\fI\%https://github.com/Orange\-Cyberdefense/arsenal/issues/77\fP\X'tty: link'\&.
+.sp
+This feature cannot be enabled only in exegol containers (docker limitation), it must be configured in the host with the following command:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+# For the current session
+sudo sysctl \-w dev.tty.legacy_tiocsti=1
+
+# Persistent configuration (as root)
+echo \(dqdev.tty.legacy_tiocsti=1\(dq >> /etc/sysctl.conf
 .EE
 .UNINDENT
 .UNINDENT
@@ -6914,7 +7023,9 @@ Below are the features offered by \(dqMy\-resources\(dq, allowing users to exten
 .IP \(bu 2
 \fI\%bloodhound (customqueries, config)\fP
 .IP \(bu 2
-\fI\%firefox (addons, CA)\fP
+\fI\%firefox (policy)\fP
+.IP \(bu 2
+\fI\%firefox (addons, CA) (deprecated)\fP
 .IP \(bu 2
 \fI\%python3 (pip3)\fP
 .IP \(bu 2
@@ -7029,7 +7140,86 @@ To be considered for replacing or merging, the customqueries files must be \fBva
 The output will be saved into the single file \fB~/.config/bloodhound/customqueries.json\fP\&.
 .UNINDENT
 .UNINDENT
-.SS \fBfirefox\fP (addons, CA)
+.SS \fBfirefox\fP (policy)
+.sp
+\fBSEE ALSO:\fP
+.INDENT 0.0
+.INDENT 3.5
+Available from version \fB3.1.6\fP of any exegol image.
+.UNINDENT
+.UNINDENT
+.sp
+A system exists to easily personalise firefox in any new exegol container.
+.sp
+The file \fB/opt/my\-resources/setup/firefox/policy.json.template\fP can be modified to apply a Firefox policy (\X'tty: link https://support.mozilla.org/en-US/kb/customizing-firefox-using-policiesjson'\fI\%https://support.mozilla.org/en\-US/kb/customizing\-firefox\-using\-policiesjson\fP\X'tty: link'), all available directives can be found here: \X'tty: link https://mozilla.github.io/policy-templates/'\fI\%https://mozilla.github.io/policy\-templates/\fP\X'tty: link'\&.
+.sp
+Once the modifications are done, the template file can be renamed to \fB/opt/my\-resources/setup/firefox/policy.json\fP and the policy will be applied.
+.sp
+In order to install a specific addon, you can go to the Firefox addon webpage, and search for the addon GUID in the page HTML source code by searching for the JSON field \fB\(dqguid\(dq:\fP, for example for the Dark Reader addon, the GUID is \fBaddon@darkreader.org\fP, you can then add the extension in the JSON file:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.EX
+
+.EE
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \(dqExtensionSettings\(dq: {
+.INDENT 7.0
+.TP
+.B \(dq\X'tty: link mailto:addon@darkreader.org'\fI\%addon@darkreader.org\fP\X'tty: link'\(dq: {
+\(dqinstallation_mode\(dq: \(dqforce_installed\(dq,
+\(dqinstall_url\(dq: \(dq\X'tty: link https://addons.mozilla.org/firefox/downloads/latest/addon@darkreader.org/latest.xpi'\fI\%https://addons.mozilla.org/firefox/downloads/latest/addon@darkreader.org/latest.xpi\fP\X'tty: link'\(dq
+.UNINDENT
+.sp
+},
+.UNINDENT
+.sp
+}
+.sp
+To add a bookmark you can add a children to an existing folder in the \fBManagedBookmarks\fP directive:
+\&.. code\-block:: json
+{
+.INDENT 0.0
+.INDENT 3.5
+\(dqurl\(dq: \(dq\X'tty: link https://www.thehacker.recipes/'\fI\%https://www.thehacker.recipes/\fP\X'tty: link'\(dq,
+\(dqname\(dq: \(dqTHR\(dq
+.UNINDENT
+.UNINDENT
+.sp
+}
+.sp
+or you can add a new folder:
+\&.. code\-block:: json
+{
+.INDENT 0.0
+.INDENT 3.5
+\(dqname\(dq: \(dqNew folder\(dq,
+\(dqchildren\(dq: [
+.INDENT 0.0
+.INDENT 3.5
+{
+\(dqurl\(dq: \(dq\X'tty: link https://regex101.com/'\fI\%https://regex101.com/\fP\X'tty: link'\(dq,
+\(dqname\(dq: \(dqRegex101\(dq
+}
+.UNINDENT
+.UNINDENT
+.sp
+]
+.UNINDENT
+.UNINDENT
+.sp
+}
+.SS \fBfirefox\fP (addons, CA) (deprecated)
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+This covers the previous method for personalizing Firefox; the current approach utilizes policy <\(gafirefox (policy)>\(ga.
+.UNINDENT
+.UNINDENT
 .sp
 \fBSEE ALSO:\fP
 .INDENT 0.0
@@ -7788,7 +7978,7 @@ First things first, once you know on what module you want to contribute (\X'tty:
 \fI\%Submitting the pull request\fP
 .UNINDENT
 .IP \(bu 2
-\fI\%Temporary fixing a tool\fP
+\fI\%Temporary fixing a tool (a.k.a. tempfix)\fP
 .IP \(bu 2
 \fI\%Adding to my\-resources\fP
 .UNINDENT
@@ -8162,7 +8352,7 @@ Once you submit your pull request, and once the various changes that may be requ
 The pipeline may raise some issues, but if they\(aqre not related to your tool (e.g. network issues are common) don\(aqt worry about it. If the errors are due to your tool install, then you\(aqll need to make the necessary changes to make your install work.
 .sp
 Once everything works, the pull request will be merged, the pipeline will run again in order to test, build and publish a new \fBnightly\fP image. Congrats, you\(aqre now an Exegol contributor!
-.SS Temporary fixing a tool
+.SS Temporary fixing a tool (a.k.a. tempfix)
 .sp
 Tools sometimes have their own issues along their development. A temporary fix can be added as follows, in order to let builds pass successfully, while the respective tool is not fixed. The fix depends on the way the tool is supposed to be installed.
 Git (checkout)

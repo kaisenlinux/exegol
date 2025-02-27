@@ -1,3 +1,12 @@
+exegol (4.3.10-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the new upstream release
+  * Update the manpage
+  * Update all quilt patches
+  * Add pybuild-plugin-pyproject and python3-pdm-backend packages as build Depends
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Wed, 26 Feb 2025 20:20:34 +0200
+
 exegol (4.3.9-1kaisen) kaisen-packages; urgency=medium
 
   * Import the new upstream release

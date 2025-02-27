@@ -10,5 +10,3 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	dh_auto_install
-	mv $(CURDIR)/debian/exegol/usr/exegol-docker-build/* $(CURDIR)/debian/exegol/usr/share/exegol-docker-build
-	rmdir $(CURDIR)/debian/exegol/usr/exegol-docker-build
