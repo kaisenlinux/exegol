@@ -3,57 +3,130 @@ function Get-ComClassEntryFromRegistry {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$true)]
-        [String] $Clsid
+        [Guid] $Clsid
     )
 
     begin {
         $RootKey = "HKLM\SOFTWARE\Classes\CLSID"
-        $ComTypes = @( "InprocHandler", "InprocHandler32", "InprocServer", "InprocServer32", "LocalServer", "LocalServer32" )
+        $FilteredComSubProperties = @( "InprocHandler", "InprocHandler32", "InprocServer", "InprocServer32", "LocalServer", "LocalServer32" )
+        $IgnoredComSubProperties = @( "Instance", "PersistentHandler", "Shell", "PersistentAddinsRegistered", "MergedFolder", "TreatAs", "shellex", "ProgId" )
     }
 
     process {
-        $ClassId = $Clsid
-        if ($Clsid -like "{*}") { $ClassId = $Clsid.Trim('{').Trim('}') }
-
+        $ClassId = $Clsid.ToString()
         $ClassRegPath = "$($RootKey)\{$($ClassId)}"
-        $ServerProperties = Get-ChildItem -Path "Registry::$($ClassRegPath)" -ErrorAction SilentlyContinue | Where-Object { $ComTypes -contains $_.PSChildName }
-        if ($null -eq $ServerProperties) { return }
 
-        foreach ($ServerProperty in $ServerProperties) {
+        # Assume the input CLSID is correct and therefore that that the registry
+        # path is correct as well. If it is not, we'll let Get-Item throw an
+        # error. This will let us know that there is an issue upstream in the
+        # code because there is no reason we would pass an invalid CLSID.
+        $ClassProperties = Get-Item -Path "Registry::$($ClassRegPath)"
+        if ($null -eq $ClassProperties) { continue }
 
-            $ServerData = $ServerProperty.GetValue($null, $null, "DoNotExpandEnvironmentNames")
-            $ServerDataType = $null
+        # There might be CLSID entries in the registry that do not have values or
+        # sub-keys. We can filter those out by checking the "value count" and the
+        # "sub key count". Note that the value count could also be "1" in case
+        # the "(default)" value is set; we should ignore that case too.
+        if (($ClassProperties.ValueCount -le 1) -and ($ClassProperties.SubKeyCount -eq 0)) {
+            continue
+        }
 
-            if ($ServerProperty.PSChildName -like "Inproc*") {
-                # The data contains the name or path of a DLL.
-                # $PathToAnalyze = $ServerData
-                $PathToAnalyze = [System.Environment]::ExpandEnvironmentVariables($ServerData)
-                # The following regex matches any string surrounded by double quotes, but not
-                # containing double quotes within it. This should match quoted paths such as
-                # "C:\windows\system32\combase.dll"
-                if ($ServerData -match "^`"[^`"]+`"`$") {
-                    $PathToAnalyze = $PathToAnalyze.Trim('"')
+        # If the COM class has sub-properties, i.e. if the CLSID registry key has
+        # sub-keys, list them.
+        if ($ClassProperties.SubKeyCount -ne 0) {
+            $ClassSubProperties = Get-ChildItem -Path "Registry::$($ClassRegPath)" -ErrorAction SilentlyContinue
+        }
+        else {
+            $ClassSubProperties = $null
+        }
+
+
+        $ClassAppId = $ClassProperties | Get-ItemProperty -Name "AppId" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty "AppId" | ForEach-Object { ([Guid] $_).Guid.ToUpper() }
+
+        # Enumerate the COM class properties we are the most interested in.
+        $ClassServerProperties = $ClassSubProperties | Where-Object { $FilteredComSubProperties -contains $_.PSChildName }
+
+        if ($null -eq $ClassServerProperties) {
+            # If we don't find the COM class properties we want, check whether the COM
+            # class is "APPID hosted". If there is an AppId, we might find other
+            # interesting things under the "AppID" registry key.
+            if ($null -eq $ClassAppId) {
+                # Determine whether the COM class is of interest to us by enumerating the
+                # properties we are not interested in. If we find any, ignore it.
+                $IgnoredSubProperties = $ClassSubProperties | Where-Object { $IgnoredComSubProperties -contains $_.PSChildName }
+                if ($null -ne $IgnoredSubProperties) {
+                    continue
                 }
-                if ([System.IO.Path]::IsPathRooted($PathToAnalyze)) {
-                    $ServerDataType = "FilePath"
-                }
-                else {
-                    $ServerDataType = "FileName"
-                }
+
+                # At this stage, there is probably still a few COM classes we don't know what
+                # to do with. Just print a warning a message and continue.
+                Write-Warning "Unhandled COM class with CLSID '$($ClassId)' with properties: $(($ClassSubProperties | Select-Object -ExpandProperty "PSChildName") -join ",")"
+                continue
             }
-            elseif ($ServerProperty.PSChildName -like "Local*") {
-                # The data contains the path of an executable or a command line.
-                $ServerDataType = "CommandLine"
-            }
+        }
 
-            $Result = New-Object -TypeName PSObject
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $ClassId
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $ClassRegPath
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Value" -Value $ServerProperty.PSChildName
-            $Result | Add-Member -MemberType "NoteProperty" -Name "FullPath" -Value $(Join-Path -Path $Result.Path -ChildPath $Result.Value)
-            $Result | Add-Member -MemberType "NoteProperty" -Name "Data" -Value $ServerData
-            $Result | Add-Member -MemberType "NoteProperty" -Name "DataType" -Value $ServerDataType
+        $ClassName = $ClassProperties | Get-ItemProperty -Name "(default)" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty "(default)"
+        $ClassTypeLibId = $ClassSubProperties | Where-Object { "TypeLib" -eq $_.PSChildName } | Get-ItemProperty -Name "(default)" | Select-Object -ExpandProperty "(default)" | ForEach-Object { ([Guid] $_).Guid.ToUpper() }
+
+        $ClassProgIds = [String[]] @()
+        $ClassProgIds += $ClassSubProperties | Where-Object { "ProgID" -eq $_.PSChildName } | Get-ItemProperty -Name "(default)" | Select-Object -ExpandProperty "(default)"
+        $ClassProgIds += $ClassSubProperties | Where-Object { "VersionIndependentProgID" -eq $_.PSChildName } | Get-ItemProperty -Name "(default)" | Select-Object -ExpandProperty "(default)"
+
+        $Result = New-Object -TypeName PSObject
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $ClassId
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $ClassName
+        if ($null -ne $ClassAppId) { $Result | Add-Member -MemberType "NoteProperty" -Name "AppId" -Value $ClassAppId }
+        if ($ClassProgIds.Count -gt 0) { $Result | Add-Member -MemberType "NoteProperty" -Name "ProgIds" -Value $ClassProgIds }
+        if ($null -ne $ClassTypeLibId) { $Result | Add-Member -MemberType "NoteProperty" -Name "TypeLibId" -Value $ClassTypeLibId }
+        $Result | Add-Member -MemberType "NoteProperty" -Name "RegPath" -Value $ClassRegPath
+
+        if ($null -eq $ClassServerProperties) {
+            # At this stage, if the COM class doesn't have any "server properties", it
+            # should at least have an AppID, in which case we consider it is "AppId
+            # hosted".
+            if ($null -eq $ClassAppId) {
+                Write-Error "COM class with ID $($ClassId) has no handler property / AppID | Properties: $(($ClassSubProperties | Select-Object -ExpandProperty "PSChildName") -join ",")"
+            }
+            $Result | Add-Member -MemberType "NoteProperty" -Name "HandlerType" -Value "AppIdHosted"
             $Result
+        }
+        else {
+            # COM classes may have more than one handler type, so make sure we check all
+            # of them.
+            foreach ($ServerProperty in $ClassServerProperties) {
+
+                $ServerData = $ServerProperty.GetValue($null, $null, "DoNotExpandEnvironmentNames")
+                $ServerDataType = $null
+
+                if ($ServerProperty.PSChildName -like "Inproc*") {
+                    # The data contains the name or path of a DLL.
+                    # $PathToAnalyze = $ServerData
+                    $PathToAnalyze = [System.Environment]::ExpandEnvironmentVariables($ServerData)
+                    # The following regex matches any string surrounded by double quotes, but not
+                    # containing double quotes within it. This should match quoted paths such as
+                    # "C:\windows\system32\combase.dll"
+                    if ($ServerData -match "^`"[^`"]+`"`$") {
+                        $PathToAnalyze = $PathToAnalyze.Trim('"')
+                    }
+                    if ([System.IO.Path]::IsPathRooted($PathToAnalyze)) {
+                        $ServerDataType = "FilePath"
+                    }
+                    else {
+                        $ServerDataType = "FileName"
+                    }
+                }
+                elseif ($ServerProperty.PSChildName -like "Local*") {
+                    # The data contains the path of an executable or a command line.
+                    $ServerDataType = "CommandLine"
+                }
+
+                $ResultWithServerData = $Result.PSObject.Copy()
+                $ResultWithServerData | Add-Member -MemberType "NoteProperty" -Name "HandlerType" -Value $ServerProperty.PSChildName
+                $ResultWithServerData | Add-Member -MemberType "NoteProperty" -Name "HandlerRegPath" -Value $(Join-Path -Path $Result.RegPath -ChildPath $ResultWithServerData.HandlerType)
+                $ResultWithServerData | Add-Member -MemberType "NoteProperty" -Name "HandlerDataType" -Value $ServerDataType
+                $ResultWithServerData | Add-Member -MemberType "NoteProperty" -Name "HandlerData" -Value $ServerData
+                $ResultWithServerData
+            }
         }
     }
 }
@@ -67,24 +140,23 @@ function Get-ComClassFromRegistry {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This cmdlet enumerates the registry keys under HKLM\SOFTWARE\Classes\CLSID to list registered COM classes.
+    This cmdlet enumerates the registry keys under HKLM\SOFTWARE\Classes\CLSID to list registered COM classes. Depending on the configuration of each COM object, this cmdlet will return optional attributes, such as "AppId", "ProgIds", and "TypeLibId".
 
     .EXAMPLE
     PS C:\> Get-ComClassFromRegistry
 
     ...
 
-    Id       : {046AEAD9-5A27-4D3C-8A67-F82552E0A91B}
-    Path     : HKLM\SOFTWARE\Classes\CLSID\{046AEAD9-5A27-4D3C-8A67-F82552E0A91B}
-    Value    : LocalServer32
-    Data     : C:\Windows\System32\rundll32.exe shell32.dll,SHCreateLocalServerRunDll {046AEAD9-5A27-4D3C-8A67-F82552E0A91B}
-    DataType : CommandLine
-
-    Id       : {04731B67-D933-450a-90E6-4ACD2E9408FE}
-    Path     : HKLM\SOFTWARE\Classes\CLSID\{04731B67-D933-450a-90E6-4ACD2E9408FE}
-    Value    : InProcServer32
-    Data     : C:\Windows\system32\Windows.Storage.Search.dll
-    DataType : FilePath
+    Id              : F8D253D9-89A4-4daa-87B6-1168369F0B21
+    Name            : UpdateServiceManager Class
+    AppId           : B366DEBE-645B-43A5-B865-DDD82C345492
+    ProgIds         : {Microsoft.Update.ServiceManager.1, Microsoft.Update.ServiceManager}
+    TypeLibId       : B596CC9F-56E5-419E-A622-E01BB457431E
+    RegPath         : HKLM\SOFTWARE\Classes\CLSID\{F8D253D9-89A4-4daa-87B6-1168369F0B21}
+    HandlerType     : InprocServer32
+    HandlerRegPath  : HKLM\SOFTWARE\Classes\CLSID\{F8D253D9-89A4-4daa-87B6-1168369F0B21}\InprocServer32
+    HandlerDataType : FilePath
+    HandlerData     : C:\Windows\System32\wuapi.dll
 
     ...
 
@@ -106,13 +178,25 @@ function Get-ComClassFromRegistry {
 
             $script:GlobalCache.RegisteredComList = @()
 
-            Get-ChildItem -Path "Registry::$($RootKey)" -ErrorAction SilentlyContinue |
-                Select-Object -ExpandProperty "PSChildName" |
-                    Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ComClassEntryFromRegistry" -InputParameter "Clsid" |
-                        ForEach-Object {
-                            $script:GlobalCache.RegisteredComList += $_
-                            $_
-                        }
+            # First, enumerate all CLSID registry key entries with a 'valid' name, i.e. a name
+            # that can be parsed as a GUID.
+            $ComClassRegistryClsid = Get-ChildItem -Path "Registry::$($RootKey)" | ForEach-Object {
+                $RegKey = $_
+                try {
+                    [Guid] $RegKey.PSChildName
+                }
+                catch {
+                    Write-Warning "Found a CLSID registry key with an invalid name: $($RegKey.Name)"
+                }
+            }
+
+            # Then, for each valid CLSID, enumerate the COM class properties.
+            $ComClassRegistryClsid |
+                Invoke-CommandMultithread -InitialSessionState $(Get-InitialSessionState) -Command "Get-ComClassEntryFromRegistry" -InputParameter "Clsid" |
+                    ForEach-Object {
+                        $script:GlobalCache.RegisteredComList += $_
+                        $_
+                    }
         }
         else {
             $script:GlobalCache.RegisteredComList
@@ -653,7 +737,7 @@ function Get-ServiceFromRegistry {
     License: BSD 3-Clause
 
     .DESCRIPTION
-    This uses the registry to enumerate the services by looking for the subkeys of "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services". This allows any user to get information about all the services. So, even if non-privileged users can't access the details of a service through the Service Control Manager, they can do so simply by accessing the registry.
+    This cmdlet uses the registry to enumerate the services in the registry key "HKLM\SYSTEM\CurrentControlSet\Services". This allows any user to get information about all the services. So, even if non-privileged users can't access the details of a service through the Service Control Manager, they can do so simply by accessing the registry.
 
     .PARAMETER FilterLevel
     This parameter can be used to filter out the result returned by the function based on the
@@ -1150,128 +1234,143 @@ function Get-WlanProfileList {
     }
 }
 
-function Get-ScheduledTaskList {
+function Get-ComScheduledTask {
     <#
     .SYNOPSIS
-    Helper - Enumerate all the scheduled task that are not disabled and that are visible to the current user.
+    Helper - Enumerate registered scheduled tasks using COM.
 
     Author: @itm4n
     License: BSD 3-Clause
 
     .DESCRIPTION
-    Connect to the task scheduler service and retrieve a list of all the scheduled tasks that are visible to the current user.
-
-    .EXAMPLE
-    PS C:\> Get-ScheduledTaskList
-    ...
-    TaskName           : XblGameSaveTask
-    TaskPath           : \Microsoft\XblGameSave\XblGameSaveTask
-    TaskFile           : C:\Windows\System32\Tasks\Microsoft\XblGameSave\XblGameSaveTask
-    RunAs              : NT AUTHORITY\SYSTEM
-    Command            : %windir%\System32\XblGameSaveTask.exe standby
-    CurrentUserIsOwner : False
-    ...
+    This cmdlet enumerates all registered scheduled tasks through the 'Schedule.Service' COM object. The result is not guaranteed to be exhaustive as the list of returned objects may differ depending on the current user's security context. Some scheduled tasks might require administrator privileges to be read.
     #>
 
     [CmdletBinding()]
-    param()
+    param ()
 
-    function Get-ScheduledTaskCustom {
-
-        param (
-            [object] $Service,
-            [string] $TaskPath
-        )
-
-        ($CurrentFolder = $Service.GetFolder($TaskPath)).GetTasks(0)
-        $CurrentFolder.GetFolders(0) | ForEach-Object {
-            Get-ScheduledTaskCustom -Service $Service -TaskPath $(Join-Path -Path $TaskPath -ChildPath $_.Name )
+    begin {
+        function Get-ComScheduledTaskHelper {
+            param ([Object] $Service, [String] $Path)
+            ($Folder = $Service.GetFolder($Path)).GetTasks(1)
+            $Folder.GetFolders(0) | ForEach-Object {
+                Get-ComScheduledTaskHelper -Service $Service -Path $(Join-Path -Path $Path -ChildPath $_.Name )
+            }
         }
     }
 
-    try {
+    process {
+        $ScheduleService = New-Object -ComObject("Schedule.Service")
+        $ScheduleService.Connect()
+        Get-ComScheduledTaskHelper -Path "\" -Service $ScheduleService
+    }
+}
+
+function Get-RegisteredScheduledTask {
+    <#
+    .SYNOPSIS
+    Helper - Enumerate registered scheduled tasks
+
+    .DESCRIPTION
+    This cmdlet lists all accessible scheduled tasks and extracts information about the principal it runs as, as well as the actions executed when the task is triggered.
+
+    .EXAMPLE
+    PS C:\> Get-RegisteredScheduledTask
+
+    ...
+
+    Name              : XblGameSaveTask
+    Path              : \Microsoft\XblGameSave\XblGameSaveTask
+    FilePath          : C:\WINDOWS\System32\Tasks\Microsoft\XblGameSave\XblGameSaveTask
+    Enabled           : True
+    RunAs             : @{Id=LocalSystem; UserId=S-1-5-18; User=NT AUTHORITY\SYSTEM; LogonType=; GroupId=; Group=; DisplayName=; RunLevel=; ProcessTokenSidType=; RequiredPrivileges=}
+    ExecActions       : {@{Command=%windir%\System32\XblGameSaveTask.exe; Arguments=standby; WorkingDirectory=}}
+    ComHandlerActions : {}
+    SecurityInfo      : @{Owner=BUILTIN\Administrators; OwnerSid=S-1-5-32-544; Group=S-1-5-21-4024195226-107334468-2656468696-513; GroupSid=S-1-5-21-4024195226-107334468-2656468696-513; Dacl=System.Object[];
+                        Sddl=O:BAG:S-1-5-21-4024195226-107334468-2656468696-513D:AI(A;ID;0x1f019f;;;BA)(A;ID;0x1f019f;;;SY)(A;ID;FR;;;AU)(A;ID;FR;;;LS)(A;ID;FR;;;NS)(A;ID;FA;;;BA)}
+
+    ...
+
+    .LINK
+    https://learn.microsoft.com/en-us/windows/win32/taskschd/task-scheduler-schema
+    #>
+
+    [CmdletBinding()]
+    param ()
+
+    process {
         if ($null -eq $script:GlobalCache.ScheduledTaskList) {
 
-            # If the cache is empty, enumerate scheduled tasks and populate the cache.
-
             Write-Verbose "Initializing cache: ScheduledTaskList"
-
             $script:GlobalCache.ScheduledTaskList = @()
 
-            $ScheduleService = New-Object -ComObject("Schedule.Service")
-            $ScheduleService.Connect()
+            foreach ($ComTask in (Get-ComScheduledTask)) {
 
-            Get-ScheduledTaskCustom -Service $ScheduleService -TaskPath "\" | ForEach-Object {
+                $TaskXml = [xml] $ComTask.Xml
 
-                if ($_.Enabled) {
+                $TaskPrincipals = @()
+                $TaskXml.GetElementsByTagName("Principals").ChildNodes | ForEach-Object {
 
-                    $TaskName = $_.Name
-                    $TaskPath = $_.Path
-                    $TaskFile = Join-Path -Path $(Join-Path -Path $env:windir -ChildPath "System32\Tasks") -ChildPath $TaskPath
+                    $TaskPrincipal = New-Object -TypeName PSObject
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "Id" -Value $_.GetAttribute("id")
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "UserId" -Value $_.UserId
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "User" -Value (Convert-SidToName -Sid $_.UserId)
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "LogonType" -Value $_.LogonType
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "GroupId" -Value $_.GroupId
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "Group" -Value (Convert-SidToName -Sid $_.GroupId)
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "DisplayName" -Value $_.DisplayName
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "RunLevel" -Value $_.RunLevel
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "ProcessTokenSidType" -Value $_.ProcessTokenSidType
+                    $TaskPrincipal | Add-Member -MemberType "NoteProperty" -Name "RequiredPrivileges" -Value $_.RequiredPrivileges
+                    $TaskPrincipals += $TaskPrincipal
+                }
 
-                    [xml] $TaskXml = $_.Xml
+                $TaskActions = $TaskXml.GetElementsByTagName("Actions")
+                $RunAsPrincipal = $TaskPrincipals | Where-Object { $_.Id -eq $TaskActions.GetAttribute("Context") }
 
-                    $Principal = $TaskXml.GetElementsByTagName("Principal")
-                    $CurrentUserIsOwner = $false
-                    $PrincipalSid = $Principal | Select-Object -ExpandProperty "UserId" -ErrorAction SilentlyContinue -ErrorVariable ErrorSelectObject
-                    if (-not $ErrorSelectObject) {
-                        # No error occurred. This means that we were able to get the UserId attribute from the node and
-                        # therefore the Principal is a User.
-                        if ($(Invoke-UserCheck).SID -eq $PrincipalSid) {
-                            $CurrentUserIsOwner = $true
+                $ExecActions = @()
+                $ComHandlerActions = @()
+
+                $TaskActions.ChildNodes | ForEach-Object {
+
+                    $Action = $_
+
+                    switch ($Action.Name) {
+                        "Exec" {
+                            $ExecAction = New-Object -TypeName PSObject
+                            $ExecAction | Add-Member -MemberType "NoteProperty" -Name "Command" -Value $Action.Command
+                            $ExecAction | Add-Member -MemberType "NoteProperty" -Name "Arguments" -Value $Action.Arguments
+                            $ExecAction | Add-Member -MemberType "NoteProperty" -Name "WorkingDirectory" -Value $Action.WorkingDirectory
+                            $ExecActions += $ExecAction
                         }
-                    }
-                    else {
-                        # An error occurred. This means that the node does not have a UserId attribute. Therefore is has to
-                        # be a Group, so get the GroupId instead.
-                        $PrincipalSid = $Principal | Select-Object -ExpandProperty "GroupId" -ErrorAction SilentlyContinue -ErrorVariable ErrorSelectObject
-                    }
-
-                    # We got a SID, convert it to the corresponding friendly name
-                    $PrincipalName = Convert-SidToName -Sid $PrincipalSid
-
-                    # According to the documentation, a Task can have up to 32 Actions. These Actions can be of 4
-                    # different Types: Exec, ComHandler, SendEmail, and ShowMessage. Here, we are only interested in
-                    # Exec Actions. However, as there can be more than one item, we need to iterate the list and create
-                    # a new object for each Action. This will potentially create multiple Task objects with the same
-                    # Name but that's not really an issue. Note that, usually, Tasks are defined with only one Action.
-                    # So that's still an edge case.
-                    $TaskXml.GetElementsByTagName("Exec") | ForEach-Object {
-
-                        $TaskProgram = $_ | Select-Object -ExpandProperty "Command"
-                        $TaskArguments = $_ | Select-Object -ExpandProperty "Arguments" -ErrorAction SilentlyContinue
-
-                        if ($TaskArguments) {
-                            $TaskCommandLine = "`"$($TaskProgram)`" $($TaskArguments)"
+                        "ComHandler" {
+                            $ComHandlerAction = New-Object -TypeName PSObject
+                            $ComHandlerAction | Add-Member -MemberType "NoteProperty" -Name "ClassId" -Value $Action.ClassId
+                            $ComHandlerAction | Add-Member -MemberType "NoteProperty" -Name "Data" -Value $Action.Data
+                            $ComHandlerActions += $ComHandlerAction
                         }
-                        else {
-                            $TaskCommandLine = "`"$($TaskProgram)`""
+                        "SendEmail" {
+                            # We are not interested in this type of action.
                         }
-
-                        if ($TaskCommandLine.Length -gt 0) {
-
-                            $Result = New-Object -TypeName PSObject
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "TaskName" -Value $TaskName
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "TaskPath" -Value $TaskPath
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "TaskFile" -Value $TaskFile
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "RunAs" -Value $PrincipalName
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Program" -Value $TaskProgram
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "Arguments" -Value $TaskArguments
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "CommandLine" -Value $TaskCommandLine
-                            $Result | Add-Member -MemberType "NoteProperty" -Name "CurrentUserIsOwner" -Value $CurrentUserIsOwner
-                            $script:GlobalCache.ScheduledTaskList += $Result
+                        "ShowMessage" {
+                            # We are not interested in this type of action.
                         }
                     }
                 }
-                else {
-                    Write-Verbose "Task '$($_.Name)' is disabled"
-                }
+
+                $Result = New-Object -TypeName PSObject
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Name" -Value $ComTask.Name
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Path" -Value $ComTask.Path
+                $Result | Add-Member -MemberType "NoteProperty" -Name "FilePath" -Value (Join-Path -Path $(Join-Path -Path $env:windir -ChildPath "System32\Tasks") -ChildPath $ComTask.Path)
+                $Result | Add-Member -MemberType "NoteProperty" -Name "Enabled" -Value $ComTask.Enabled
+                $Result | Add-Member -MemberType "NoteProperty" -Name "RunAs" -Value $RunAsPrincipal
+                $Result | Add-Member -MemberType "NoteProperty" -Name "ExecActions" -Value $ExecActions
+                $Result | Add-Member -MemberType "NoteProperty" -Name "ComHandlerActions" -Value $ComHandlerActions
+                $Result | Add-Member -MemberType "NoteProperty" -Name "SecurityInfo" -Value (Get-ScheduledTaskSecurityInfo -Task $ComTask)
+                $script:GlobalCache.ScheduledTaskList += $Result
             }
         }
 
-        $script:GlobalCache.ScheduledTaskList | ForEach-Object { $_ }
-    }
-    catch {
-        Write-Verbose $_
+        $script:GlobalCache.ScheduledTaskList
     }
 }

@@ -82,6 +82,7 @@ function add_peass() {
   add-to-list "PEASS-ng,https://github.com/carlospolop/PEASS-ng,Privilege Escalation Awesome Scripts SUITE"
 }
 
+
 function add_linux_smart_enumeration() {
   info "Downloading Linux Smart Enumeration"
   chkfs "./linux/"
@@ -254,6 +255,22 @@ function add_chisel() {
   add-to-list "Chisel,https://github.com/jpillora/chisel,A fast TCP/UDP tunnel over HTTP"
 }
 
+function add_rustscan() {
+  info "Downloading Rustscan"
+
+  # 32bits binary
+  wget -O rustscan.zip "https://github.com/RustScan/RustScan/releases/latest/download/x86-linux-rustscan.zip"
+  unzip -j rustscan.zip -d ./linux/
+  rm rustscan.zip
+
+  # Windows .exe
+  wget -O rustscan.zip "https://github.com/RustScan/RustScan/releases/latest/download/x86_64-windows-rustscan.exe.zip"
+  unzip -j rustscan.zip -d ./windows/
+  rm rustscan.zip
+
+  add-to-list "Rustscan,https://github.com/RustScan/RustScan,The Modern Port Scanner"
+}
+
 function add_winpwn() {
   info "Downloading WinPwn"
   chkfs "./windows/WinPwn/"
@@ -304,6 +321,14 @@ function add_ligolo-ng() {
   add-to-list "ligolo-ng,https://github.com/nicocha30/ligolo-ng,Advanced yet simple tunneling/pivoting tool that uses a TUN interface"
 }
 
+function add_pyexe() {
+  info "Downloading Pyexe"
+  local TAG
+  TAG=$(curl -s https://api.github.com/repos/manthey/pyexe/releases/latest | jq .tag_name | sed 's/"//g')
+  wget -O ./windows/py37-64.exe "https://github.com/manthey/pyexe/releases/download/$TAG/py37-64.exe"
+  add-to-list "pyexe,https://github.com/manthey/pyexe,Standalone Windows Python 3.7 64 bits executable"
+}
+
 # Package dedicated to the download of resources
 function add_resources() {
   add_sysinternals
@@ -328,8 +353,10 @@ function add_resources() {
   add_ysoserial_net
   add_http-put-server
   add_chisel
+  add_rustscan
   add_winpwn
   add_ligolo-ng
+  add_pyexe
   update_submodules
 }
 

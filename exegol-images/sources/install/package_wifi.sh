@@ -32,10 +32,8 @@ function install_pyrit() {
     # steps to remove temp fix:
     #  1. try to install pyrit with git clone + venv + setup.py install with python2 or 3 (without the git patch)
     #  2. if it works, remove the temp fix (and probably the patch as well)
-    local temp_fix_limit="2024-11-01"
-    if [ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
+    local temp_fix_limit="2025-09-01"
+    if check_temp_fix_expiry "$temp_fix_limit"; then
       # git -C /opt/tools clone --depth 1 https://github.com/JPaulMora/Pyrit
       git -C /opt/tools/ clone https://github.com/JPaulMora/Pyrit
       git -C /opt/tools/Pyrit checkout f0f1913c645b445dd391fb047b812b5ba511782c
@@ -76,9 +74,13 @@ function install_wifite2() {
 function install_bettercap() {
     colorecho "Installing Bettercap"
     fapt libpcap-dev libusb-1.0-0-dev libnetfilter-queue-dev
-    go install -v github.com/bettercap/bettercap@latest
-    asdf reshim golang
-    bettercap -eval "caplets.update; ui.update; q"
+    mkdir -p /opt/tools/bettercap || exit
+    cd /opt/tools/bettercap || exit
+    # Custom install because it requires go >= 1.23.0 (default running go is 1.22.2)
+    asdf set golang 1.23.0
+    mkdir -p .go/bin
+    GOBIN=/opt/tools/bettercap/.go/bin go install -v github.com/bettercap/bettercap@latest
+    /opt/tools/bettercap/.go/bin/bettercap -eval "caplets.update; ui.update; q"
     sed -i 's/set api.rest.username user/set api.rest.username bettercap/g' /usr/local/share/bettercap/caplets/http-ui.cap
     sed -i 's/set api.rest.password pass/set api.rest.password exegol4thewin/g' /usr/local/share/bettercap/caplets/http-ui.cap
     sed -i 's/set api.rest.username user/set api.rest.username bettercap/g' /usr/local/share/bettercap/caplets/https-ui.cap
@@ -92,11 +94,11 @@ function install_bettercap() {
 function install_hcxtools() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing hcxtools"
-    fapt libcurl4 libcurl4-openssl-dev libssl-dev openssl pkg-config
-    git -C /opt/tools/ clone --depth 1 https://github.com/ZerBea/hcxtools
-    cd /opt/tools/hcxtools || exit
+    fapt libpcap-dev libcurl4 libcurl4-openssl-dev libssl-dev openssl pkg-config
+    git -C /tmp clone --depth 1 https://github.com/ZerBea/hcxtools
+    cd /tmp/hcxtools || exit
+    make -j
     make install PREFIX=/opt/tools
-    ln -s /opt/tools/bin/hcxpcapngtool /opt/tools/bin/hcxpcaptool
     add-history hcxtools
     add-test-command "hcxpcapngtool --version"
     add-test-command "hcxhashtool --version"
@@ -106,10 +108,10 @@ function install_hcxtools() {
 function install_hcxdumptool() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing hcxdumptool"
-    fapt libcurl4-openssl-dev
-    git -C /opt/tools/ clone --depth 1 https://github.com/ZerBea/hcxdumptool
-    cd /opt/tools/hcxdumptool || exit
-    make
+    fapt libpcap-dev libcurl4-openssl-dev
+    git -C /tmp clone --depth 1 https://github.com/ZerBea/hcxdumptool
+    cd /tmp/hcxdumptool || exit
+    make -j
     make install PREFIX=/opt/tools
     add-history hcxdumptool
     add-test-command "hcxdumptool --version"
@@ -129,6 +131,7 @@ function package_wifi() {
     install_bettercap               # MiTM tool
     install_hcxtools                # Tools for PMKID and other wifi attacks
     install_hcxdumptool             # Small tool to capture packets from wlan devices
+    post_install
     end_time=$(date +%s)
     local elapsed_time=$((end_time - start_time))
     colorecho "Package wifi completed in $elapsed_time seconds."

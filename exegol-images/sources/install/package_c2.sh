@@ -26,6 +26,8 @@ function install_metasploit() {
     git config user.name "exegol"
     git config user.email "exegol@localhost"
 
+    rvm use 3.1.5@metasploit-framework --create
+
     # install dep manager
     gem install bundler
     bundle install
@@ -35,10 +37,8 @@ function install_metasploit() {
     gem install rex-text
 
     # fixes 'You have already activated timeout 0.2.0, but your Gemfile requires timeout 0.4.1. Since timeout is a default gem, you can either remove your dependency on it or try updating to a newer version of bundler that supports timeout as a default gem.'
-    local temp_fix_limit="2025-06-01"
-    if [[ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
+    local temp_fix_limit="2025-09-01"
+    if check_temp_fix_expiry "$temp_fix_limit"; then
       gem install timeout --version 0.4.1
     fi
     rvm use 3.2.2@default
@@ -48,14 +48,21 @@ function install_metasploit() {
     cp -r /root/.bundle /var/lib/postgresql
     chown -R postgres:postgres /var/lib/postgresql/.bundle
     chmod -R o+rx /opt/tools/metasploit-framework/
+    chmod 444 /opt/tools/metasploit-framework/.git/index # fatal: .git/index: index file open failed: Permission denied
     sudo -u postgres sh -c "git config --global --add safe.directory /opt/tools/metasploit-framework && /usr/local/rvm/gems/ruby-3.1.5@metasploit-framework/wrappers/bundle exec /opt/tools/metasploit-framework/msfdb init"
     cp -r /var/lib/postgresql/.msf4 /root
 
+    # Install the PEASS Ruby MSF module (https://github.com/peass-ng/PEASS-ng/tree/master/metasploit)
+    wget https://raw.githubusercontent.com/peass-ng/PEASS-ng/master/metasploit/peass.rb -O /opt/tools/metasploit-framework/modules/post/multi/gather/peass.rb
+
     add-aliases metasploit
     add-history metasploit
+    add-test-command "msfconsole --help"
     add-test-command "msfconsole --version"
     add-test-command "msfdb --help"
+    add-test-command "msfdb status"
     add-test-command "msfvenom --list platforms"
+    add-test-command "msfvenom -p windows/meterpreter/reverse_tcp LHOST=127.0.0.1 LPORT=4444 -f exe > /tmp/test.exe && file /tmp/test.exe|grep 'PE32 executable' && rm /tmp/test.exe"
     add-to-list "metasploit,https://github.com/rapid7/metasploit-framework,A popular penetration testing framework that includes many exploits and payloads"
 }
 
@@ -76,15 +83,13 @@ function install_sliver() {
     # function below will serve as a reminder to update sliver's version regularly
     # when the pipeline fails because the time limit is reached: update the version and the time limit
     # or check if it's possible to make this dynamic
-    local temp_fix_limit="2024-11-01"
-    if [[ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
+    local temp_fix_limit="2025-09-01"
+    if check_temp_fix_expiry "$temp_fix_limit"; then
       # Add branch v1.5.41 due to installation of stable branch
       git -C /opt/tools/ clone --branch v1.5.42 --depth 1 https://github.com/BishopFox/sliver.git
       cd /opt/tools/sliver || exit
     fi
-    asdf local golang 1.19
+    asdf set golang 1.19
     make
     ln -s /opt/tools/sliver/sliver-server /opt/tools/bin/sliver-server
     ln -s /opt/tools/sliver/sliver-client /opt/tools/bin/sliver-client
@@ -104,21 +109,11 @@ function install_empire() {
     chmod +x /tmp/dotnet-install.sh
     /tmp/dotnet-install.sh --channel 6.0
     install_powershell
-    git -C /opt/tools/ clone --recursive https://github.com/BC-SECURITY/Empire
+    git -C /opt/tools/ clone --depth 1 --recursive --shallow-submodules https://github.com/BC-SECURITY/Empire
     cd /opt/tools/Empire || exit
     python3 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
-    if [[ $(uname -m) = 'x86_64' ]]
-    then
-      pip3 install .
-    elif [[ $(uname -m) = 'aarch64' ]]
-    then
-      # for ARM64, pip install doesn't work because of donut-shellcode not supporting this arch (https://github.com/TheWover/donut/issues/139)
-#      criticalecho-noexit "This installation function doesn't support architecture $(uname -m)" && return
-      pip3 install .
-    else
-      criticalecho-noexit "This installation function doesn't support architecture $(uname -m)" && return
-    fi
+    pip3 install .
     deactivate
     # TODO : use mysql instead, need to configure that
     sed -i 's/use: mysql/use: sqlite/g' empire/server/config.yaml
@@ -127,7 +122,6 @@ function install_empire() {
     add-aliases empire
     add-history empire
     add-test-command "ps-empire server --help"
-    add-test-command "ps-empire client --help"
     add-to-list "empire,https://github.com/BC-SECURITY/Empire,post-exploitation and adversary emulation framework"
     # exit the Empire workdir, since it sets the python version to 3.12 and could mess up later installs
     cd || exit
@@ -135,27 +129,29 @@ function install_empire() {
 
 function install_havoc() {
     colorecho "Installing Havoc"
-    # git -C /opt/tools/ clone --depth 1 https://github.com/HavocFramework/Havoc
-    # https://github.com/HavocFramework/Havoc/issues/516
-    local temp_fix_limit="2024-11-01"
-    if [ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
-      git -C /opt/tools/ clone https://github.com/HavocFramework/Havoc
-      git -C /opt/tools/Havoc checkout ea3646e055eb1612dcc956130fd632029dbf0b86
-    fi
-    # Building Team Server
-    cd /opt/tools/Havoc/teamserver || exit
-    go mod download golang.org/x/sys
-    go mod download github.com/ugorji/go
+    git -C /opt/tools/ clone --depth 1 --recursive --shallow-submodules https://github.com/HavocFramework/Havoc
     cd /opt/tools/Havoc || exit
+    # https://github.com/HavocFramework/Havoc/issues/516 (seems fixed but keeping commented tempfix just in case)
+    #    local temp_fix_limit="YYYY-MM-DD"
+    #    if check_temp_fix_expiry "$temp_fix_limit"; then
+    #      git -C /opt/tools/ clone https://github.com/HavocFramework/Havoc
+    #      git -C /opt/tools/Havoc checkout ea3646e055eb1612dcc956130fd632029dbf0b86
+    #      go mod download golang.org/x/sys
+    #      go mod download github.com/ugorji/go
+    #    fi
+
+    # Building Team Server
     sed -i 's/golang-go//' teamserver/Install.sh
     make ts-build
     # ln -v -s /opt/tools/Havoc/havoc /opt/tools/bin/havoc
     # Symbolic link above not needed because Havoc relies on absolute links, the user needs be changed directory when running havoc
+
     # Building Client
     fapt qtmultimedia5-dev libqt5websockets5-dev
     make client-build || cat /opt/tools/Havoc/client/Build/CMakeFiles/CMakeOutput.log
+    # `make clean` removes binaries, so we could just manually remove the Build directory
+    rm -rf /opt/tools/Havoc/client/Build/
+
     add-aliases havoc
     add-history havoc
     add-test-command "havoc "
@@ -189,6 +185,7 @@ function package_c2() {
     install_sliver                  # Sliver is an open source cross-platform adversary emulation/red team framework
     install_havoc                   # C2 in Go
     install_villain                 # C2 using hoaxShell in Python
+    post_install
     end_time=$(date +%s)
     local elapsed_time=$((end_time - start_time))
     colorecho "Package c2 completed in $elapsed_time seconds."

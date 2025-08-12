@@ -1,5 +1,87 @@
 # Changelog
 
+## 2025-06-28
+
+### Fixed
+
+- Fix an improper handling of process and thread permissions (see issue #71).
+
+## 2025-06-11
+
+### Added
+
+- Check for Symantec Account Connectivity Credentials (ACCs)
+
+## 2025-03-05
+
+### Added
+
+- Check for scheduled tasks configured with hardcoded credentials.
+- Helper function for converting an account name to an SID.
+- Check for services configured with hardcoded credentials.
+
+## 2025-03-04
+
+### Added
+
+- Make table in HTML report interactive.
+
+## 2025-02-25
+
+### Added
+
+- Function for checking scheduled task permissions.
+
+### Modified
+
+- The helper 'Get-ObjectAccessRight' was updated to handle scheduled task objects.
+- Improved error handling when opening kernel object handles.
+
+### Fixed
+
+- The helper 'Get-ObjectAccessRight' helper did not check for invalid handles, which resulted in undefined behaviors.
+
+## 2025-02-19
+
+### Modified
+
+- Update existing scheduled task checks so that they use the new helper 'Get-RegisteredScheduledTask'.
+
+### Removed
+
+- Previous helper ('Get-ScheduledTaskList') for enumerating scheduled tasks was removed.
+
+## 2025-02-18
+
+### Added
+
+- Wrapper for converting an SDDL to a security descriptor object.
+- Helper for obtaining security information about a registered scheduled task.
+- New helper for obtaining information about registered scheduled tasks.
+
+### Modified
+
+- Update 'Get-ScheduledTaskList' to include hidden tasks.
+
+## 2025-02-15
+
+### Added
+
+- Check for VNC server passwords.
+- Check for IPv6 configuration.
+- Check for Credential Delegation.
+
+## 2025-02-13
+
+### Added
+
+- PowerShell security feature check.
+
+### Removed
+
+- PowerShell execution policy check.
+- PowerShell Transcription check.
+
 ## 2025-01-10
 
 ### Added

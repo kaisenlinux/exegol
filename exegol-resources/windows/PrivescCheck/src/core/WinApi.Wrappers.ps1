@@ -259,7 +259,7 @@ function Get-RegistryKeyHandle {
         $Status = $script:Advapi32::RegOpenKeyEx($RootKeyValue, $RootKeyPath, 0, $AccessRights, [ref] $RegistryKeyHandle)
         if ($Status -ne $script:SystemErrorCode::ERROR_SUCCESS) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "RegOpenKeyEx('$($Path)') - $(Format-Error $LastError)"
+            Write-Error "RegOpenKeyEx('$($Path)') - $(Format-Error $LastError)"
         }
 
         return $RegistryKeyHandle
@@ -336,7 +336,7 @@ function Get-ServiceHandle {
         $ServiceControlManagerHandle = $script:Advapi32::OpenSCManager($null, $SERVICES_ACTIVE_DATABASE, $ServiceControlManagerAccessRights)
         if ($ServiceControlManagerHandle -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "OpenSCManager(null, '$($SERVICES_ACTIVE_DATABASE)', $($ServiceControlManagerAccessRights -as $script:ServiceControlManagerAccessRight)) - $(Format-Error $LastError)"
+            Write-Error "OpenSCManager(null, '$($SERVICES_ACTIVE_DATABASE)', $($ServiceControlManagerAccessRights -as $script:ServiceControlManagerAccessRight)) - $(Format-Error $LastError)"
             return [IntPtr]::Zero
         }
 
@@ -348,7 +348,7 @@ function Get-ServiceHandle {
         $ServiceHandle = $script:advapi32::OpenService($ServiceControlManagerHandle, $Name, $ServiceAccessRights)
         if ($ServiceHandle -eq [IntPtr]::Zero) {
             $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-            Write-Warning "OpenService($('0x{0:x}' -f $ServiceControlManagerHandle), '$($Name)', $($ServiceAccessRights -as $script:ServiceAccessRight)) - $(Format-Error $LastError)"
+            Write-Error "OpenService($('0x{0:x}' -f $ServiceControlManagerHandle), '$($Name)', $($ServiceAccessRights -as $script:ServiceAccessRight)) - $(Format-Error $LastError)"
         }
 
         return $ServiceHandle
@@ -413,7 +413,7 @@ function Get-ServiceStatus {
         # open the target service first. The access right SERVICE_QUERY_STATUS is
         # mandatory for querying a service's status.
         if ($null -ne $PSBoundParameters['Name']) {
-            $Handle = Get-ServiceHandle -Name $Name -AccessRights $script:ServiceAccessRight::QueryStatus
+            $Handle = Get-ServiceHandle -Name $Name -AccessRights $script:ServiceAccessRight::QueryStatus -ErrorAction SilentlyContinue
             if ($Handle -eq [IntPtr]::Zero) { return }
         }
     }
@@ -1467,6 +1467,64 @@ function Convert-DosDeviceToDevicePath {
     [System.Runtime.InteropServices.Marshal]::FreeHGlobal($TargetPathPtr)
 }
 
+function Convert-SddlToRawSecurityDescriptor {
+    <#
+    .SYNOPSIS
+    Wrapper - Convert an SDDL string to a security descriptor.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet is a wrapper for the API 'ConvertStringSecurityDescriptorToSecurityDescriptor'. It takes an SDDL string as an input, and converts it to a security descriptor object that can be easily manipulated in PowerShell.
+
+    .PARAMETER Sddl
+    A mandatory input SDDL string.
+
+    .EXAMPLE
+    PS C:\> Convert-SddlToRawSecurityDescriptor -Sddl "O:BAG:BAD:P(A;CIOI;GRGX;;;BU)(A;CIOI;GA;;;BA)(A;CIOI;GA;;;SY)(A;CIOI;GA;;;CO)S:P(AU;FA;GR;;;WD)
+
+    ControlFlags           : DiscretionaryAclPresent, SystemAclPresent, DiscretionaryAclProtected, SystemAclProtected,
+                             SelfRelative
+    Owner                  : S-1-5-32-544
+    Group                  : S-1-5-32-544
+    SystemAcl              : {System.Security.AccessControl.CommonAce}
+    DiscretionaryAcl       : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce,
+                             System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce}
+    ResourceManagerControl : 0
+    BinaryLength           : 176
+    #>
+
+    [OutputType([Security.AccessControl.RawSecurityDescriptor])]
+    [CmdletBinding()]
+    param (
+        [ValidateNotNullOrEmpty()]
+        [Parameter(Mandatory=$true)]
+        [String] $Sddl
+    )
+
+    process {
+        $SecurityDescriptorPtr = [IntPtr]::Zero
+        $SecurityDescriptorSize = 0
+        $Success = $script:Advapi32::ConvertStringSecurityDescriptorToSecurityDescriptor($Sddl, 1, [ref] $SecurityDescriptorPtr, [ref] $SecurityDescriptorSize)
+
+        if (-not $Success) {
+            $LastError = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            Write-Error "ConvertStringSecurityDescriptorToSecurityDescriptor - $(Format-Error $LastError)"
+            return $null
+        }
+
+        $SecurityDescriptorBytes = New-Object Byte[]($SecurityDescriptorSize)
+        [Runtime.InteropServices.Marshal]::Read
+        for ($i = 0; $i -lt $SecurityDescriptorSize; $i++) {
+            $Offset = [IntPtr] ($SecurityDescriptorPtr.ToInt64() + $i)
+            $SecurityDescriptorBytes[$i] = [Runtime.InteropServices.Marshal]::ReadByte($Offset)
+        }
+
+        New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $SecurityDescriptorBytes, 0
+    }
+}
+
 function Get-ObjectSecurityInfo {
     <#
     .SYNOPSIS
@@ -1539,7 +1597,7 @@ function Get-ObjectSecurityInfo {
             default                 { throw "Unhandled object type: $($Type)" }
         }
 
-        $SecurityInfo = 7 # DACL_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION
+        $SecurityInfo = $script:SecurityInformation::Owner + $script:SecurityInformation::Group + $script:SecurityInformation::Dacl
         $SidOwnerPtr = [IntPtr]::Zero
         $SidGroupPtr = [IntPtr]::Zero
         $DaclPtr = [IntPtr]::Zero
@@ -1615,6 +1673,60 @@ function Get-ObjectSecurityInfo {
     end {
         if ($SecurityDescriptorPtr -ne [IntPtr]::Zero) { $null = $script:Kernel32::LocalFree($SecurityDescriptorPtr) }
         if ($SecurityDescriptorNewPtr -ne [IntPtr]::Zero) { $null = $script:Kernel32::LocalFree($SecurityDescriptorNewPtr) }
+    }
+}
+
+function Get-ScheduledTaskSecurityInfo {
+    <#
+    .SYNOPSIS
+    Helper - Get security information about a scheduled task.
+
+    Author: @itm4n
+    License: BSD 3-Clause
+
+    .DESCRIPTION
+    This cmdlet retrieves information about a scheduled task (owner, group, DACL). It is assumed that input object is a COM object representing a registered scheduled task. The content of the output object is consistent with the content of the object returned by the generic Get-ObjectSecurityInfo cmdlet.
+
+    .PARAMETER Task
+    A mandatory COM object representing a registered scheduled task.
+
+    .EXAMPLE
+    PS C:\> $ss = New-Object -ComObject('Schedule.Service')
+    PS C:\> $ss.Connect()
+    PS C:\> $root = $ss.GetFolder("\")
+    PS C:\> $tasks = root.GetTasks(0)
+    PS C:\> $task = $tasks | Select-Object -First 1
+    PS C:\> Get-ScheduledTaskSecurityInfo -Task $task
+
+    Owner    : DESKTOP-TVHGOIE\Admin
+    OwnerSid : S-1-5-21-2452670728-2894995751-1045154116-1001
+    Group    : DESKTOP-TVHGOIE\None
+    GroupSid : S-1-5-21-2452670728-2894995751-1045154116-513
+    Dacl     : {System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce,
+               System.Security.AccessControl.CommonAce, System.Security.AccessControl.CommonAce}
+    Sddl     : O:S-1-5-21-2452670728-2894995751-1045154116-1001G:S-1-5-21-2452670728-2894995751-1045154116-513D:(A;ID;0x1f0
+               19f;;;BA)(A;ID;0x1f019f;;;SY)(A;ID;FA;;;S-1-5-21-2452670728-2894995751-1045154116-1001)(A;;FR;;;S-1-5-21-245
+               2670728-2894995751-1045154116-1001)
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Object] $Task
+    )
+
+    process {
+        $SecurityInfo = $script:SecurityInformation::Owner + $script:SecurityInformation::Group + $script:SecurityInformation::Dacl
+        $TaskSddl = $Task.GetSecurityDescriptor($SecurityInfo)
+        $TaskSecurityDescriptor = Convert-SddlToRawSecurityDescriptor -Sddl $TaskSddl
+
+        $Result = New-Object -TypeName PSObject
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Owner" -Value (Convert-SidToName -Sid $TaskSecurityDescriptor.Owner)
+        $Result | Add-Member -MemberType "NoteProperty" -Name "OwnerSid" -Value $TaskSecurityDescriptor.Owner
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Group" -Value (Convert-SidToName -Sid $TaskSecurityDescriptor.Group)
+        $Result | Add-Member -MemberType "NoteProperty" -Name "GroupSid" -Value $TaskSecurityDescriptor.Group
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Dacl" -Value $TaskSecurityDescriptor.DiscretionaryAcl
+        $Result | Add-Member -MemberType "NoteProperty" -Name "Sddl" -Value $TaskSddl
+        $Result
     }
 }
 

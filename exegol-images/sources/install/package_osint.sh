@@ -58,7 +58,7 @@ function install_assetfinder() {
     go install -v github.com/tomnomnom/assetfinder@latest
     asdf reshim golang
     add-history assetfinder
-    add-test-command "assetfinder thehacker.recipes"
+    add-test-command "assetfinder --help"
     add-to-list "assetfinder,https://github.com/tomnomnom/assetfinder,Tool to find subdomains and IP addresses associated with a domain."
 }
 
@@ -120,15 +120,13 @@ function install_theharvester() {
     colorecho "Installing theHarvester"
     git -C /opt/tools/ clone --depth 1 https://github.com/laramies/theHarvester
     cd /opt/tools/theHarvester || exit
-    python3 -m venv --system-site-packages ./venv
+    python3.13 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
-    pip3 install -r requirements.txt
+    pip3 install .
     deactivate
-    # The tool needs access to the proxies.yaml file in the folder.
-    ln -s /opt/tools/theHarvester /usr/local/etc/
     add-aliases theharvester
     add-history theharvester
-    add-test-command "theHarvester.py --help"
+    add-test-command "theHarvester --help"
     add-to-list "theharvester,https://github.com/laramies/theHarvester,Tool for gathering e-mail accounts / subdomain names / virtual host / open ports / banners / and employee names from different public sources"
 }
 
@@ -154,24 +152,6 @@ function install_infoga() {
     add-history infoga
     add-test-command "infoga.py --help"
     add-to-list "infoga,https://github.com/m4ll0k/Infoga,Information gathering tool for hacking."
-}
-
-function install_buster() {
-    # CODE-CHECK-WHITELIST=add-aliases
-    colorecho "Installing buster"
-    git -C /opt/tools clone --depth 1 https://github.com/sham00n/buster
-    cd /opt/tools/buster || exit
-    fapt libxml2-dev libxslt-dev
-    python3.6 -m venv --system-site-packages ./venv
-    source ./venv/bin/activate
-    # setting static lxml version since buster doesn't support latest one
-    python3.6 -m pip install cython cchardet requests beautifulsoup4 PyYaml lxml==5.1.1 grequests gevent twint
-    python3.6 setup.py install
-    deactivate
-    ln -s /opt/tools/buster/venv/bin/buster /opt/tools/bin
-    add-history buster
-    add-test-command "buster --help"
-    add-to-list "buster,https://github.com/sham00n/Buster,Advanced OSINT tool"
 }
 
 function install_pwnedornot() {
@@ -457,8 +437,8 @@ function install_geopincer() {
 function install_yalis() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing Yalis"
-    git -C /opt/tools clone --depth 1 https://github.com/EatonChips/yalis
-    cd /opt/tools/yalis || exit
+    git -C /tmp clone --depth 1 https://github.com/EatonChips/yalis
+    cd /tmp/yalis || exit
     go build .
     mv ./yalis /opt/tools/bin/
     add-history yalis
@@ -499,7 +479,7 @@ function install_blackbird() {
 function install_sherlock() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing Sherlock"
-    pipx install sherlock-project
+    pipx install --system-site-packages sherlock-project
     add-history sherlock
     add-test-command "sherlock --help"
     add-to-list "Sherlock,https://github.com/sherlock-project/sherlock,Hunt down social media accounts by username across social networks."
@@ -517,8 +497,8 @@ function install_censys() {
 function install_gomapenum() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing GoMapEnum"
-    git -C /opt/tools clone --depth 1 https://github.com/nodauf/GoMapEnum
-    cd /opt/tools/GoMapEnum/src || exit
+    git -C /tmp clone --depth 1 https://github.com/nodauf/GoMapEnum
+    cd /tmp/GoMapEnum/src || exit
     go build .
     mv ./src /opt/tools/bin/gomapenum
     add-history gomapenum
@@ -560,7 +540,6 @@ function package_osint() {
     install_theharvester            # Gather emails, subdomains, hosts, employee names, open ports and banners
     install_h8mail                  # Email OSINT & Password breach hunting tool
     # install_infoga                  # Gathering email accounts informations TODO : 404, it seems the repo has been removed
-    install_buster                  # An advanced tool for email reconnaissance
     install_pwnedornot              # OSINT Tool for Finding Passwords of Compromised Email Addresses
     # install_ghunt                 # Investigate Google Accounts with emails FIXME: Need python3.10 -> https://github.com/mxrch/GHunt/issues/398
     install_phoneinfoga             # Advanced information gathering & OSINT framework for phone numbers
@@ -588,11 +567,12 @@ function package_osint() {
     install_geopincer               # GeoPincer is a script that leverages OpenStreetMap's Overpass API in order to search for locations
     install_yalis                   # Yet Another LinkedIn Scraper
     install_murmurhash              # Little tool is to calculate a MurmurHash value
-    install_blackbird               # OSINT tool to search fast for accounts by username
+    #install_blackbird              Skipping install because of https://github.com/p1ngul1n0/blackbird/issues/119 # OSINT tool to search fast for accounts by username
     install_sherlock                # Hunt down social media accounts by username across social networks
     install_censys                  # An easy-to-use and lightweight API wrapper for Censys APIs
     install_gomapenum               # Nothing new but existing techniques are brought together in one tool.
     install_pymeta
+    post_install
     end_time=$(date +%s)
     local elapsed_time=$((end_time - start_time))
     colorecho "Package osint completed in $elapsed_time seconds."

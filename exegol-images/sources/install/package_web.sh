@@ -58,10 +58,8 @@ function install_wfuzz() {
     mkdir /usr/share/wfuzz
     git -C /tmp clone --depth 1 https://github.com/xmendez/wfuzz.git
     # Wait for fix / PR to be merged: https://github.com/xmendez/wfuzz/issues/366
-    local temp_fix_limit="2024-11-01"
-    if [[ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
+    local temp_fix_limit="2025-09-01"
+    if check_temp_fix_expiry "$temp_fix_limit"; then
       pip3 install pycurl  # remove this line and uncomment the first when issue is fix
       sed -i 's/pyparsing>=2.4\*;/pyparsing>=2.4.2;/' /tmp/wfuzz/setup.py
       pip3 install /tmp/wfuzz/
@@ -111,12 +109,20 @@ function install_amass() {
 function install_ffuf() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing ffuf"
-    git -C /opt/tools clone --depth 1 https://github.com/ffuf/ffuf.git
-    cd /opt/tools/ffuf || exit
-    go build .
-    mv ./ffuf /opt/tools/bin/
-    # https://github.com/ffuf/ffuf/issues/681
-    # go install github.com/ffuf/ffuf/v2@latest
+    if [[ $(uname -m) = 'x86_64' ]]
+    then
+        local arch="amd64"
+
+    elif [[ $(uname -m) = 'aarch64' ]]
+    then
+        local arch="arm64"
+    else
+        criticalecho-noexit "This installation function doesn't support architecture $(uname -m)" && return
+    fi
+    local ffuf_url
+    ffuf_url=$(curl --location --silent "https://api.github.com/repos/ffuf/ffuf/releases/latest" | grep 'browser_download_url.*ffuf.*linux_'"$arch"'.tar.gz"' | grep -o 'https://[^"]*')
+    curl --location -o /tmp/ffuf.tar.gz "$ffuf_url"
+    tar -xf /tmp/ffuf.tar.gz --directory /opt/tools/bin/
     add-history ffuf
     add-test-command "ffuf --help"
     add-to-list "ffuf,https://github.com/ffuf/ffuf,Fast web fuzzer written in Go."
@@ -244,7 +250,7 @@ function install_kadimus() {
     fapt libcurl4-openssl-dev libpcre3-dev libssh-dev
     git -C /opt/tools/ clone --depth 1 https://github.com/P0cL4bs/Kadimus
     cd /opt/tools/Kadimus || exit
-    make
+    make -j
     add-aliases kadimus
     add-history kadimus
     add-test-command "kadimus --help"
@@ -270,7 +276,7 @@ function install_patator() {
     fapt libmariadb-dev libcurl4-openssl-dev libssl-dev ldap-utils libpq-dev ike-scan unzip default-jdk libsqlite3-dev libsqlcipher-dev
     git -C /opt/tools clone --depth 1 https://github.com/lanjelot/patator.git
     cd /opt/tools/patator || exit
-    python3 -m venv --system-site-packages ./venv
+    python3.13 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
     pip3 install -r requirements.txt
     deactivate
@@ -365,19 +371,6 @@ function install_testssl() {
     add-to-list "testssl,https://github.com/drwetter/testssl.sh,a tool for testing SSL/TLS encryption on servers"
 }
 
-function install_tls-scanner() {
-    colorecho "Installing TLS-Scanner"
-    fapt maven
-    git -C /opt/tools/ clone --depth 1 https://github.com/tls-attacker/TLS-Scanner
-    cd /opt/tools/TLS-Scanner || exit
-    git submodule update --init --recursive
-    mvn clean package -DskipTests=true
-    add-aliases tls-scanner
-    add-history tls-scanner
-    add-test-command "tls-scanner --help"
-    add-to-list "tls-scanner,https://github.com/tls-attacker/tls-scanner,a simple script to check the security of a remote TLS/SSL web server"
-}
-
 function install_cloudfail() {
     colorecho "Installing CloudFail"
     git -C /opt/tools/ clone --depth 1 https://github.com/m0rtem/CloudFail
@@ -410,16 +403,6 @@ function install_oneforall() {
     colorecho "Installing OneForAll"
     git -C /opt/tools/ clone --depth 1 https://github.com/shmilylty/OneForAll.git
     cd /opt/tools/OneForAll || exit
-    # https://github.com/shmilylty/OneForAll/pull/340
-    local temp_fix_limit="2024-11-01"
-    if [[ "$(date +%Y%m%d)" -gt "$(date -d $temp_fix_limit +%Y%m%d)" ]]; then
-      criticalecho "Temp fix expired. Exiting."
-    else
-      git config --local user.email "local"
-      git config --local user.name "local"
-      local prs=("340")
-      for pr in "${prs[@]}"; do git fetch origin "pull/$pr/head:pull/$pr" && git merge --strategy-option theirs --no-edit --allow-unrelated-histories "pull/$pr"; done
-    fi
     python3 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
     pip3 install -r requirements.txt
@@ -515,7 +498,16 @@ function install_jwt_tool() {
     python3 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
     pip3 install -r requirements.txt
+    # Running the tool to create the initial configuration and force it to returns 0
+    python3 jwt_tool.py || :
     deactivate
+    
+    # Configuration
+    sed -i 's/^proxy = 127.0.0.1:8080/#proxy = 127.0.0.1:8080/' /root/.jwt_tool/jwtconf.ini
+    sed -i 's|^wordlist = jwt-common.txt|wordlist = /opt/tools/jwt_tool/jwt-common.txt|' /root/.jwt_tool/jwtconf.ini
+    sed -i 's|^commonHeaders = common-headers.txt|commonHeaders = /opt/tools/jwt_tool/common-headers.txt|' /root/.jwt_tool/jwtconf.ini
+    sed -i 's|^commonPayloads = common-payloads.txt|commonPayloads = /opt/tools/jwt_tool/common-payloads.txt|' /root/.jwt_tool/jwtconf.ini
+
     add-aliases jwt_tool
     add-history jwt_tool
     add-test-command "jwt_tool.py --help"
@@ -809,7 +801,7 @@ function install_php_filter_chain_generator() {
 
 function install_kraken() {
     colorecho "Installing Kraken"
-    git -C /opt/tools clone --depth 1 --recurse-submodules https://github.com/kraken-ng/Kraken.git
+    git -C /opt/tools clone --depth 1 --recursive --shallow-submodules https://github.com/kraken-ng/Kraken.git
     cd /opt/tools/Kraken || exit
     python3 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
@@ -845,11 +837,10 @@ function install_sqlmap() {
 function install_sslscan() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing sslscan"
-    git -C /opt/tools clone --depth 1 https://github.com/rbsec/sslscan.git
-    cd /opt/tools/sslscan || exit
+    git -C /tmp clone --depth 1 https://github.com/rbsec/sslscan.git
+    cd /tmp/sslscan || exit
     make static
-    mv /opt/tools/sslscan/sslscan /opt/tools/bin/sslscan
-    make clean
+    mv /tmp/sslscan/sslscan /opt/tools/bin/sslscan
     add-history sslscan
     add-test-command "sslscan --version"
     add-to-list "sslscan,https://github.com/rbsec/sslscan,a tool for testing SSL/TLS encryption on servers"
@@ -896,6 +887,40 @@ function install_postman() {
     add-to-list "postman,https://www.postman.com/,API platform for testing APIs"
 }
 
+function install_zap() {
+    colorecho "Installing ZAP"
+    local URL
+    URL=$(curl --location --silent "https://api.github.com/repos/zaproxy/zaproxy/releases/latest" | grep 'browser_download_url.*ZAP.*tar.gz"' | grep -o 'https://[^"]*')
+    curl --location -o /tmp/ZAP.tar.gz "$URL"
+    tar -xf /tmp/ZAP.tar.gz --directory /tmp
+    rm /tmp/ZAP.tar.gz
+    mv /tmp/ZAP* /opt/tools/zaproxy
+    ln -s /opt/tools/zaproxy/zap.sh /opt/tools/bin/zap
+    zap -cmd -addonupdate
+    add-aliases zaproxy
+    add-history zaproxy
+    add-test-command "zap -suppinfo"
+    add-to-list "Zed Attack Proxy (ZAP),https://www.zaproxy.org/,Web application security testing tool."
+}
+    
+function install_token_exploiter() {
+    # CODE-CHECK-WHITELIST=add-aliases,add-history
+    colorecho "Installing Token Exploiter"
+    pipx install --system-site-packages git+https://github.com/psyray/token-exploiter
+    add-test-command "token-exploiter --help"
+    add-to-list "token-exploiter,https://github.com/psyray/token-exploiter,Token Exploiter is a tool designed to analyze GitHub Personal Access Tokens."
+}
+
+function install_bbot() {
+    # CODE-CHECK-WHITELIST=add-aliases
+    colorecho "Installing BBOT"
+    pipx install --system-site-packages bbot
+    add-history bbot
+    add-test-command "bbot --help"
+    add-to-list "BBOT,https://github.com/blacklanternsecurity/bbot,BEE·bot is a multipurpose scanner inspired by Spiderfoot built to automate your Recon and ASM."
+}
+
+
 # Package dedicated to applicative and active web pentest tools
 function package_web() {
     set_env
@@ -929,7 +954,6 @@ function package_web() {
     install_cmsmap                  # CMS scanner (Joomla, Wordpress, Drupal)
     install_moodlescan              # Moodle scanner
     install_testssl                 # SSL/TLS scanner
-    install_tls-scanner             # SSL/TLS scanner
     # install_sslyze                # SSL/TLS scanner FIXME: Only AMD ?
     install_cloudfail               # Cloudflare misconfiguration detector
     install_eyewitness              # Website screenshoter
@@ -975,6 +999,10 @@ function package_web() {
     install_jsluice                 # Extract URLs, paths, secrets, and other interesting data from JavaScript source code
     install_katana                  # A next-generation crawling and spidering framework
     install_postman                 # Postman - API platform for testing APIs
+    install_zap                     # Zed Attack Proxy
+    install_token_exploiter         # Github personal token Analyzer
+    install_bbot                    # Recursive Scanner
+    post_install
     end_time=$(date +%s)
     local elapsed_time=$((end_time - start_time))
     colorecho "Package web completed in $elapsed_time seconds."

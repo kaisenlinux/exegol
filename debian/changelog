@@ -1,3 +1,9 @@
+exegol (4.3.11-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 4.3.11 upstream release
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sat, 09 Aug 2025 14:20:29 +0200
+
 exegol (4.3.10-1kaisen) kaisen-packages; urgency=medium
 
   * Import the new upstream release

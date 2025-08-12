@@ -15,6 +15,9 @@ function Get-ObjectAccessRight {
     .PARAMETER Type
     A mandatory parameter representing the type of object being queried (e.g. "File", "Directory", "RegistryKey", "Service", etc.).
 
+    .PARAMETER SecurityInformation
+    An optional parameter containing a security information object. If not specified, the helper function 'Get-ObjectSecurityInfo' is invoked to retrieve security information about the input object.
+
     .PARAMETER AccessRights
     An optional parameter representing a list of target access rights to test. If not specified, this cmdlet checks for modification rights specific to the input object type.
 
@@ -64,15 +67,15 @@ function Get-ObjectAccessRight {
         [String] $Name,
 
         [Parameter(Mandatory=$true)]
-        [ValidateSet("File", "Directory", "RegistryKey", "Service", "ServiceControlManager", "Process", "Thread")]
+        [ValidateSet("File", "Directory", "RegistryKey", "Service", "ServiceControlManager", "Process", "Thread", "ScheduledTask")]
         [String] $Type,
+
+        [Object] $SecurityInformation,
 
         [UInt32[]] $AccessRights = $null
     )
 
     begin {
-        $Handle = [IntPtr]::Zero
-
         $FileModificationRights = @(
             $script:FileAccessRight::WriteData,
             $script:FileAccessRight::AppendData,
@@ -159,31 +162,36 @@ function Get-ObjectAccessRight {
     }
 
     process {
+        # Make sure to initialize the handle value to 0 each time an object is processed
+        # to avoid reuse of previously closed handle in case of error when attempting to
+        # open the current object.
+        $Handle = [IntPtr]::Zero
+
         switch ($Type) {
             "File" {
                 $ObjectAccessRights = $script:FileAccessRight
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $FileModificationRights })
-                $Handle = Get-FileHandle -Path $Name -AccessRights $script:FileAccessRight::ReadControl
+                $Handle = Get-FileHandle -Path $Name -AccessRights $script:FileAccessRight::ReadControl -ErrorAction SilentlyContinue
             }
             "Directory" {
                 $ObjectAccessRights = $script:DirectoryAccessRight
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $DirectoryModificationRights })
-                $Handle = Get-FileHandle -Path $Name -AccessRights $script:DirectoryAccessRight::ReadControl -Directory
+                $Handle = Get-FileHandle -Path $Name -AccessRights $script:DirectoryAccessRight::ReadControl -Directory -ErrorAction SilentlyContinue
             }
             "RegistryKey" {
                 $ObjectAccessRights = $script:RegistryKeyAccessRight
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $RegistryKeyModificationRights })
-                $Handle = Get-RegistryKeyHandle -Path $Name -AccessRights $script:RegistryKeyAccessRight::ReadControl
+                $Handle = Get-RegistryKeyHandle -Path $Name -AccessRights $script:RegistryKeyAccessRight::ReadControl -ErrorAction SilentlyContinue
             }
             "Service" {
                 $ObjectAccessRights = $script:ServiceAccessRight
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $ServiceModificationRights })
-                $Handle = Get-ServiceHandle -Name $Name -AccessRights $script:ServiceAccessRight::ReadControl
+                $Handle = Get-ServiceHandle -Name $Name -AccessRights $script:ServiceAccessRight::ReadControl -ErrorAction SilentlyContinue
             }
             "ServiceControlManager" {
                 $ObjectAccessRights = $script:ServiceControlManagerAccessRight
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $ServiceControlManagerModificationRights })
-                $Handle = Get-ServiceHandle -Name "SCM" -SCM -AccessRights $script:ServiceAccessRight::ReadControl
+                $Handle = Get-ServiceHandle -Name "SCM" -SCM -AccessRights $script:ServiceAccessRight::ReadControl -ErrorAction SilentlyContinue
             }
             "Process" {
                 $ObjectAccessRights = $script:ProcessAccessRight
@@ -195,6 +203,10 @@ function Get-ObjectAccessRight {
                 $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $ThreadModificationRights })
                 $Handle = Get-ThreadHandle -ThreadId $Name -AccessRights $script:ThreadAccessRight::ReadControl -ErrorAction SilentlyContinue
             }
+            "ScheduledTask" {
+                $ObjectAccessRights = $script:FileAccessRight
+                $TargetAccessRights = $(if ($PSBoundParameters['AccessRights']) { $AccessRights } else { $FileModificationRights })
+            }
             default {
                 throw "Unhandled object type: $($Type)"
             }
@@ -202,7 +214,8 @@ function Get-ObjectAccessRight {
 
         # Sanity check. Just in case we add other object types in the future, we want to
         # make sure its permission set (access right enum) is properly set. Especially,
-        # we assume that it has an 'AllAccess' member because it used further in the code.
+        # we assume that it has an 'AllAccess' member because it is used further in the
+        # code.
         if ($null -eq $ObjectAccessRights::AllAccess) { throw "Permission set for object type '$($Type)' does not have an 'AllAccess' member." }
 
         # Sanity check. Make sure the input access right set to test is valid.
@@ -212,8 +225,19 @@ function Get-ObjectAccessRight {
             }
         }
 
-        # First things first, try to get the ACL of the object given its path.
-        $SecurityInfo = Get-ObjectSecurityInfo -Handle $Handle -Type $Type
+        # If the input object's security information is not supplied, retrieve it first
+        # using the helper function 'Get-ObjectSecurityInfo'.
+        if ($null -eq $SecurityInformation) {
+            # If we failed to open the target object with appropriate privileges, the
+            # resulting handle will be invalid. We must account for this and return
+            # immediately, otherwise we might end up with an undefined behavior.
+            if (($null -eq $Handle) -or ($Handle -eq [IntPtr]::Zero) -or ($Handle -eq -1)) { return }
+            $SecurityInfo = Get-ObjectSecurityInfo -Handle $Handle -Type $Type
+        }
+        else {
+            $SecurityInfo = $SecurityInformation
+        }
+
         if ($null -eq $SecurityInfo) { return }
 
         $DenyAces = $SecurityInfo.Dacl | Where-Object { $_.AceType -eq "AccessDenied" }
@@ -307,6 +331,7 @@ function Get-ObjectAccessRight {
             "ServiceControlManager" { if ($Handle -ne [IntPtr]::Zero) { $null = $script:Advapi32::CloseServiceHandle($Handle) } }
             "Process"               { if ($Handle -ne [IntPtr]::Zero) { $null = $script:Kernel32::CloseHandle($Handle) } }
             "Thread"                { if ($Handle -ne [IntPtr]::Zero) { $null = $script:Kernel32::CloseHandle($Handle) } }
+            "ScheduledTask"         { }
             default {
                 # Sanity check. We want to make sure to add a 'CloseHandle' function whenever
                 # a new object type is added to this helper to avoid handle leaks.
@@ -413,7 +438,7 @@ function Get-ModifiableComClassEntryRegistryPath {
     )
 
     process {
-        Get-ObjectAccessRight -Name $ComClassEntry.FullPath -Type RegistryKey | ForEach-Object {
+        Get-ObjectAccessRight -Name $ComClassEntry.HandlerRegPath -Type RegistryKey | ForEach-Object {
             $Result = $ComClassEntry.PSObject.Copy()
             $Result | Add-Member -MemberType "NoteProperty" -Name "ModifiablePath" -Value $_.ModifiablePath
             $Result | Add-Member -MemberType "NoteProperty" -Name "IdentityReference" -Value $_.IdentityReference
@@ -461,15 +486,15 @@ function Get-ModifiableComClassEntryImagePath {
     process {
         $CandidatePaths = @()
 
-        switch ($ComClassEntry.DataType) {
+        switch ($ComClassEntry.HandlerDataType) {
             "FileName" {
-                Resolve-ModulePath -Name $ComClassEntry.Data | ForEach-Object { $CandidatePaths += $_ }
+                Resolve-ModulePath -Name $ComClassEntry.HandlerData | ForEach-Object { $CandidatePaths += $_ }
             }
             "FilePath" {
-                $CandidatePaths += [System.Environment]::ExpandEnvironmentVariables($ComClassEntry.Data).Trim('"')
+                $CandidatePaths += [System.Environment]::ExpandEnvironmentVariables($ComClassEntry.HandlerData).Trim('"')
             }
             "CommandLine" {
-                $CommandLineResolved = [string[]] (Resolve-CommandLine -CommandLine $ComClassEntry.Data)
+                $CommandLineResolved = [string[]] (Resolve-CommandLine -CommandLine $ComClassEntry.HandlerData)
                 if ($null -eq $CommandLineResolved) { continue }
 
                 $CandidatePaths += $CommandLineResolved[0]
@@ -485,7 +510,7 @@ function Get-ModifiableComClassEntryImagePath {
                 }
             }
             default {
-                Write-Warning "Unknown server data type: $($ComClassEntry.DataType)"
+                Write-Warning "Unknown server data type: $($ComClassEntry.HandlerDataType)"
                 continue
             }
         }

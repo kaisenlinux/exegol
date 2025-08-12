@@ -6,10 +6,11 @@ source common.sh
 function install_misc_apt_tools() {
     # CODE-CHECK-WHITELIST=add-aliases
     colorecho "Installing misc apt tools"
-    fapt rlwrap imagemagick ascii rsync
+    fapt rlwrap imagemagick ascii rsync yq xq keepassxc
 
     add-history rlwrap
     add-history imagemagick
+    add-history rsync
     add-history rsync
 
     add-test-command "rlwrap --version"                            # Reverse shell utility
@@ -19,6 +20,7 @@ function install_misc_apt_tools() {
     add-to-list "rlwrap,https://github.com/hanslub42/rlwrap,rlwrap is a small utility that wraps input and output streams of executables / making it possible to edit and re-run input history"
     add-to-list "imagemagick,https://github.com/ImageMagick/ImageMagick,ImageMagick is a free and open-source image manipulation tool used to create / edit / compose / or convert bitmap images."
     add-to-list "rsync,https://packages.debian.org/sid/rsync,File synchronization tool for efficiently copying and updating data between local or remote locations"
+    add-to-list "keepassxc,https://github.com/keepassxreboot/keepassxc,Cross-platform password manager"
 }
 
 function install_goshs() {
@@ -87,24 +89,29 @@ function install_searchsploit() {
     sed -i 's/opt\/exploitdb/opt\/tools\/exploitdb/' ~/.searchsploit_rc
 }
 
-function install_trilium() {
-    colorecho "Installing Trilium (building from sources)"
-    # TODO : apt install in a second step
+function install_triliumnext() {
+    colorecho "Installing TriliumNext"
     fapt libpng16-16 libpng-dev pkg-config autoconf libtool build-essential nasm libx11-dev libxkbfile-dev
-    git -C /opt/tools/ clone -b stable --depth 1 https://github.com/zadam/trilium.git
-    zsh -c "source ~/.zshrc && cd /opt/tools/trilium && nvm install 16 && nvm use 16 && npm install && npm rebuild && npm run webpack"
-    mkdir -p /root/.local/share/trilium-data
+    # https://github.com/TriliumNext/Notes/issues/1890
+    local temp_fix_limit="2025-09-01"
+    if check_temp_fix_expiry "$temp_fix_limit"; then
+      git -C /opt/tools/ clone --branch v0.93.0 --depth 1 https://github.com/triliumnext/notes.git triliumnext
+    fi
+    #git -C /opt/tools/ clone --depth 1 https://github.com/triliumnext/notes.git triliumnext
+    cd /opt/tools/triliumnext || exit
+    zsh -c "source ~/.zshrc && nvm use default && npm install"
+    mkdir /opt/tools/triliumnext/data
     # config.ini contains the exposition port and host
-    cp -v /root/sources/assets/trilium/config.ini /root/.local/share/trilium-data
-    cp -v /root/sources/assets/trilium/trilium-manager.sh /opt/tools/trilium/trilium-manager.sh
-    chmod +x /opt/tools/trilium/trilium-manager.sh
-    zsh /opt/tools/trilium/trilium-manager.sh start
-    zsh /opt/tools/trilium/trilium-manager.sh configure
-    zsh /opt/tools/trilium/trilium-manager.sh stop
-    add-aliases trilium
-    add-history trilium
-    add-test-command "trilium-test"
-    add-to-list "trilium,https://github.com/zadam/trilium,Personal knowledge management system."
+    cp -v /root/sources/assets/triliumnext/config.ini /opt/tools/triliumnext/data/config.ini
+    cp -v /root/sources/assets/triliumnext/triliumnext-manager.sh /opt/tools/triliumnext/triliumnext-manager.sh
+    chmod +x /opt/tools/triliumnext/triliumnext-manager.sh
+    /opt/tools/triliumnext/triliumnext-manager.sh start
+    /opt/tools/triliumnext/triliumnext-manager.sh configure
+    /opt/tools/triliumnext/triliumnext-manager.sh stop
+    add-aliases triliumnext
+    add-history triliumnext
+    add-test-command "triliumnext-test"
+    add-to-list "TriliumNext,https://github.com/TriliumNext/Notes,Personal knowledge management system (successor to Trilium)."
 }
 
 function install_ngrok() {
@@ -140,11 +147,10 @@ function install_objectwalker() {
 function install_tig() {
     # CODE-CHECK-WHITELIST=add-aliases,add-history
     colorecho "Installing tig"
-    git -C /opt/tools clone --depth 1 https://github.com/jonas/tig.git
-    cd /opt/tools/tig || exit
-    make
-    make install
-    mv /root/bin/tig /opt/tools/bin/tig
+    git -C /tmp clone --depth 1 https://github.com/jonas/tig.git
+    cd /tmp/tig || exit
+    make -j
+    make install bindir=/opt/tools/bin sysconfdir=/etc
     # Need add-history ?
     add-test-command "tig --help"
     add-to-list "tig,https://github.com/jonas/tig,Tig is an ncurses-based text-mode interface for git."
@@ -167,7 +173,7 @@ function install_cyberchef() {
     if [[ -z "$last_release" ]]; then
         criticalecho-noexit "Latest release not found" && return
     fi
-    mkdir /opt/tools/CyberChef
+    mkdir -p /opt/tools/CyberChef
     wget "$last_release" -O /tmp/CyberChef.zip
     unzip -o /tmp/CyberChef.zip -d /opt/tools/CyberChef/
     rm /tmp/CyberChef.zip
@@ -189,7 +195,7 @@ function install_uploader() {
     colorecho "Installing Uploader"
     git -C /opt/tools/ clone --depth 1 https://github.com/Frozenka/uploader.git 
     cd /opt/tools/uploader || exit
-    python3 -m venv --system-site-package ./venv
+    python3 -m venv --system-site-packages ./venv
     source ./venv/bin/activate
     pip install -r requirements.txt
     deactivate
@@ -197,6 +203,23 @@ function install_uploader() {
     add-history uploader
     add-test-command "uploader --help"
     add-to-list "uploader,https://github.com/Frozenka/uploader,Tool for quickly downloading files to a remote machine based on the target operating system"
+}
+
+function install_wesng() {
+    # CODE-CHECK-WHITELIST=add-aliases
+    colorecho "Installing wesng"
+    pipx install --system-site-packages git+https://github.com/bitsadmin/wesng
+    add-history wesng
+    add-test-command "wes --help"
+    add-to-list "wesng,https://github.com/bitsadmin/wesng,WES-NG is a tool based on the output of Windows's systeminfo utility which provides the list of vulnerabilities the OS is vulnerable to including any exploits for these vulnerabilities."
+}
+
+function install_dtrx() {
+    # CODE-CHECK-WHITELIST=add-aliases,add-history
+    colorecho "Installing dtrx"
+    pipx install --system-site-packages dtrx
+    add-test-command "dtrx --help"
+    add-to-list "dtrx,https://github.com/dtrx-py/dtrx,Do The Right eXtraction - don't remember what set of tar flags or where to pipe the output to extract it? no worries!"
 }
 
 # Package dedicated to offensive miscellaneous tools
@@ -211,7 +234,7 @@ function package_misc() {
     install_shellerator     # Reverse shell generator
     install_uberfile        # file uploader/downloader commands generator
     install_arsenal         # Cheatsheets tool
-    install_trilium         # notes taking tool
+    install_triliumnext     # notes taking tool
     install_ngrok           # expose a local development server to the Internet
     install_whatportis      # Search default port number
     install_objectwalker    # Python module to explore the object tree to extract paths to interesting objects in memory
@@ -220,6 +243,9 @@ function package_misc() {
     install_cyberchef       # A web based toolbox
     install_creds           # A default credentials vault
     install_uploader        # uploader for fast file upload
+    install_wesng           # Search Windows vulnerability via systeminfo
+    install_dtrx            # Intelligent archive extractor
+    post_install
     end_time=$(date +%s)
     local elapsed_time=$((end_time - start_time))
     colorecho "Package misc completed in $elapsed_time seconds."
